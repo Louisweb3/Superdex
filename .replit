@@ -40,3 +40,8 @@ waitForPort = 5000
 
 [agent]
 stack = "FULLSTACK_JS"
+
+[userenv]
+
+[userenv.shared]
+ZEROX_API_KEY = "acfd0edd-19c8-447a-8751-4c156b3a5e14"
