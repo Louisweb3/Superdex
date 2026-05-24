@@ -331,7 +331,7 @@ export function SwapPage() {
 
         setApproving(true);
         try {
-          const approveTxHash = await wallet.sendTransaction({
+          await wallet.sendTransaction({
             to: sellToken.address,
             data: approveData,
             value: "0x0",
