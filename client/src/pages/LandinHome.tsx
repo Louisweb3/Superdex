@@ -7,6 +7,7 @@ import { RewardsOverviewSection } from "./sections/RewardsOverviewSection";
 import { SuperTokenPromoSection } from "./sections/SuperTokenPromoSection";
 import { SwapHeroSection } from "./sections/SwapHeroSection";
 import { PlaceholderPage } from "./sections/PlaceholderPage";
+import { SwapPage } from "./SwapPage";
 
 const backgroundLayers = [
   {
@@ -27,12 +28,6 @@ const backgroundLayers = [
 ];
 
 const tabPages: Record<string, { title: string; icon: string; description: string; color: string }> = {
-  swap: {
-    title: "Swap",
-    icon: "🔄",
-    description: "Swap tokens on Base with instant rewards on every trade.",
-    color: "#4dab6d",
-  },
   rewards: {
     title: "Rewards",
     icon: "🎁",
@@ -69,10 +64,11 @@ export const LandinHome = (): JSX.Element => {
   };
 
   const isHome = activeTab === "home";
+  const isSwap = activeTab === "swap";
 
   return (
     <main className="w-full bg-[#020b1c] min-h-screen">
-      <div className="mx-auto flex w-full max-w-[927px] flex-col">
+      <div className="mx-auto flex w-full max-w-[941px] flex-col">
         <div className="relative isolate flex min-h-screen w-full flex-col overflow-hidden">
           {backgroundLayers.map((layer) => (
             <img
@@ -88,16 +84,14 @@ export const LandinHome = (): JSX.Element => {
           </header>
 
           <div className="relative z-10 flex w-full flex-1 flex-col">
-            {isHome ? (
+            {isHome && (
               <>
                 <section className="w-full">
                   <SwapHeroSection onViewRewards={handleViewRewards} />
                 </section>
-
                 <section ref={rewardsRef} className="w-full px-[14px] sm:px-[18px] pt-[10px] sm:pt-[12px]">
                   <RewardsOverviewSection />
                 </section>
-
                 <section
                   aria-labelledby="featured-dexes-heading"
                   className="w-full px-[9px] pt-[12px] sm:pt-[14px]"
@@ -116,12 +110,19 @@ export const LandinHome = (): JSX.Element => {
                     </CardContent>
                   </Card>
                 </section>
-
                 <section className="w-full px-[9px] pt-0 mt-3">
                   <SuperTokenPromoSection />
                 </section>
               </>
-            ) : (
+            )}
+
+            {isSwap && (
+              <section className="w-full flex-1">
+                <SwapPage />
+              </section>
+            )}
+
+            {!isHome && !isSwap && (
               <section className="w-full flex-1 px-4">
                 <PlaceholderPage
                   title={tabPages[activeTab]?.title ?? activeTab}
