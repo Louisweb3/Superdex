@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import {
   Settings, ChevronDown, ArrowUpDown, ChevronRight,
   Info, Zap, CheckSquare, Square, Loader2, ExternalLink, X, AlertTriangle,
@@ -8,28 +8,40 @@ import { TOKENS, DEX_SOURCES, type Token, parseAmount, encodeApprove, NATIVE_ETH
 import { useWalletContext } from "@/context/WalletContext";
 import { useSwapPrice, fetchSwapQuote, type SwapQuote } from "@/hooks/useSwapQuote";
 import { recordSwapReward } from "@/hooks/useRewards";
-import { useTrendingTokens } from "@/hooks/useTrendingTokens";
+import { useBaseTokens } from "@/hooks/useBaseTokens";
 import { useWalletBalances } from "@/hooks/useWalletBalances";
 
 const SLIPPAGE_OPTIONS = ["0.1", "0.5", "1.0"];
 const NATIVE_ETH_ADDR_LOWER = NATIVE_ETH_ADDRESS.toLowerCase();
 
-// ─── Token Dropdown (portfolio-aware, Base-only) ────────────────────────────────────────
-function TokenDropdown({
-  selected,
+// ─── Token Picker Modal (fixed position — bypasses all overflow clipping) ─────
+function TokenPickerModal({
   tokens,
+  selected,
   onSelect,
   onClose,
 }: {
-  selected: Token;
   tokens: Token[];
+  selected: Token;
   onSelect: (t: Token) => void;
   onClose: () => void;
 }) {
   const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = search.toLowerCase().trim();
     if (!q) return tokens;
     return tokens.filter(
       (t) =>
@@ -39,184 +51,195 @@ function TokenDropdown({
     );
   }, [tokens, search]);
 
-  const holdings = filtered
-    .filter((t) => t.balance !== undefined && t.balance > 0)
-    .sort((a, b) => (b.balanceUsd || 0) - (a.balanceUsd || 0));
-  const trending = filtered.filter(
-    (t) => t.isTrending && !holdings.some((h) => h.address === t.address)
+  const holdings = useMemo(
+    () =>
+      filtered
+        .filter((t) => t.balance !== undefined && t.balance > 0)
+        .sort((a, b) => (b.balanceUsd ?? 0) - (a.balanceUsd ?? 0)),
+    [filtered]
   );
-  const allOthers = filtered.filter(
-    (t) => !holdings.some((h) => h.address === t.address) && !t.isTrending
+  const trendingList = useMemo(
+    () =>
+      filtered.filter(
+        (t) => t.isTrending && !holdings.some((h) => h.address === t.address)
+      ),
+    [filtered, holdings]
   );
+  const allOthers = useMemo(
+    () =>
+      filtered.filter(
+        (t) =>
+          !holdings.some((h) => h.address === t.address) &&
+          !t.isTrending
+      ),
+    [filtered, holdings]
+  );
+
+  function TokenRow({ t }: { t: Token }) {
+    const isSelected = t.address.toLowerCase() === selected.address.toLowerCase();
+    return (
+      <button
+        onClick={() => { onSelect(t); onClose(); }}
+        className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[#0a1e30] ${
+          isSelected ? "bg-[#0c2030]" : ""
+        }`}
+        data-testid={`token-option-${t.symbol}`}
+      >
+        <img
+          src={t.icon}
+          alt={t.symbol}
+          className="h-9 w-9 shrink-0 rounded-full object-cover bg-[#0a1825]"
+          onError={(e) => {
+            const img = e.target as HTMLImageElement;
+            img.onerror = null;
+            img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${t.address.toLowerCase()}.png`;
+          }}
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center gap-1.5">
+            <span className="font-['Inter',sans-serif] text-[14px] font-bold text-[#c8ccd2]">
+              {t.symbol}
+            </span>
+            {t.isTrending && (
+              <span className="rounded-[4px] bg-[#0e2a0a] px-1.5 py-0.5 text-[9px] font-bold text-[#3acd5b]">
+                HOT
+              </span>
+            )}
+            {isSelected && (
+              <div className="h-1.5 w-1.5 rounded-full bg-[#2dae50]" />
+            )}
+          </div>
+          <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c] truncate">
+            {t.name}
+          </span>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          {t.balance !== undefined && t.balance > 0 && (
+            <span className="font-['Inter',sans-serif] text-[12px] font-medium text-[#9da1a8]">
+              {t.balance.toLocaleString("en-US", { maximumFractionDigits: 5 })}
+            </span>
+          )}
+          {t.balanceUsd !== undefined && t.balanceUsd > 0.005 && (
+            <span className="font-['Inter',sans-serif] text-[11px] text-[#3a4a5c]">
+              ${t.balanceUsd.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+            </span>
+          )}
+          {t.price !== undefined && t.price > 0 && !(t.balance !== undefined && t.balance > 0) && (
+            <span className="font-['Inter',sans-serif] text-[11px] text-[#3a4a5c]">
+              ${t.price < 0.01
+                ? t.price.toExponential(2)
+                : t.price.toLocaleString("en-US", { maximumFractionDigits: 4 })}
+            </span>
+          )}
+        </div>
+      </button>
+    );
+  }
+
+  function SectionLabel({ icon, label }: { icon: React.ReactNode; label: string }) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-2 bg-[#020c18]">
+        {icon}
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#3a4a5c]">
+          {label}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div
-      className="absolute left-0 top-full z-[999] mt-2 w-[360px] overflow-hidden rounded-[18px] border-2 border-red-500 bg-[#030c18] shadow-2xl shadow-black/50"
-      style={{ minHeight: 200, background: "#ff0000" }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.75)" }}
+      onClick={onClose}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#071522] px-4 py-3">
-        <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#7a8494]">
-          Select Token
-        </span>
-        <button onClick={onClose} className="text-[#3a4a5c] hover:text-[#7a8494]">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* Search */}
-      <div className="border-b border-[#071522] px-4 py-2">
-        <div className="flex items-center gap-2 rounded-[10px] border border-[#0f2030] bg-[#040e1e] px-3 py-2">
-          <Search className="h-4 w-4 shrink-0 text-[#3a4a5c]" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or address"
-            className="w-full bg-transparent font-['Inter',sans-serif] text-[13px] text-[#c8ccd4] outline-none placeholder:text-[#3a4a5c]"
-            data-testid="token-search-input"
-          />
+      <div
+        className="relative w-full max-w-[400px] overflow-hidden rounded-[20px] border border-[#0f2030] bg-[#020c18] shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[#0d1e2e] px-5 py-3.5">
+          <span className="font-['Inter',sans-serif] text-[14px] font-bold text-[#7a8494]">
+            Select Token — Base
+          </span>
+          <button
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-[#3a4a5c] transition-colors hover:bg-[#0a1825] hover:text-[#7a8494]"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-      </div>
 
-      {/* Scrollable body */}
-      <div className="max-h-[420px] overflow-y-auto">
-        {/* ── Your Holdings ── */}
-        {holdings.length > 0 && (
-          <>
-            <div className="sticky top-0 z-10 flex items-center gap-2 bg-[#030c18] px-4 py-2">
-              <Wallet className="h-3.5 w-3.5 text-[#4d5a6e]" />
-              <span className="font-['Inter',sans-serif] text-[10px] font-bold uppercase tracking-wider text-[#4d5a6e]">
-                Your Holdings
-              </span>
-            </div>
-            {holdings.map((t) => (
-              <button
-                key={t.address}
-                onClick={() => { onSelect(t); onClose(); }}
-                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#040e1c] ${
-                  t.address === selected.address ? "bg-[#040f1c]" : ""
-                }`}
-                data-testid={`token-option-${t.symbol}`}
-              >
-                <img
-                  src={t.icon}
-                  alt={t.symbol}
-                  className="h-9 w-9 shrink-0 rounded-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `https://dd.dexscreener.com/ds-data/tokens/base/${t.address}.png`;
-                  }}
-                />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="font-['Inter',sans-serif] text-[14px] font-bold text-[#c8ccd2]">{t.symbol}</span>
-                    {t.isTrending && (
-                      <span className="rounded-[4px] bg-[#1a3a0a] px-1.5 py-0.5 font-['Inter',sans-serif] text-[9px] font-bold text-[#3acd5b]">TRENDING</span>
-                    )}
-                  </div>
-                  <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c]">{t.name}</span>
-                </div>
-                <div className="flex shrink-0 flex-col items-end">
-                  {t.balance !== undefined && (
-                    <span className="font-['Inter',sans-serif] text-[13px] font-medium text-[#c8ccd4]">
-                      {t.balance.toLocaleString("en-US", { maximumFractionDigits: 6 })} {t.symbol}
-                    </span>
-                  )}
-                  {t.balanceUsd !== undefined && t.balanceUsd > 0 && (
-                    <span className="font-['Inter',sans-serif] text-[11px] text-[#4d5a6e]">
-                      ${t.balanceUsd.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-                    </span>
-                  )}
-                  {t.address === selected.address && <div className="mt-1 h-2 w-2 rounded-full bg-[#2dae50]" />}
-                </div>
+        {/* Search */}
+        <div className="border-b border-[#0d1e2e] px-4 py-2.5">
+          <div className="flex items-center gap-2.5 rounded-[10px] border border-[#0f2030] bg-[#040e1e] px-3 py-2">
+            <Search className="h-4 w-4 shrink-0 text-[#3a4a5c]" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name or paste address"
+              className="w-full bg-transparent font-['Inter',sans-serif] text-[13px] text-[#c8ccd4] outline-none placeholder:text-[#2a3a4c]"
+              data-testid="token-search-input"
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="text-[#3a4a5c] hover:text-[#7a8494]">
+                <X className="h-3.5 w-3.5" />
               </button>
-            ))}
-          </>
-        )}
+            )}
+          </div>
+        </div>
 
-        {/* ── Trending ── */}
-        {trending.length > 0 && (
-          <>
-            <div className="sticky top-0 z-10 flex items-center gap-2 bg-[#030c18] px-4 py-2">
-              <TrendingUp className="h-3.5 w-3.5 text-[#2dae50]" />
-              <span className="font-['Inter',sans-serif] text-[10px] font-bold uppercase tracking-wider text-[#4d5a6e]">Trending</span>
+        {/* Token list */}
+        <div className="max-h-[480px] overflow-y-auto">
+          {/* Your Holdings */}
+          {holdings.length > 0 && (
+            <>
+              <SectionLabel
+                icon={<Wallet className="h-3 w-3 text-[#2dae50]" />}
+                label="Your Holdings"
+              />
+              {holdings.map((t) => <TokenRow key={t.address} t={t} />)}
+            </>
+          )}
+
+          {/* Trending */}
+          {trendingList.length > 0 && (
+            <>
+              <SectionLabel
+                icon={<TrendingUp className="h-3 w-3 text-[#f5a623]" />}
+                label="Trending on Base"
+              />
+              {trendingList.map((t) => <TokenRow key={t.address} t={t} />)}
+            </>
+          )}
+
+          {/* All Tokens */}
+          {allOthers.length > 0 && (
+            <>
+              <SectionLabel
+                icon={<Search className="h-3 w-3 text-[#3a4a5c]" />}
+                label="All Tokens"
+              />
+              {allOthers.map((t) => <TokenRow key={t.address} t={t} />)}
+            </>
+          )}
+
+          {filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10">
+              <Search className="h-8 w-8 text-[#1a2a3c] mb-2" />
+              <p className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">No tokens found</p>
             </div>
-            {trending.map((t) => (
-              <button
-                key={t.address}
-                onClick={() => { onSelect(t); onClose(); }}
-                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#040e1c] ${
-                  t.address === selected.address ? "bg-[#040f1c]" : ""
-                }`}
-                data-testid={`token-option-${t.symbol}`}
-              >
-                <img
-                  src={t.icon}
-                  alt={t.symbol}
-                  className="h-9 w-9 shrink-0 rounded-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `https://dd.dexscreener.com/ds-data/tokens/base/${t.address}.png`;
-                  }}
-                />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="font-['Inter',sans-serif] text-[14px] font-bold text-[#c8ccd2]">{t.symbol}</span>
-                    <span className="rounded-[4px] bg-[#1a3a0a] px-1.5 py-0.5 font-['Inter',sans-serif] text-[9px] font-bold text-[#3acd5b]">TRENDING</span>
-                  </div>
-                  <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c]">{t.name}</span>
-                </div>
-                <div className="flex shrink-0 flex-col items-end">
-                  {t.address === selected.address && <div className="mt-1 h-2 w-2 rounded-full bg-[#2dae50]" />}
-                </div>
-              </button>
-            ))}
-          </>
-        )}
+          )}
+        </div>
 
-        {/* ── All Tokens ── */}
-        {allOthers.length > 0 && (
-          <>
-            <div className="sticky top-0 z-10 flex items-center gap-2 bg-[#030c18] px-4 py-2">
-              <Search className="h-3.5 w-3.5 text-[#4d5a6e]" />
-              <span className="font-['Inter',sans-serif] text-[10px] font-bold uppercase tracking-wider text-[#4d5a6e]">All Tokens</span>
-            </div>
-            {allOthers.map((t) => (
-              <button
-                key={t.address}
-                onClick={() => { onSelect(t); onClose(); }}
-                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#040e1c] ${
-                  t.address === selected.address ? "bg-[#040f1c]" : ""
-                }`}
-                data-testid={`token-option-${t.symbol}`}
-              >
-                <img
-                  src={t.icon}
-                  alt={t.symbol}
-                  className="h-9 w-9 shrink-0 rounded-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `https://dd.dexscreener.com/ds-data/tokens/base/${t.address}.png`;
-                  }}
-                />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="font-['Inter',sans-serif] text-[14px] font-bold text-[#c8ccd2]">{t.symbol}</span>
-                  </div>
-                  <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c]">{t.name}</span>
-                </div>
-                <div className="flex shrink-0 flex-col items-end">
-                  {t.address === selected.address && <div className="mt-1 h-2 w-2 rounded-full bg-[#2dae50]" />}
-                </div>
-              </button>
-            ))}
-          </>
-        )}
-
-        {filtered.length === 0 && (
-          <p className="px-4 py-6 text-center font-['Inter',sans-serif] text-[13px] text-[#4d5a6e]">No tokens found</p>
-        )}
+        {/* Footer */}
+        <div className="border-t border-[#0d1e2e] px-4 py-2.5">
+          <p className="text-center font-['Inter',sans-serif] text-[10px] text-[#2a3a4c]">
+            Showing Base chain tokens only · Data from DexScreener
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -238,32 +261,35 @@ function TokenBox({
   disabledToken: Token;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const available = allTokens.filter(
+    (t) => t.address.toLowerCase() !== disabledToken.address.toLowerCase()
+  );
 
   return (
     <div className="relative rounded-[18px] border border-[#0d1e2e] bg-[#040e1e] px-4 pt-3 pb-4">
       <div className="mb-2 flex items-center justify-between">
         <span className="font-['Inter',sans-serif] text-[13px] font-medium text-[#4d5a6e]">{label}</span>
       </div>
-      <div className="flex items-center gap-3" ref={ref}>
+      <div className="flex items-center gap-3">
         <div className="relative shrink-0">
           <button
-            onClick={() => setOpen(!open)}
+            onClick={() => setOpen(true)}
             className="flex shrink-0 items-center gap-2 rounded-2xl border border-[#0f2030] bg-[#060f1e] px-3 py-2 transition-colors hover:border-[#1a3a50] hover:bg-[#071525]"
             data-testid={`token-select-${label.replace(" ", "-").toLowerCase()}`}
           >
-            <img src={token.icon} alt={token.symbol} className="h-7 w-7 rounded-full object-cover" />
+            <img
+              src={token.icon}
+              alt={token.symbol}
+              className="h-7 w-7 rounded-full object-cover bg-[#0a1825]"
+              onError={(e) => {
+                const img = e.target as HTMLImageElement;
+                img.onerror = null;
+                img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${token.address.toLowerCase()}.png`;
+              }}
+            />
             <span className="font-['Inter',sans-serif] text-base font-bold text-[#c8ccd2]">{token.symbol}</span>
             <ChevronDown className="h-4 w-4 text-[#3a4a5c]" />
           </button>
-          {open && (
-            <TokenDropdown
-              selected={token}
-              tokens={allTokens.filter((t) => t.address !== disabledToken.address)}
-              onSelect={onTokenChange}
-              onClose={() => setOpen(false)}
-            />
-          )}
         </div>
         <div className="flex min-w-0 flex-1 flex-col items-end">
           {readonly ? (
@@ -284,6 +310,15 @@ function TokenBox({
           <span className="mt-1 font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">{usdValue}</span>
         </div>
       </div>
+
+      {open && (
+        <TokenPickerModal
+          tokens={available}
+          selected={token}
+          onSelect={onTokenChange}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -298,7 +333,6 @@ function DexSourcePanel({
   onToggle: (id: string) => void;
   onClose: () => void;
 }) {
-  const allSelected = selected.length === 0;
   return (
     <div className="border-b border-[#071625] bg-[#020a14]">
       <div className="flex items-center justify-between px-5 py-3 border-b border-[#060f1c]">
@@ -431,39 +465,62 @@ function TxModal({ hash, onClose }: { hash: string; onClose: () => void }) {
 // ─── Main SwapPage ───────────────────────────────────────────────────────────────
 export function SwapPage() {
   const wallet = useWalletContext();
-  const { tokens: trendingRaw } = useTrendingTokens();
-  const { balances } = useWalletBalances(wallet.address, TOKENS);
 
-  // ── Build unified token list ─────────────────────────────────────────────
+  // ── 30 Base tokens from DexScreener ─────────────────────────────────────────
+  const { tokens: baseTokens, isLoading: tokensLoading } = useBaseTokens();
+
+  // ── Wallet balances for all 30 tokens ───────────────────────────────────────
+  const { balances } = useWalletBalances(wallet.address, baseTokens);
+
+  // ── Merge token data with live wallet balances ───────────────────────────────
   const allTokens: Token[] = useMemo(() => {
-    // Start with base TOKENS enriched with balances
-    const base = TOKENS.map((t) => {
-      const bal = balances.find((b) => b.address.toLowerCase() === t.address.toLowerCase());
+    if (baseTokens.length === 0) return TOKENS; // fallback while loading
+    return baseTokens.map((t) => {
+      const bal = balances.find(
+        (b) => b.address.toLowerCase() === t.address.toLowerCase()
+      );
       return {
         ...t,
         balance: bal?.balance,
         balanceUsd: bal?.balanceUsd,
       };
     });
+  }, [baseTokens, balances]);
 
-    // Add trending tokens not already in base list
-    const baseAddrs = new Set(base.map((t) => t.address.toLowerCase()));
-    const trending: Token[] = trendingRaw.map((t) => ({
-      address: t.address,
-      symbol: t.symbol,
-      name: t.name,
-      decimals: 18, // default; real value not available from DexScreener profiles
-      icon: t.icon,
-      isTrending: true,
-      balance: undefined,
-      balanceUsd: undefined,
-    })).filter((t) => !baseAddrs.has(t.address.toLowerCase()));
+  // Default to first two tokens (ETH and USDC)
+  const defaultSell = useMemo(
+    () => allTokens.find((t) => t.isNative) ?? allTokens[0] ?? TOKENS[0],
+    [allTokens]
+  );
+  const defaultBuy = useMemo(
+    () =>
+      allTokens.find(
+        (t) => t.address.toLowerCase() === "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+      ) ?? allTokens[1] ?? TOKENS[1],
+    [allTokens]
+  );
 
-    return [...base, ...trending];
-  }, [balances, trendingRaw]);
+  const [sellToken, setSellToken] = useState<Token>(TOKENS[0]);
+  const [buyToken, setBuyToken] = useState<Token>(TOKENS[1]);
 
-  const [sellToken, setSellToken] = useState<Token>(TOKENS[0]); // ETH
-  const [buyToken, setBuyToken] = useState<Token>(TOKENS[1]);   // USDC
+  // Once base tokens load, update defaults
+  useEffect(() => {
+    if (allTokens.length > 1) {
+      setSellToken((prev) => {
+        const refreshed = allTokens.find(
+          (t) => t.address.toLowerCase() === prev.address.toLowerCase()
+        );
+        return refreshed ?? defaultSell;
+      });
+      setBuyToken((prev) => {
+        const refreshed = allTokens.find(
+          (t) => t.address.toLowerCase() === prev.address.toLowerCase()
+        );
+        return refreshed ?? defaultBuy;
+      });
+    }
+  }, [allTokens, defaultSell, defaultBuy]);
+
   const [sellAmount, setSellAmount] = useState("1");
   const [slippage, setSlippage] = useState("0.5");
   const [showSettings, setShowSettings] = useState(false);
@@ -483,12 +540,11 @@ export function SwapPage() {
   const toggleSource = useCallback((id: string) => {
     setSelectedSources((prev) => {
       if (prev.length === 0) {
-        // currently "all" → select all minus this one
         return DEX_SOURCES.map((d) => d.id).filter((d) => d !== id);
       }
       if (prev.includes(id)) {
         const next = prev.filter((d) => d !== id);
-        return next.length === 0 ? [] : next; // empty = all
+        return next.length === 0 ? [] : next;
       }
       const next = [...prev, id];
       return next.length === DEX_SOURCES.length ? [] : next;
@@ -512,7 +568,6 @@ export function SwapPage() {
         sellToken, buyToken, sellAmount, wallet.address, slippageBps, selectedSources
       );
 
-      // Check if ERC20 approval is needed
       if (
         sellToken.address.toLowerCase() !== NATIVE_ETH_ADDR_LOWER &&
         fullQuote.issues?.allowance?.spender
@@ -528,13 +583,11 @@ export function SwapPage() {
             data: approveData,
             value: "0x0",
           });
-          // Wait a bit for approval to propagate
           await new Promise((r) => setTimeout(r, 2000));
         } finally {
           setApproving(false);
         }
 
-        // Re-fetch quote after approval
         const refreshedQuote = await fetchSwapQuote(
           sellToken, buyToken, sellAmount, wallet.address, slippageBps, selectedSources
         );
@@ -596,13 +649,14 @@ export function SwapPage() {
           <div className="flex min-w-0 flex-1 flex-col gap-3">
 
             {/* Swap Widget */}
-            <div className="relative w-full overflow-visible rounded-[22px] border border-[#0c1e30] bg-[#030d1a]">
+            <div className="relative w-full rounded-[22px] border border-[#0c1e30] bg-[#030d1a]">
 
               {/* Header */}
               <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#071625]">
                 <div className="flex items-center gap-2">
                   <Zap className="h-4 w-4 text-[#2dae50]" />
                   <span className="font-['Inter',sans-serif] text-[15px] font-bold text-[#b0b5be]">Swap</span>
+                  {tokensLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#2dae50]" />}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -834,13 +888,22 @@ export function SwapPage() {
           {/* ── RIGHT COLUMN ─────────────────────────────────────────── */}
           <div className="flex w-full flex-col gap-3 lg:w-[316px] lg:shrink-0">
 
-            {/* Price chart (sparkline static — 0x API doesn't offer OHLCV) */}
+            {/* Price chart sparkline */}
             <div className="relative w-full overflow-hidden rounded-[22px] border border-[#0a1825] bg-[#020c18]">
               <div className="px-5 pt-4 pb-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-2">
-                      <img src={sellToken.icon} alt={sellToken.symbol} className="h-6 w-6 rounded-full object-cover" />
+                      <img
+                        src={sellToken.icon}
+                        alt={sellToken.symbol}
+                        className="h-6 w-6 rounded-full object-cover bg-[#0a1825]"
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          img.onerror = null;
+                          img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${sellToken.address.toLowerCase()}.png`;
+                        }}
+                      />
                       <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#8c909a]">
                         {sellToken.symbol} / {buyToken.symbol}
                       </span>
@@ -886,7 +949,7 @@ export function SwapPage() {
                 <span className="font-['Inter',sans-serif] text-[15px] font-bold text-[#9da1a8]">Popular Tokens</span>
               </div>
               <div className="flex flex-col divide-y divide-[#071522]">
-                {TOKENS.map((token) => (
+                {allTokens.slice(0, 6).map((token) => (
                   <button
                     key={token.address}
                     onClick={() => {
@@ -895,10 +958,19 @@ export function SwapPage() {
                     className="flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-[#030e1c] active:bg-[#040f1e]"
                     data-testid={`token-quick-${token.symbol}`}
                   >
-                    <img src={token.icon} alt={token.symbol} className="h-8 w-8 shrink-0 rounded-full object-cover" />
+                    <img
+                      src={token.icon}
+                      alt={token.symbol}
+                      className="h-8 w-8 shrink-0 rounded-full object-cover bg-[#0a1825]"
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        img.onerror = null;
+                        img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${token.address.toLowerCase()}.png`;
+                      }}
+                    />
                     <div className="flex min-w-0 flex-1 flex-col">
                       <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#9da1a8]">{token.symbol}</span>
-                      <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c]">{token.name}</span>
+                      <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c] truncate">{token.name}</span>
                     </div>
                     <div className="flex flex-col items-end">
                       <span className="font-['Inter',sans-serif] text-[12px] text-[#4d5a6e]">
@@ -921,49 +993,43 @@ export function SwapPage() {
                     <button
                       key={dex.id}
                       onClick={() => toggleSource(dex.id)}
-                      className={`rounded-full border px-2.5 py-1 font-['Inter',sans-serif] text-[11px] font-medium transition-all ${
+                      className={`rounded-[8px] border px-2.5 py-1.5 font-['Inter',sans-serif] text-[11px] font-medium transition-all ${
                         active
-                          ? "border-[#1a4a2a] bg-[#0a2015] text-[#2dae50]"
-                          : "border-[#0a1825] bg-[#020c18] text-[#2a3840] opacity-50"
+                          ? "border-[#1a4a2a] bg-[#040f1a] text-[#2dae50]"
+                          : "border-[#0a1825] bg-[#020c18] text-[#3a4a5c] opacity-60"
                       }`}
-                      data-testid={`dex-pill-${dex.id}`}
                     >
                       {dex.name}
                     </button>
                   );
                 })}
               </div>
-              <p className="mt-3 font-['Inter',sans-serif] text-[11px] text-[#2a3840]">
-                Tap to toggle. All active = best route across all sources.
-              </p>
             </div>
-          </div>
-        </div>
 
-        {/* Maximize Rewards Banner */}
-        <div className="mt-3 relative w-full overflow-hidden rounded-[22px] border border-[#0c1825] bg-[#020b16]">
-          <div className="flex flex-col sm:flex-row items-center gap-4 px-5 py-5 sm:px-7 sm:py-5">
-            <div className="flex h-[90px] w-[90px] shrink-0 items-center justify-center rounded-full bg-[#030e1e]">
-              <Zap className="h-10 w-10 text-[#2dae50]" />
+            {/* Maximize Rewards Banner */}
+            <div className="mt-1 relative w-full overflow-hidden rounded-[22px] border border-[#0c1825] bg-[#020b16]">
+              <div className="flex flex-col sm:flex-row items-center gap-4 px-5 py-5 sm:px-7 sm:py-5">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#0a2418]">
+                  <Zap className="h-7 w-7 text-[#2dae50]" />
+                </div>
+                <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
+                  <p className="font-['Inter',sans-serif] text-[15px] font-bold text-[#c8ccd4]">Maximize Your Rewards</p>
+                  <p className="mt-0.5 font-['Inter',sans-serif] text-[12px] text-[#4d5a6e]">
+                    Earn XP and cashback on every swap on Base.
+                  </p>
+                </div>
+                <button className="shrink-0 flex items-center gap-1.5 rounded-[12px] border border-[#1a4a2a] bg-[#0a2015] px-3 py-2 font-['Inter',sans-serif] text-[12px] font-bold text-[#2dae50] transition-all hover:bg-[#0c2518]">
+                  Learn More
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
-            <div className="flex min-w-0 flex-1 flex-col text-center sm:text-left">
-              <span className="font-['Inter',sans-serif] text-[17px] font-bold text-[#b0b5be]">Maximize your rewards</span>
-              <span className="mt-1 font-['Inter',sans-serif] text-[14px] text-[#4d5a6e]">
-                Hold $SUPER to boost your swap rewards and unlock exclusive perks on every trade.
-              </span>
-            </div>
-            <button
-              className="flex shrink-0 items-center gap-2 rounded-[14px] border border-[#37c056] bg-[#49f764] px-6 py-3 font-['Inter',sans-serif] text-[15px] font-bold text-[#061a0e] transition-all hover:bg-[#3de055] active:scale-[0.98]"
-              data-testid="btn-get-super"
-            >
-              Get $SUPER
-              <ChevronRight className="h-4 w-4" />
-            </button>
+
           </div>
         </div>
       </div>
 
-      {/* Transaction success modal */}
+      {/* Tx success modal */}
       {txHash && <TxModal hash={txHash} onClose={() => setTxHash(null)} />}
     </>
   );
