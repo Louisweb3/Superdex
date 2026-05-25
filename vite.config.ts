@@ -34,6 +34,7 @@ export default defineConfig({
   server: {
     fs: {
       strict: true,
+      allow: ["..", "../attached_assets"],
     },
   },
 });

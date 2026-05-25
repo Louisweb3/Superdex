@@ -10,6 +10,8 @@ import { useSwapPrice, fetchSwapQuote, type SwapQuote } from "@/hooks/useSwapQuo
 import { recordSwapReward } from "@/hooks/useRewards";
 import { useBaseTokens } from "@/hooks/useBaseTokens";
 import { useWalletBalances } from "@/hooks/useWalletBalances";
+import maximizeRewardsBg from "@assets/Background__1779712623898.png";
+import tokenLogo from "@assets/token_logo_1779712623899.png";
 
 const SLIPPAGE_OPTIONS = ["0.1", "0.5", "1.0"];
 const NATIVE_ETH_ADDR_LOWER = NATIVE_ETH_ADDRESS.toLowerCase();
@@ -1007,11 +1009,16 @@ export function SwapPage() {
             </div>
 
             {/* Maximize Rewards Banner */}
-            <div className="mt-1 relative w-full overflow-hidden rounded-[22px] border border-[#0c1825] bg-[#020b16]">
+            <div
+              className="mt-1 relative w-full overflow-hidden rounded-[22px] border border-[#0c1825]"
+              style={{ backgroundImage: `url(${maximizeRewardsBg})`, backgroundSize: "cover", backgroundPosition: "center" }}
+            >
               <div className="flex flex-col sm:flex-row items-center gap-4 px-5 py-5 sm:px-7 sm:py-5">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#0a2418]">
-                  <Zap className="h-7 w-7 text-[#2dae50]" />
-                </div>
+                <img
+                  src={tokenLogo}
+                  alt="SuperSwap token logo"
+                  className="h-14 w-14 shrink-0 rounded-full object-cover"
+                />
                 <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
                   <p className="font-['Inter',sans-serif] text-[15px] font-bold text-[#c8ccd4]">Maximize Your Rewards</p>
                   <p className="mt-0.5 font-['Inter',sans-serif] text-[12px] text-[#4d5a6e]">
