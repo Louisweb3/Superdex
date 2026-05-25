@@ -530,6 +530,126 @@ export class RewardsStorage {
       totalSwapEvents: Number(swapsRow?.count ?? 0),
     };
   }
+
+  async getDailyVolume(days: number): Promise<{ date: string; volume: number; swaps: number }[]> {
+    const rows = await db
+      .select({
+        date: sql<string>`TO_CHAR(DATE_TRUNC('day', ${swapEvents.timestamp}), 'Mon DD')`,
+        volume: sql<number>`COALESCE(SUM(CAST(${swapEvents.volume_usd} AS NUMERIC)), 0)`,
+        swaps: sql<number>`COUNT(*)`,
+      })
+      .from(swapEvents)
+      .where(sql`${swapEvents.timestamp} >= NOW() - INTERVAL '${sql.raw(String(days))} days'`)
+      .groupBy(sql`DATE_TRUNC('day', ${swapEvents.timestamp})`)
+      .orderBy(sql`DATE_TRUNC('day', ${swapEvents.timestamp})`);
+
+    return rows.map((r) => ({
+      date: r.date,
+      volume: Number(r.volume),
+      swaps: Number(r.swaps),
+    }));
+  }
+
+  async getTopPairs(limit = 10): Promise<{ pair: string; volume: number; swaps: number; change24h: number }[]> {
+    const rows = await db
+      .select({
+        sell: swapEvents.sell_symbol,
+        buy: swapEvents.buy_symbol,
+        volume: sql<number>`COALESCE(SUM(CAST(${swapEvents.volume_usd} AS NUMERIC)), 0)`,
+        swaps: sql<number>`COUNT(*)`,
+        vol24h: sql<number>`COALESCE(SUM(CASE WHEN ${swapEvents.timestamp} >= NOW() - INTERVAL '24 hours' THEN CAST(${swapEvents.volume_usd} AS NUMERIC) ELSE 0 END), 0)`,
+        vol48h: sql<number>`COALESCE(SUM(CASE WHEN ${swapEvents.timestamp} >= NOW() - INTERVAL '48 hours' AND ${swapEvents.timestamp} < NOW() - INTERVAL '24 hours' THEN CAST(${swapEvents.volume_usd} AS NUMERIC) ELSE 0 END), 0)`,
+      })
+      .from(swapEvents)
+      .groupBy(swapEvents.sell_symbol, swapEvents.buy_symbol)
+      .orderBy(sql`COALESCE(SUM(CAST(${swapEvents.volume_usd} AS NUMERIC)), 0) DESC`)
+      .limit(limit);
+
+    return rows.map((r) => {
+      const v24 = Number(r.vol24h);
+      const v48 = Number(r.vol48h);
+      const change = v48 > 0 ? ((v24 - v48) / v48) * 100 : v24 > 0 ? 100 : 0;
+      return {
+        pair: `${r.sell} / ${r.buy}`,
+        volume: Number(r.volume),
+        swaps: Number(r.swaps),
+        change24h: parseFloat(change.toFixed(2)),
+      };
+    });
+  }
+
+  async getDailyUsers(days: number): Promise<{ date: string; users: number }[]> {
+    const rows = await db
+      .select({
+        date: sql<string>`TO_CHAR(DATE_TRUNC('day', ${rewardUsers.created_at}), 'Mon DD')`,
+        users: sql<number>`COUNT(*)`,
+      })
+      .from(rewardUsers)
+      .where(sql`${rewardUsers.created_at} >= NOW() - INTERVAL '${sql.raw(String(days))} days'`)
+      .groupBy(sql`DATE_TRUNC('day', ${rewardUsers.created_at})`)
+      .orderBy(sql`DATE_TRUNC('day', ${rewardUsers.created_at})`);
+
+    return rows.map((r) => ({
+      date: r.date,
+      users: Number(r.users),
+    }));
+  }
+
+  async getVolumeStats() {
+    const [totalRow] = await db
+      .select({
+        totalVolume: sql<number>`COALESCE(SUM(CAST(${swapEvents.volume_usd} AS NUMERIC)), 0)`,
+        totalSwaps: sql<number>`COUNT(*)`,
+      })
+      .from(swapEvents);
+
+    const [vol24hRow] = await db
+      .select({
+        volume: sql<number>`COALESCE(SUM(CAST(${swapEvents.volume_usd} AS NUMERIC)), 0)`,
+        swaps: sql<number>`COUNT(*)`,
+      })
+      .from(swapEvents)
+      .where(sql`${swapEvents.timestamp} >= NOW() - INTERVAL '24 hours'`);
+
+    const [vol48hRow] = await db
+      .select({
+        volume: sql<number>`COALESCE(SUM(CAST(${swapEvents.volume_usd} AS NUMERIC)), 0)`,
+      })
+      .from(swapEvents)
+      .where(sql`${swapEvents.timestamp} >= NOW() - INTERVAL '48 hours' AND ${swapEvents.timestamp} < NOW() - INTERVAL '24 hours'`);
+
+    const [users24hRow] = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${swapEvents.wallet_address})` })
+      .from(swapEvents)
+      .where(sql`${swapEvents.timestamp} >= NOW() - INTERVAL '24 hours'`);
+
+    const [totalUsersRow] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(rewardUsers);
+
+    const v24 = Number(vol24hRow?.volume ?? 0);
+    const v48 = Number(vol48hRow?.volume ?? 0);
+    const volumeChange = v48 > 0 ? ((v24 - v48) / v48) * 100 : v24 > 0 ? 100 : 0;
+
+    const totalVol = Number(totalRow?.totalVolume ?? 0);
+    const totalSwaps = Number(totalRow?.totalSwaps ?? 0);
+    const totalFees = totalVol * 0.003;
+    const swapFees = totalFees * 0.769;
+    const liquidityFees = totalFees * 0.154;
+    const platformFees = totalFees * 0.077;
+
+    return {
+      totalVolume: totalVol,
+      totalFees,
+      totalSwaps,
+      totalUsers: Number(totalUsersRow?.count ?? 0),
+      volume24h: v24,
+      swaps24h: Number(vol24hRow?.swaps ?? 0),
+      activeUsers24h: Number(users24hRow?.count ?? 0),
+      volumeChange24h: parseFloat(volumeChange.toFixed(2)),
+      fees: { swap: swapFees, liquidity: liquidityFees, platform: platformFees },
+    };
+  }
 }
 
 export const rewardsStorage = new RewardsStorage();

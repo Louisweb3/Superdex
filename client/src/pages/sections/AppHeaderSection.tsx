@@ -9,7 +9,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { useWalletContext } from "@/context/WalletContext";
-import { ExternalLink, LogOut, Wallet, ChevronDown } from "lucide-react";
+import {
+  ExternalLink,
+  LogOut,
+  Wallet,
+  ChevronDown,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
 interface AppHeaderSectionProps {
   onNavSelect?: (tab: string) => void;
@@ -19,14 +26,23 @@ function shortAddr(addr: string) {
   return addr.slice(0, 6) + "…" + addr.slice(-4);
 }
 
-export const AppHeaderSection = ({ onNavSelect }: AppHeaderSectionProps): JSX.Element => {
+export const AppHeaderSection = ({
+  onNavSelect,
+}: AppHeaderSectionProps): JSX.Element => {
   const [walletOpen, setWalletOpen] = useState(false);
+
   const wallet = useWalletContext();
 
   return (
     <>
-      <header className="relative w-full border-b border-[#0b1e24] bg-[#020816]">
-        <div className="flex min-h-[72px] sm:min-h-[84px] w-full items-center justify-between px-4 sm:px-6 md:px-8">
+      <header className="sticky top-0 z-50 w-full border-b border-white/[0.04] bg-[#050B12]/90 backdrop-blur-2xl">
+
+        {/* subtle glow */}
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent" />
+
+        <div className="relative flex min-h-[72px] sm:min-h-[84px] w-full items-center justify-between px-4 sm:px-6 md:px-8">
+
+          {/* LOGO - UNCHANGED */}
           <button
             onClick={() => onNavSelect?.("home")}
             className="flex items-center gap-2 sm:gap-3 focus:outline-none"
@@ -38,85 +54,174 @@ export const AppHeaderSection = ({ onNavSelect }: AppHeaderSectionProps): JSX.El
               alt="Logo"
               src="/figmaAssets/logo.png"
             />
+
             <span className="flex items-center leading-none font-['Inter',Helvetica] tracking-[0]">
-              <span className="font-bold text-[#ccced2] text-[20px] sm:text-[25px]">Super</span>
-              <span className="font-normal text-[#37c359] text-[22px] sm:text-[27px]">Swap</span>
+
+              <span className="font-bold text-[#ccced2] text-[20px] sm:text-[25px]">
+                Super
+              </span>
+
+              <span className="font-normal text-[#37c359] text-[22px] sm:text-[27px]">
+                Swap
+              </span>
             </span>
           </button>
 
+          {/* RIGHT */}
           {wallet.isConnected && wallet.address ? (
             <DropdownMenu>
+
               <DropdownMenuTrigger asChild>
+
                 <button
                   data-testid="button-wallet-dropdown"
-                  className="group flex items-center gap-2 sm:gap-3 h-auto rounded-[22px] border border-[#1a2e28] bg-gradient-to-br from-[#071a14] to-[#020d0a] px-3 sm:px-5 py-2.5 sm:py-3 text-[#2dae50] hover:border-[#2a5a3e] hover:shadow-[0_0_20px_rgba(45,174,80,0.15)] transition-all"
+                  className="group relative overflow-hidden rounded-[24px] border border-white/[0.06] bg-[#0B1118] px-4 py-3 transition-all duration-300 hover:border-cyan-400/20 hover:bg-[#101826] hover:shadow-[0_0_40px_rgba(34,211,238,0.08)]"
                 >
-                  <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-[#0a1f16] border border-[#1a3d2e]">
-                    <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#3acd5b]" />
+
+                  {/* glow */}
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_60%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
+                  <div className="relative z-10 flex items-center gap-3">
+
+                    {/* wallet icon */}
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
+
+                      <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_70%)]" />
+
+                      <Wallet className="relative z-10 h-4 w-4 text-cyan-300" />
+                    </div>
+
+                    {/* wallet info */}
+                    <div className="flex flex-col items-start leading-none">
+
+                      <div className="flex items-center gap-2">
+
+                        <span className="text-[14px] font-bold text-white">
+                          {shortAddr(wallet.address)}
+                        </span>
+
+                        <div className="flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-[3px]">
+
+                          <ShieldCheck className="h-3 w-3 text-emerald-300" />
+
+                          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-300">
+                            Secure
+                          </span>
+                        </div>
+                      </div>
+
+                      {wallet.balance && (
+                        <span className="mt-1 text-[12px] font-medium text-[#94A3B8]">
+                          {wallet.balance} ETH
+                        </span>
+                      )}
+                    </div>
+
+                    <ChevronDown className="h-4 w-4 text-[#64748B] transition-transform duration-300 group-data-[state=open]:rotate-180" />
                   </div>
-                  <div className="flex flex-col items-start leading-none">
-                    <span className="font-['Inter',Helvetica] text-[13px] sm:text-[15px] font-bold text-[#2dae50]">
-                      {shortAddr(wallet.address)}
-                    </span>
-                    {wallet.balance && (
-                      <span className="font-['Inter',Helvetica] text-[10px] sm:text-[11px] text-[#5f8a6e] mt-0.5">
-                        {wallet.balance} ETH
-                      </span>
-                    )}
-                  </div>
-                  <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#3a6a4e] group-data-[state=open]:rotate-180 transition-transform" />
                 </button>
               </DropdownMenuTrigger>
 
+              {/* DROPDOWN */}
               <DropdownMenuContent
                 align="end"
-                sideOffset={8}
-                className="w-[220px] sm:w-[260px] rounded-[18px] border border-[#1a2e28] bg-[#030c12] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
+                sideOffset={10}
+                className="w-[290px] overflow-hidden rounded-[28px] border border-white/[0.06] bg-[#070B11]/95 p-0 shadow-[0_25px_100px_rgba(0,0,0,0.65)] backdrop-blur-2xl"
               >
-                {/* Wallet identity header */}
-                <div className="flex items-center gap-3 px-3 py-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0a1f16] border border-[#1a3d2e]">
-                    <Wallet className="h-5 w-5 text-[#3acd5b]" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-['Inter',Helvetica] text-[14px] font-bold text-white">
-                      {shortAddr(wallet.address)}
-                    </span>
-                    {wallet.balance && (
-                      <span className="font-['Inter',Helvetica] text-[12px] text-[#5f8a6e]">
-                        {wallet.balance} ETH
+
+                {/* top */}
+                <div className="relative overflow-hidden border-b border-white/[0.05] bg-[#0B1118] p-5">
+
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_55%)]" />
+
+                  <div className="relative z-10 flex items-center gap-4">
+
+                    {/* icon */}
+                    <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
+
+                      <Wallet className="h-6 w-6 text-cyan-300" />
+                    </div>
+
+                    {/* wallet */}
+                    <div className="flex flex-col">
+
+                      <div className="flex items-center gap-2">
+
+                        <span className="text-[16px] font-black tracking-[-0.03em] text-white">
+                          {shortAddr(wallet.address)}
+                        </span>
+
+                        <Sparkles className="h-4 w-4 text-cyan-300" />
+                      </div>
+
+                      <span className="mt-1 text-[13px] text-[#94A3B8]">
+                        {wallet.balance || "0"} ETH
                       </span>
-                    )}
+
+                      <span className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#64748B]">
+                        Base Mainnet
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <DropdownMenuSeparator className="bg-[#0f1e18] my-1" />
+                {/* ACTIONS */}
+                <div className="p-2">
 
-                <DropdownMenuItem
-                  asChild
-                  className="flex items-center gap-3 rounded-[12px] px-3 py-2.5 text-[13px] text-[#a0b0a0] hover:bg-[#0a1a14] hover:text-[#2dae50] focus:bg-[#0a1a14] focus:text-[#2dae50] cursor-pointer transition-colors"
-                >
-                  <a
-                    href={`https://basescan.org/address/${wallet.address}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-testid="link-view-on-basescan"
+                  <DropdownMenuItem
+                    asChild
+                    className="group flex cursor-pointer items-center gap-3 rounded-[18px] border border-transparent px-4 py-3 transition-all hover:border-cyan-400/10 hover:bg-[#0E1621] focus:bg-[#0E1621]"
                   >
-                    <ExternalLink className="h-4 w-4 text-[#5f8a6e]" />
-                    <span className="font-['Inter',Helvetica]">View on Basescan</span>
-                  </a>
-                </DropdownMenuItem>
+                    <a
+                      href={`https://basescan.org/address/${wallet.address}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-testid="link-view-on-basescan"
+                    >
 
-                <DropdownMenuSeparator className="bg-[#0f1e18] my-1" />
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#111827] transition-all group-hover:bg-cyan-400/10">
 
-                <DropdownMenuItem
-                  onClick={() => wallet.disconnect()}
-                  data-testid="button-disconnect-wallet"
-                  className="flex items-center gap-3 rounded-[12px] px-3 py-2.5 text-[13px] text-[#c9543a] hover:bg-[#1a0a0a] hover:text-[#e06b5a] focus:bg-[#1a0a0a] focus:text-[#e06b5a] cursor-pointer transition-colors"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span className="font-['Inter',Helvetica]">Disconnect Wallet</span>
-                </DropdownMenuItem>
+                        <ExternalLink className="h-4 w-4 text-cyan-300" />
+                      </div>
+
+                      <div className="flex flex-col">
+
+                        <span className="text-[14px] font-semibold text-white">
+                          View on Basescan
+                        </span>
+
+                        <span className="text-[12px] text-[#64748B]">
+                          Open wallet explorer
+                        </span>
+                      </div>
+                    </a>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator className="my-2 bg-white/[0.04]" />
+
+                  <DropdownMenuItem
+                    onClick={() => wallet.disconnect()}
+                    data-testid="button-disconnect-wallet"
+                    className="group flex cursor-pointer items-center gap-3 rounded-[18px] border border-transparent px-4 py-3 transition-all hover:border-red-400/10 hover:bg-[#140D10] focus:bg-[#140D10]"
+                  >
+
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#111827] transition-all group-hover:bg-red-400/10">
+
+                      <LogOut className="h-4 w-4 text-red-300" />
+                    </div>
+
+                    <div className="flex flex-col">
+
+                      <span className="text-[14px] font-semibold text-red-200">
+                        Disconnect Wallet
+                      </span>
+
+                      <span className="text-[12px] text-[#64748B]">
+                        End current session
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
@@ -125,38 +230,66 @@ export const AppHeaderSection = ({ onNavSelect }: AppHeaderSectionProps): JSX.El
               variant="outline"
               onClick={() => setWalletOpen(true)}
               data-testid="button-connect-wallet"
-              className="h-auto rounded-[22px] border border-[#12352d] bg-[#000d10] px-3 sm:px-5 py-2.5 sm:py-4 text-[#2ca84c] hover:bg-[#041418] hover:text-[#2ca84c] transition-all"
+              className="group relative overflow-hidden rounded-[22px] border border-cyan-400/10 bg-[#0B1118] px-5 py-6 text-white transition-all duration-300 hover:border-cyan-400/20 hover:bg-[#101826] hover:shadow-[0_0_40px_rgba(34,211,238,0.08)]"
             >
-              <span className="flex items-center gap-2 sm:gap-3 font-['Inter',Helvetica] text-[15px] sm:text-[19px] font-bold leading-[normal] tracking-[0]">
-                <img
-                  className="h-4 w-4 sm:h-5 sm:w-5 object-cover"
-                  alt="Wallet"
-                  src="/figmaAssets/image-30.png"
-                />
-                {wallet.isConnecting
-                  ? <span className="text-[13px]">Connecting…</span>
-                  : <span>Connect</span>
-                }
+
+              {/* glow */}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_65%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
+              <span className="relative z-10 flex items-center gap-3 text-[15px] font-bold">
+
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
+
+                  <img
+                    className="h-4 w-4 object-contain"
+                    alt="Wallet"
+                    src="/figmaAssets/image-30.png"
+                  />
+                </div>
+
+                {wallet.isConnecting ? (
+                  <span className="text-[14px] text-cyan-300">
+                    Connecting...
+                  </span>
+                ) : (
+                  <span className="tracking-[-0.02em]">
+                    Connect Wallet
+                  </span>
+                )}
               </span>
             </Button>
           )}
         </div>
 
+        {/* WRONG NETWORK */}
         {wallet.isWrongNetwork && wallet.isConnected && (
-          <div className="flex w-full items-center justify-between bg-[#1a0a0a] px-4 py-2 sm:px-6">
-            <span className="font-['Inter',sans-serif] text-[12px] text-[#c9543a]">
-              Wrong network — please switch to Base
-            </span>
-            <button
-              onClick={wallet.switchToBase}
-              className="rounded-[8px] bg-[#3a0e0e] px-3 py-1 font-['Inter',sans-serif] text-[12px] font-bold text-[#c9543a] hover:bg-[#4a1212] transition-colors"
-            >
-              Switch to Base
-            </button>
+          <div className="border-t border-red-400/10 bg-[#140D10] px-4 py-3 sm:px-6">
+
+            <div className="flex items-center justify-between gap-4">
+
+              <div className="flex flex-col">
+
+                <span className="text-[13px] font-semibold text-red-300">
+                  Wrong Network Detected
+                </span>
+
+                <span className="mt-1 text-[12px] text-[#FCA5A5]">
+                  Please switch to Base Mainnet
+                </span>
+              </div>
+
+              <button
+                onClick={wallet.switchToBase}
+                className="rounded-[14px] border border-red-400/10 bg-red-400/10 px-4 py-2 text-[13px] font-bold text-red-200 transition-all hover:bg-red-400/20"
+              >
+                Switch Network
+              </button>
+            </div>
           </div>
         )}
       </header>
 
+      {/* CONNECT MODAL */}
       <ConnectWalletModal
         open={walletOpen}
         onClose={() => setWalletOpen(false)}

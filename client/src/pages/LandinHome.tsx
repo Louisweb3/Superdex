@@ -10,6 +10,7 @@ import { PlaceholderPage } from "./sections/PlaceholderPage";
 import { SwapPage } from "./SwapPage";
 import { RewardsPage } from "./RewardsPage";
 import { VaultPage } from "./VaultPage";
+import { AnalyticsPage } from "./AnalyticsPage";
 
 // Map URL paths → tab names, and vice-versa
 const PATH_TO_TAB: Record<string, string> = {
@@ -64,10 +65,11 @@ export const LandinHome = (): JSX.Element => {
     navigate(TAB_TO_PATH[tab] ?? "/");
   };
 
-  const isHome    = activeTab === "home";
-  const isSwap    = activeTab === "swap";
-  const isRewards = activeTab === "rewards";
-  const isVault   = activeTab === "vault";
+  const isHome      = activeTab === "home";
+  const isSwap      = activeTab === "swap";
+  const isRewards   = activeTab === "rewards";
+  const isVault     = activeTab === "vault";
+  const isAnalytics = activeTab === "analytics";
 
   return (
     <main className="w-full bg-[#020b1c] min-h-screen">
@@ -135,7 +137,13 @@ export const LandinHome = (): JSX.Element => {
               </section>
             )}
 
-            {!isHome && !isSwap && !isRewards && !isVault && (
+            {isAnalytics && (
+              <section className="w-full flex-1 overflow-y-auto">
+                <AnalyticsPage />
+              </section>
+            )}
+
+            {!isHome && !isSwap && !isRewards && !isVault && !isAnalytics && (
               <section className="w-full flex-1 px-4">
                 <PlaceholderPage
                   title={tabPages[activeTab]?.title ?? activeTab}
