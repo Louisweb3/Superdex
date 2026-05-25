@@ -1,11 +1,17 @@
-const tickerItems = [
-  { symbol: "ETH", price: "$1,726.45", change: "-0.40%", changeColor: "text-[#7f1930]", iconSrc: "/figmaAssets/image-7.png" },
-  { symbol: "cbBTC", price: "$77,221", change: "-0.01%", changeColor: "text-[#7f1930]", iconSrc: "/figmaAssets/image-6.png" },
-  { symbol: "USDC", price: "$1.00", change: "+0.01%", changeColor: "text-[#20833f]", iconSrc: "/figmaAssets/image-5.png" },
-  { symbol: "ETH", price: "$1,726.45", change: "-0.40%", changeColor: "text-[#7f1930]", iconSrc: "/figmaAssets/image-7.png" },
-  { symbol: "cbBTC", price: "$77,221", change: "-0.01%", changeColor: "text-[#7f1930]", iconSrc: "/figmaAssets/image-6.png" },
-  { symbol: "USDC", price: "$1.00", change: "+0.01%", changeColor: "text-[#20833f]", iconSrc: "/figmaAssets/image-5.png" },
+import { useMarketPrices, type MarketPrice } from "@/hooks/useRewards";
+
+const FALLBACK_PRICES: MarketPrice[] = [
+  { symbol: "ETH",   price: 0, change24h: 0, iconSrc: "/figmaAssets/image-7.png" },
+  { symbol: "cbBTC", price: 0, change24h: 0, iconSrc: "/figmaAssets/image-6.png" },
+  { symbol: "USDC",  price: 1, change24h: 0, iconSrc: "/figmaAssets/image-5.png" },
 ];
+
+function formatPrice(p: number, symbol: string) {
+  if (p === 0) return "—";
+  if (symbol === "USDC") return "$1.00";
+  if (p >= 1000) return "$" + p.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  return "$" + p.toFixed(2);
+}
 
 const navItems = [
   {
@@ -70,10 +76,16 @@ export const AssetTickerNavSection = ({
   activeTab,
   onTabChange,
 }: AssetTickerNavSectionProps): JSX.Element => {
+  const { data: prices } = useMarketPrices();
+  const tickerPrices = prices ?? FALLBACK_PRICES;
+
+  // Duplicate for seamless scroll loop
+  const tickerItems = [...tickerPrices, ...tickerPrices];
+
   return (
     <section className="relative w-full">
       <div className="w-full border-y-[3px] border-[#060c18] bg-transparent">
-        {/* Scrolling price ticker */}
+        {/* Scrolling price ticker — live prices */}
         <div className="w-full overflow-hidden border-b border-[#060c18]">
           <div className="flex w-max items-center ticker-track">
             {tickerItems.map((item, i) => (
@@ -86,8 +98,10 @@ export const AssetTickerNavSection = ({
                   />
                   <div className="flex items-center gap-2 sm:gap-3 text-[13px] sm:text-[16px] tracking-[0] leading-[normal] font-['Inter',Helvetica] font-normal whitespace-nowrap">
                     <span className="font-bold text-[#aaaeb6]">{item.symbol}</span>
-                    <span className="text-[#898d94]">{item.price}</span>
-                    <span className={item.changeColor}>{item.change}</span>
+                    <span className="text-[#898d94]">{formatPrice(item.price, item.symbol)}</span>
+                    <span className={item.change24h >= 0 ? "text-[#20833f]" : "text-[#7f1930]"}>
+                      {item.change24h >= 0 ? "+" : ""}{item.change24h.toFixed(2)}%
+                    </span>
                   </div>
                 </div>
                 <div className="h-[22px] w-px bg-[#1a2535] shrink-0" />
@@ -108,6 +122,7 @@ export const AssetTickerNavSection = ({
                   onClick={() => onTabChange(item.value)}
                   aria-label={item.label}
                   aria-current={isActive ? "page" : undefined}
+                  data-testid={`button-nav-${item.value}`}
                   className="relative flex h-[82px] sm:h-[100px] w-full flex-col items-center justify-end pb-[14px] sm:pb-[20px] focus:outline-none transition-all"
                 >
                   {isActive ? (

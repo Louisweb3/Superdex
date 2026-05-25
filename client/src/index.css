@@ -118,6 +118,21 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .ticker-track {
+    animation: ticker-scroll 28s linear infinite;
+  }
+
+  .ticker-track:hover {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

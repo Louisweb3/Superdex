@@ -4,8 +4,9 @@ import {
   Info, Zap, CheckSquare, Square, Loader2, ExternalLink, X, AlertTriangle
 } from "lucide-react";
 import { TOKENS, DEX_SOURCES, type Token, parseAmount, encodeApprove, NATIVE_ETH_ADDRESS, toHexWei } from "@/lib/tokens";
-import { useWallet } from "@/hooks/useWallet";
+import { useWalletContext } from "@/context/WalletContext";
 import { useSwapPrice, fetchSwapQuote, type SwapQuote } from "@/hooks/useSwapQuote";
+import { recordSwapReward } from "@/hooks/useRewards";
 
 const SLIPPAGE_OPTIONS = ["0.1", "0.5", "1.0"];
 const NATIVE_ETH_ADDR_LOWER = NATIVE_ETH_ADDRESS.toLowerCase();
@@ -263,7 +264,7 @@ function TxModal({ hash, onClose }: { hash: string; onClose: () => void }) {
 
 // ─── Main SwapPage ───────────────────────────────────────────────────────────────
 export function SwapPage() {
-  const wallet = useWallet();
+  const wallet = useWalletContext();
 
   const [sellToken, setSellToken] = useState<Token>(TOKENS[0]); // ETH
   const [buyToken, setBuyToken] = useState<Token>(TOKENS[1]);   // USDC
@@ -350,6 +351,8 @@ export function SwapPage() {
           gas: toHexWei(refreshedQuote.transaction.gas),
         });
         setTxHash(hash);
+        const volUsd = parseFloat(sellAmount) * parseFloat(refreshedQuote.price ?? "0");
+        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd).catch(() => {});
       } else {
         if (!fullQuote.transaction) throw new Error("No transaction data in quote");
         const hash = await wallet.sendTransaction({
@@ -359,6 +362,8 @@ export function SwapPage() {
           gas: toHexWei(fullQuote.transaction.gas),
         });
         setTxHash(hash);
+        const volUsd = parseFloat(sellAmount) * parseFloat(fullQuote.price ?? "0");
+        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd).catch(() => {});
       }
     } catch (err: any) {
       setSwapError(err.message ?? "Swap failed");

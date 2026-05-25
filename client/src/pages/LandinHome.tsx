@@ -8,6 +8,7 @@ import { SuperTokenPromoSection } from "./sections/SuperTokenPromoSection";
 import { SwapHeroSection } from "./sections/SwapHeroSection";
 import { PlaceholderPage } from "./sections/PlaceholderPage";
 import { SwapPage } from "./SwapPage";
+import { RewardsPage } from "./RewardsPage";
 
 const backgroundLayers = [
   {
@@ -28,12 +29,6 @@ const backgroundLayers = [
 ];
 
 const tabPages: Record<string, { title: string; icon: string; description: string; color: string }> = {
-  rewards: {
-    title: "Rewards",
-    icon: "🎁",
-    description: "Track and claim your SuperSwap rewards earned from trading.",
-    color: "#3acd5b",
-  },
   analytics: {
     title: "Analytics",
     icon: "📊",
@@ -63,20 +58,16 @@ export const LandinHome = (): JSX.Element => {
     }
   };
 
-  const isHome = activeTab === "home";
-  const isSwap = activeTab === "swap";
+  const isHome    = activeTab === "home";
+  const isSwap    = activeTab === "swap";
+  const isRewards = activeTab === "rewards";
 
   return (
     <main className="w-full bg-[#020b1c] min-h-screen">
       <div className="mx-auto flex w-full max-w-[941px] flex-col">
         <div className="relative isolate flex min-h-screen w-full flex-col overflow-hidden">
           {backgroundLayers.map((layer) => (
-            <img
-              key={layer.alt}
-              className={layer.className}
-              alt={layer.alt}
-              src={layer.src}
-            />
+            <img key={layer.alt} className={layer.className} alt={layer.alt} src={layer.src} />
           ))}
 
           <header className="relative z-20 w-full">
@@ -122,7 +113,13 @@ export const LandinHome = (): JSX.Element => {
               </section>
             )}
 
-            {!isHome && !isSwap && (
+            {isRewards && (
+              <section className="w-full flex-1 overflow-y-auto">
+                <RewardsPage />
+              </section>
+            )}
+
+            {!isHome && !isSwap && !isRewards && (
               <section className="w-full flex-1 px-4">
                 <PlaceholderPage
                   title={tabPages[activeTab]?.title ?? activeTab}
@@ -134,10 +131,7 @@ export const LandinHome = (): JSX.Element => {
             )}
 
             <section className="w-full mt-auto">
-              <AssetTickerNavSection
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-              />
+              <AssetTickerNavSection activeTab={activeTab} onTabChange={setActiveTab} />
             </section>
           </div>
         </div>

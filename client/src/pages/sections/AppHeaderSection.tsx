@@ -1,21 +1,19 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
+import { useWalletContext } from "@/context/WalletContext";
 
 interface AppHeaderSectionProps {
   onNavSelect?: (tab: string) => void;
 }
 
+function shortAddr(addr: string) {
+  return addr.slice(0, 6) + "…" + addr.slice(-4);
+}
+
 export const AppHeaderSection = ({ onNavSelect }: AppHeaderSectionProps): JSX.Element => {
   const [walletOpen, setWalletOpen] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const [address, setAddress] = useState("");
-
-  const handleConnect = (walletId: string) => {
-    const shortAddr = "0x" + Math.random().toString(16).slice(2, 6).toUpperCase() + "..." + Math.random().toString(16).slice(2, 6).toUpperCase();
-    setAddress(shortAddr);
-    setConnected(true);
-  };
+  const wallet = useWalletContext();
 
   return (
     <>
@@ -25,6 +23,7 @@ export const AppHeaderSection = ({ onNavSelect }: AppHeaderSectionProps): JSX.El
             onClick={() => onNavSelect?.("home")}
             className="flex items-center gap-2 sm:gap-3 focus:outline-none"
             aria-label="SuperSwap home"
+            data-testid="link-home"
           >
             <img
               className="h-9 w-7 sm:h-[47px] sm:w-[38px] object-cover"
@@ -41,13 +40,13 @@ export const AppHeaderSection = ({ onNavSelect }: AppHeaderSectionProps): JSX.El
             type="button"
             variant="outline"
             onClick={() => {
-              if (connected) {
-                setConnected(false);
-                setAddress("");
+              if (wallet.isConnected) {
+                wallet.disconnect();
               } else {
                 setWalletOpen(true);
               }
             }}
+            data-testid="button-connect-wallet"
             className="h-auto rounded-[22px] border border-[#12352d] bg-[#000d10] px-3 sm:px-5 py-2.5 sm:py-4 text-[#2ca84c] hover:bg-[#041418] hover:text-[#2ca84c] transition-all"
           >
             <span className="flex items-center gap-2 sm:gap-3 font-['Inter',Helvetica] text-[15px] sm:text-[19px] font-bold leading-[normal] tracking-[0]">
@@ -56,16 +55,38 @@ export const AppHeaderSection = ({ onNavSelect }: AppHeaderSectionProps): JSX.El
                 alt="Wallet"
                 src="/figmaAssets/image-30.png"
               />
-              <span>{connected ? address : "Connect"}</span>
+              {wallet.isConnected && wallet.address
+                ? <span className="text-[13px] sm:text-[16px]">{shortAddr(wallet.address)}</span>
+                : wallet.isConnecting
+                ? <span className="text-[13px]">Connecting…</span>
+                : <span>Connect</span>
+              }
             </span>
           </Button>
         </div>
+
+        {wallet.isWrongNetwork && wallet.isConnected && (
+          <div className="flex w-full items-center justify-between bg-[#1a0a0a] px-4 py-2 sm:px-6">
+            <span className="font-['Inter',sans-serif] text-[12px] text-[#c9543a]">
+              Wrong network — please switch to Base
+            </span>
+            <button
+              onClick={wallet.switchToBase}
+              className="rounded-[8px] bg-[#3a0e0e] px-3 py-1 font-['Inter',sans-serif] text-[12px] font-bold text-[#c9543a] hover:bg-[#4a1212] transition-colors"
+            >
+              Switch to Base
+            </button>
+          </div>
+        )}
       </header>
 
       <ConnectWalletModal
         open={walletOpen}
         onClose={() => setWalletOpen(false)}
-        onConnect={handleConnect}
+        onConnect={async () => {
+          setWalletOpen(false);
+          await wallet.connect();
+        }}
       />
     </>
   );
