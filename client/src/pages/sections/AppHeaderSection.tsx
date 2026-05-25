@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { useWalletContext } from "@/context/WalletContext";
-import { ExternalLink, X } from "lucide-react";
+import { ExternalLink, LogOut, Wallet, ChevronDown } from "lucide-react";
 
 interface AppHeaderSectionProps {
   onNavSelect?: (tab: string) => void;
@@ -38,42 +45,80 @@ export const AppHeaderSection = ({ onNavSelect }: AppHeaderSectionProps): JSX.El
           </button>
 
           {wallet.isConnected && wallet.address ? (
-            <div className="flex items-center gap-2">
-              {/* Connected wallet button — opens Basescan */}
-              <a
-                href={`https://basescan.org/address/${wallet.address}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                data-testid="button-view-on-basescan"
-                className="flex items-center gap-2 sm:gap-3 h-auto rounded-[22px] border border-[#12352d] bg-[#000d10] px-3 sm:px-5 py-2.5 sm:py-4 text-[#2ca84c] hover:bg-[#041418] transition-all"
-              >
-                <img
-                  className="h-4 w-4 sm:h-5 sm:w-5 object-cover"
-                  alt="Wallet"
-                  src="/figmaAssets/image-30.png"
-                />
-                <div className="flex flex-col items-start leading-none">
-                  <span className="font-['Inter',Helvetica] text-[13px] sm:text-[16px] font-bold text-[#2ca84c]">
-                    {shortAddr(wallet.address)}
-                  </span>
-                  {wallet.balance && (
-                    <span className="font-['Inter',Helvetica] text-[10px] sm:text-[11px] text-[#5f8a6e] mt-0.5">
-                      {wallet.balance} ETH
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  data-testid="button-wallet-dropdown"
+                  className="group flex items-center gap-2 sm:gap-3 h-auto rounded-[22px] border border-[#1a2e28] bg-gradient-to-br from-[#071a14] to-[#020d0a] px-3 sm:px-5 py-2.5 sm:py-3 text-[#2dae50] hover:border-[#2a5a3e] hover:shadow-[0_0_20px_rgba(45,174,80,0.15)] transition-all"
+                >
+                  <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-[#0a1f16] border border-[#1a3d2e]">
+                    <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#3acd5b]" />
+                  </div>
+                  <div className="flex flex-col items-start leading-none">
+                    <span className="font-['Inter',Helvetica] text-[13px] sm:text-[15px] font-bold text-[#2dae50]">
+                      {shortAddr(wallet.address)}
                     </span>
-                  )}
-                </div>
-                <ExternalLink className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#3a7a52] shrink-0" />
-              </a>
-              {/* Disconnect button */}
-              <button
-                onClick={() => wallet.disconnect()}
-                data-testid="button-disconnect-wallet"
-                className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-[#3a0e0e] bg-[#1a0a0a] text-[#c9543a] hover:bg-[#2a1010] transition-all"
-                title="Disconnect wallet"
+                    {wallet.balance && (
+                      <span className="font-['Inter',Helvetica] text-[10px] sm:text-[11px] text-[#5f8a6e] mt-0.5">
+                        {wallet.balance} ETH
+                      </span>
+                    )}
+                  </div>
+                  <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#3a6a4e] group-data-[state=open]:rotate-180 transition-transform" />
+                </button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent
+                align="end"
+                sideOffset={8}
+                className="w-[220px] sm:w-[260px] rounded-[18px] border border-[#1a2e28] bg-[#030c12] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
               >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+                {/* Wallet identity header */}
+                <div className="flex items-center gap-3 px-3 py-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0a1f16] border border-[#1a3d2e]">
+                    <Wallet className="h-5 w-5 text-[#3acd5b]" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-['Inter',Helvetica] text-[14px] font-bold text-white">
+                      {shortAddr(wallet.address)}
+                    </span>
+                    {wallet.balance && (
+                      <span className="font-['Inter',Helvetica] text-[12px] text-[#5f8a6e]">
+                        {wallet.balance} ETH
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <DropdownMenuSeparator className="bg-[#0f1e18] my-1" />
+
+                <DropdownMenuItem
+                  asChild
+                  className="flex items-center gap-3 rounded-[12px] px-3 py-2.5 text-[13px] text-[#a0b0a0] hover:bg-[#0a1a14] hover:text-[#2dae50] focus:bg-[#0a1a14] focus:text-[#2dae50] cursor-pointer transition-colors"
+                >
+                  <a
+                    href={`https://basescan.org/address/${wallet.address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-testid="link-view-on-basescan"
+                  >
+                    <ExternalLink className="h-4 w-4 text-[#5f8a6e]" />
+                    <span className="font-['Inter',Helvetica]">View on Basescan</span>
+                  </a>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="bg-[#0f1e18] my-1" />
+
+                <DropdownMenuItem
+                  onClick={() => wallet.disconnect()}
+                  data-testid="button-disconnect-wallet"
+                  className="flex items-center gap-3 rounded-[12px] px-3 py-2.5 text-[13px] text-[#c9543a] hover:bg-[#1a0a0a] hover:text-[#e06b5a] focus:bg-[#1a0a0a] focus:text-[#e06b5a] cursor-pointer transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="font-['Inter',Helvetica]">Disconnect Wallet</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Button
               type="button"
