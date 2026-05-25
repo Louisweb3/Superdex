@@ -14,8 +14,8 @@ function Router() {
       <Route path="/" component={LandinHome} />
       <Route path="/swap" component={LandinHome} />
       <Route path="/rewards" component={LandinHome} />
+      <Route path="/vault" component={LandinHome} />
       <Route path="/analytics" component={LandinHome} />
-      <Route path="/history" component={LandinHome} />
       <Route component={NotFound} />
     </Switch>
   );

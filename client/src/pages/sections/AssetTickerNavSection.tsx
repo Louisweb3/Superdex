@@ -36,15 +36,15 @@ const navItems = [
     activeUnderline: "/figmaAssets/background-2.png",
   },
   {
-    value: "analytics",
-    label: "Analytics",
+    value: "vault",
+    label: "Vault",
     iconSrc: "/figmaAssets/image-1.png",
     activeBg: "/figmaAssets/background-1.png",
     activeUnderline: "/figmaAssets/background-2.png",
   },
   {
-    value: "history",
-    label: "History",
+    value: "analytics",
+    label: "Analytics",
     iconSrc: "/figmaAssets/image.png",
     activeBg: "/figmaAssets/background-1.png",
     activeUnderline: "/figmaAssets/background-2.png",
@@ -55,16 +55,16 @@ const inactiveColors: Record<string, string> = {
   home: "text-[#4d5462]",
   swap: "text-[#616c7e]",
   rewards: "text-[#5f687a]",
-  analytics: "text-[#565f70]",
-  history: "text-[#5b6577]",
+  vault: "text-[#565f70]",
+  analytics: "text-[#5b6577]",
 };
 
 const iconSizes: Record<string, string> = {
   home: "h-7 w-[27px]",
   swap: "h-7 w-[25px]",
   rewards: "h-[27px] w-7",
-  analytics: "h-[26px] w-[26px]",
-  history: "h-7 w-7",
+  vault: "h-[26px] w-[26px]",
+  analytics: "h-7 w-7",
 };
 
 interface AssetTickerNavSectionProps {

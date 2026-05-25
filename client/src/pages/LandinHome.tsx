@@ -10,22 +10,23 @@ import { SwapHeroSection } from "./sections/SwapHeroSection";
 import { PlaceholderPage } from "./sections/PlaceholderPage";
 import { SwapPage } from "./SwapPage";
 import { RewardsPage } from "./RewardsPage";
+import { VaultPage } from "./VaultPage";
 
 // Map URL paths → tab names, and vice-versa
 const PATH_TO_TAB: Record<string, string> = {
   "/":          "home",
   "/swap":      "swap",
   "/rewards":   "rewards",
+  "/vault":     "vault",
   "/analytics": "analytics",
-  "/history":   "history",
 };
 
 const TAB_TO_PATH: Record<string, string> = {
   home:      "/",
   swap:      "/swap",
   rewards:   "/rewards",
+  vault:     "/vault",
   analytics: "/analytics",
-  history:   "/history",
 };
 
 const backgroundLayers = [
@@ -52,12 +53,6 @@ const tabPages: Record<string, { title: string; icon: string; description: strin
     icon: "📊",
     description: "Deep insights into your trading history and reward performance.",
     color: "#5b9bd5",
-  },
-  history: {
-    title: "History",
-    icon: "🕐",
-    description: "A full record of all your swaps and rewards over time.",
-    color: "#8a8fa0",
   },
 };
 
@@ -86,6 +81,7 @@ export const LandinHome = (): JSX.Element => {
   const isHome    = activeTab === "home";
   const isSwap    = activeTab === "swap";
   const isRewards = activeTab === "rewards";
+  const isVault   = activeTab === "vault";
 
   return (
     <main className="w-full bg-[#020b1c] min-h-screen">
@@ -144,7 +140,13 @@ export const LandinHome = (): JSX.Element => {
               </section>
             )}
 
-            {!isHome && !isSwap && !isRewards && (
+            {isVault && (
+              <section className="w-full flex-1 overflow-y-auto">
+                <VaultPage />
+              </section>
+            )}
+
+            {!isHome && !isSwap && !isRewards && !isVault && (
               <section className="w-full flex-1 px-4">
                 <PlaceholderPage
                   title={tabPages[activeTab]?.title ?? activeTab}
