@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { AppHeaderSection } from "./sections/AppHeaderSection";
@@ -58,24 +57,11 @@ const tabPages: Record<string, { title: string; icon: string; description: strin
 
 export const LandinHome = (): JSX.Element => {
   const [location, navigate] = useLocation();
-  const rewardsRef = useRef<HTMLElement>(null);
-
   // Derive active tab from current URL path
   const activeTab = PATH_TO_TAB[location] ?? "home";
 
   const handleTabChange = (tab: string) => {
     navigate(TAB_TO_PATH[tab] ?? "/");
-  };
-
-  const handleViewRewards = () => {
-    if (activeTab !== "home") {
-      navigate("/");
-      setTimeout(() => {
-        rewardsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
-    } else {
-      rewardsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
   };
 
   const isHome    = activeTab === "home";
@@ -99,9 +85,12 @@ export const LandinHome = (): JSX.Element => {
             {isHome && (
               <>
                 <section className="w-full">
-                  <SwapHeroSection onViewRewards={handleViewRewards} />
+                  <SwapHeroSection
+                    onStartSwap={() => navigate("/swap")}
+                    onViewRewards={() => navigate("/rewards")}
+                  />
                 </section>
-                <section ref={rewardsRef} className="w-full px-[14px] sm:px-[18px] pt-[10px] sm:pt-[12px]">
+                <section className="w-full px-[14px] sm:px-[18px] pt-[10px] sm:pt-[12px]">
                   <RewardsOverviewSection />
                 </section>
                 <section

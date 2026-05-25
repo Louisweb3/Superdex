@@ -1,14 +1,12 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ComingSoonModal } from "@/components/ComingSoonModal";
 import { usePublicSettings } from "@/hooks/useAdmin";
 
 interface SwapHeroSectionProps {
+  onStartSwap?: () => void;
   onViewRewards?: () => void;
 }
 
-export const SwapHeroSection = ({ onViewRewards }: SwapHeroSectionProps): JSX.Element => {
-  const [swapOpen, setSwapOpen] = useState(false);
+export const SwapHeroSection = ({ onStartSwap, onViewRewards }: SwapHeroSectionProps): JSX.Element => {
   const { data: settings } = usePublicSettings();
 
   const heroLines = [
@@ -58,7 +56,7 @@ export const SwapHeroSection = ({ onViewRewards }: SwapHeroSectionProps): JSX.El
               <div className="mt-4 flex flex-wrap items-center gap-3 sm:gap-4">
                 <Button
                   type="button"
-                  onClick={() => setSwapOpen(true)}
+                  onClick={onStartSwap}
                   className="h-auto min-h-[48px] sm:min-h-[58px] rounded-[15px] border border-[#37c056] bg-[#49f764] px-4 sm:px-6 py-3 sm:py-4 text-[#0a351c] hover:bg-[#49f764]/90 active:scale-95 transition-transform"
                 >
                   <span className="flex items-center gap-2 sm:gap-4">
@@ -100,12 +98,6 @@ export const SwapHeroSection = ({ onViewRewards }: SwapHeroSectionProps): JSX.El
         </div>
       </section>
 
-      <ComingSoonModal
-        open={swapOpen}
-        onClose={() => setSwapOpen(false)}
-        title="Swap Interface"
-        description="The full swap interface is coming soon. You'll be able to swap tokens directly on Base with instant rewards."
-      />
     </>
   );
 };
