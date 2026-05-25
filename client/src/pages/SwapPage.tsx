@@ -801,10 +801,7 @@ export function SwapPage() {
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">Slippage</span>
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#7a8494]">{slippage}%</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">Integrator Fee</span>
-                    <span className="font-['Inter',sans-serif] text-[13px] text-[#4d5a6e]">0.3%</span>
-                  </div>
+                
                   <div className="flex items-center justify-between">
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">Est. Cashback</span>
                     <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#2dae50]">
@@ -813,7 +810,7 @@ export function SwapPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">SuperSwap Reward</span>
-                    <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#2dae50]">🎁 Earn $SUPER</span>
+                    <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#2dae50]"> Earn $SUPER</span>
                   </div>
                 </div>
               </div>

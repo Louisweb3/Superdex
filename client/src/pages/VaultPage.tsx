@@ -1,15 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useWalletContext } from "@/context/WalletContext";
 import {
   Shield,
   Lock,
   TrendingUp,
-  Clock,
   ChevronDown,
   Zap,
   Info,
-  CheckCircle2,
   Wallet,
+  Home,
 } from "lucide-react";
 
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
@@ -315,30 +314,17 @@ export function VaultPage(): JSX.Element {
 
   const addr = wallet.isConnected ? wallet.address : null;
 
-  // LOCK SCROLL WHEN POPUP OPEN
-  useEffect(() => {
-    if (showVaultPopup) {
-      document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
-    }
-
-    return () => {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    };
-  }, [showVaultPopup]);
-
   return (
     <>
       {/* FORCED POPUP */}
       {showVaultPopup && (
-        <div className="fixed inset-x-0 top-0 bottom-[76px] z-[9999] overflow-hidden bg-black/95 backdrop-blur-xl">
+        <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/95 backdrop-blur-xl">
 
           {/* glow */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.12),transparent_55%)]" />
 
           {/* CENTER */}
-          <div className="flex h-full w-full items-center justify-center px-5">
+          <div className="flex h-full w-full flex-col items-center justify-center gap-5 px-5">
 
             {/* popup */}
             <div className="relative w-full max-w-[540px] overflow-hidden rounded-[34px] border border-white/[0.08] bg-[#070B11] shadow-[0_30px_120px_rgba(0,0,0,0.75)]">
@@ -350,12 +336,40 @@ export function VaultPage(): JSX.Element {
                 className="block w-full object-cover"
               />
             </div>
+
+            {/* GLASSY HOME BUTTON */}
+            <button
+              onClick={() => {
+                window.location.href = "/";
+              }}
+              className="
+                group
+                flex items-center gap-3
+                rounded-2xl
+                border border-white/10
+                bg-white/5
+                backdrop-blur-xl
+                px-6 py-3
+                text-white
+                shadow-[0_10px_40px_rgba(0,0,0,0.45)]
+                transition-all duration-300
+                hover:scale-105
+                hover:border-cyan-400/30
+                hover:bg-white/10
+              "
+            >
+              <Home className="h-5 w-5 text-cyan-300 transition-transform duration-300 group-hover:rotate-6" />
+
+              <span className="text-[14px] font-semibold tracking-[0.02em]">
+                Back To Home
+              </span>
+            </button>
           </div>
         </div>
       )}
 
       {/* PAGE */}
-      <div className="min-h-screen w-full bg-[#070B11] px-[16px] pb-[120px] pt-[18px]">
+      <div className="h-[calc(100vh-76px)] overflow-y-auto bg-[#070B11] px-[16px] pb-[120px] pt-[18px]">
 
         {/* HEADER */}
         <div className="mb-6 flex items-center justify-between">
