@@ -3,7 +3,7 @@ import {
   Settings, ChevronDown, ArrowUpDown, ChevronRight,
   Info, Zap, CheckSquare, Square, Loader2, ExternalLink, X, AlertTriangle
 } from "lucide-react";
-import { TOKENS, DEX_SOURCES, type Token, parseAmount, encodeApprove, NATIVE_ETH_ADDRESS } from "@/lib/tokens";
+import { TOKENS, DEX_SOURCES, type Token, parseAmount, encodeApprove, NATIVE_ETH_ADDRESS, toHexWei } from "@/lib/tokens";
 import { useWallet } from "@/hooks/useWallet";
 import { useSwapPrice, fetchSwapQuote, type SwapQuote } from "@/hooks/useSwapQuote";
 
@@ -212,14 +212,9 @@ function RoutesPanel({ quote, buyToken }: { quote: SwapQuote; buyToken: Token })
           </div>
         </div>
         <div className="flex flex-col items-end shrink-0">
-          {parseFloat(quote.estimatedPriceImpact) > 0 && (
-            <span className={`font-['Inter',sans-serif] text-[12px] ${parseFloat(quote.estimatedPriceImpact) > 1 ? "text-[#c9543a]" : "text-[#7a8494]"}`}>
-              -{parseFloat(quote.estimatedPriceImpact).toFixed(2)}%
-            </span>
-          )}
-          {quote.totalNetworkFeeUsd && parseFloat(quote.totalNetworkFeeUsd) > 0 && (
-            <span className="font-['Inter',sans-serif] text-[11px] text-[#2a3840]">
-              ≈ ${parseFloat(quote.totalNetworkFeeUsd).toFixed(2)} gas
+          {parseFloat(quote.totalNetworkFee) > 0 && (
+            <span className="font-['Inter',sans-serif] text-[11px] text-[#7a8494]">
+              ≈ {parseFloat(quote.totalNetworkFee).toFixed(5)} ETH gas
             </span>
           )}
         </div>
@@ -351,8 +346,8 @@ export function SwapPage() {
         const hash = await wallet.sendTransaction({
           to: refreshedQuote.transaction.to,
           data: refreshedQuote.transaction.data,
-          value: refreshedQuote.transaction.value,
-          gas: refreshedQuote.transaction.gas,
+          value: toHexWei(refreshedQuote.transaction.value),
+          gas: toHexWei(refreshedQuote.transaction.gas),
         });
         setTxHash(hash);
       } else {
@@ -360,8 +355,8 @@ export function SwapPage() {
         const hash = await wallet.sendTransaction({
           to: fullQuote.transaction.to,
           data: fullQuote.transaction.data,
-          value: fullQuote.transaction.value,
-          gas: fullQuote.transaction.gas,
+          value: toHexWei(fullQuote.transaction.value),
+          gas: toHexWei(fullQuote.transaction.gas),
         });
         setTxHash(hash);
       }
@@ -534,8 +529,8 @@ export function SwapPage() {
                   <div className="flex items-center justify-between">
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">Network Fee</span>
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#7a8494]">
-                      {quote && parseFloat(quote.totalNetworkFeeUsd) > 0
-                        ? `≈ $${parseFloat(quote.totalNetworkFeeUsd).toFixed(4)}`
+                      {quote && parseFloat(quote.totalNetworkFee) > 0
+                        ? `≈ ${parseFloat(quote.totalNetworkFee).toFixed(6)} ETH`
                         : "—"}
                     </span>
                   </div>

@@ -10,22 +10,22 @@ export interface SwapQuote {
   buyAmount: string;
   buyAmountFormatted: string;
   minBuyAmount: string;
-  price: string;           // buyToken per sellToken
+  price: string;           // buyToken per sellToken (calculated)
   estimatedPriceImpact: string;
   sources: SwapRoute[];
-  totalNetworkFeeUsd: string;
+  totalNetworkFee: string; // in ETH (e.g. "0.000021")
   transaction?: {
     to: string;
     data: string;
-    value: string;
-    gas: string;
+    value: string;   // decimal wei string from 0x API
+    gas: string;     // decimal gas limit string
     gasPrice: string;
   };
   issues?: {
     allowance?: { spender: string; currentAllowance: string; };
-    balance?: { token: string; currentBalance: string; expectedBalance: string };
+    balance?: { token: string; actual: string; expected: string; };
   };
-  fees?: { zeroExFee?: { billingType: string; feeAmount: string; feeToken: string; } };
+  fees?: any;
   rawQuote?: any;
 }
 
@@ -49,7 +49,7 @@ export function useSwapPrice(
       return;
     }
 
-    const sellAmountWei = parseAmount(sellAmountStr, sellToken.decimals).toString();
+    const sellAmountWei = parseAmount(sellAmountStr, sellToken.decimals);
     if (sellAmountWei === "0") return;
 
     if (abortRef.current) abortRef.current.abort();
@@ -69,30 +69,52 @@ export function useSwapPrice(
         params.set("includedSources", selectedSources.join(","));
       }
 
-      const resp = await fetch(`/api/swap/price?${params.toString()}`, { signal: abortRef.current.signal });
+      const resp = await fetch(`/api/swap/price?${params.toString()}`, {
+        signal: abortRef.current.signal,
+      });
       const data = await resp.json();
 
       if (!resp.ok) {
-        setError(data.validationErrors?.[0]?.reason ?? data.reason ?? data.error ?? "Failed to get price");
+        setError(
+          data.validationErrors?.[0]?.reason ??
+          data.reason ??
+          data.error ??
+          "Failed to get price"
+        );
         setQuote(null);
         return;
       }
 
-      const buyAmountFormatted = formatAmount(data.buyAmount, buyToken.decimals);
+      // Parse 0x v2 response — no `price` or `estimatedPriceImpact` fields
+      const buyAmountFormatted = formatAmount(data.buyAmount ?? "0", buyToken.decimals);
+
+      // Calculate price: how many buyToken per 1 sellToken
+      const calculatedPrice =
+        parseFloat(sellAmountStr) > 0 && parseFloat(buyAmountFormatted) > 0
+          ? (parseFloat(buyAmountFormatted) / parseFloat(sellAmountStr)).toString()
+          : "0";
+
+      // Network fee: 0x v2 returns `totalNetworkFee` in wei (native ETH)
+      const networkFeeEth = data.totalNetworkFee
+        ? formatAmount(data.totalNetworkFee, 18)
+        : "0";
+
       const sources: SwapRoute[] = (data.route?.fills ?? []).map((f: any) => ({
         name: f.source,
-        proportion: (parseFloat(f.proportionBps ?? "10000") / 100).toFixed(0) + "%",
+        proportion:
+          (parseFloat(f.proportionBps ?? "10000") / 100).toFixed(0) + "%",
       }));
 
       setQuote({
-        buyAmount: data.buyAmount,
+        buyAmount: data.buyAmount ?? "0",
         buyAmountFormatted,
         minBuyAmount: data.minBuyAmount ?? "0",
-        price: data.price ?? "0",
-        estimatedPriceImpact: data.estimatedPriceImpact ?? "0",
+        price: calculatedPrice,
+        estimatedPriceImpact: "0",
         sources,
-        totalNetworkFeeUsd: data.totalNetworkFeeUsd ?? "0",
+        totalNetworkFee: networkFeeEth,
         fees: data.fees,
+        issues: data.issues,
         rawQuote: data,
       });
     } catch (err: any) {
@@ -123,7 +145,7 @@ export async function fetchSwapQuote(
   slippageBps: number,
   selectedSources: string[]
 ): Promise<SwapQuote> {
-  const sellAmountWei = parseAmount(sellAmountStr, sellToken.decimals).toString();
+  const sellAmountWei = parseAmount(sellAmountStr, sellToken.decimals);
 
   const params = new URLSearchParams({
     sellToken: sellToken.address,
@@ -140,24 +162,40 @@ export async function fetchSwapQuote(
   const data = await resp.json();
 
   if (!resp.ok) {
-    throw new Error(data.validationErrors?.[0]?.reason ?? data.reason ?? data.error ?? "Failed to get quote");
+    throw new Error(
+      data.validationErrors?.[0]?.reason ??
+      data.reason ??
+      data.error ??
+      "Failed to get quote"
+    );
   }
 
-  const buyAmountFormatted = formatAmount(data.buyAmount, buyToken.decimals);
+  const buyAmountFormatted = formatAmount(data.buyAmount ?? "0", buyToken.decimals);
+
+  const calculatedPrice =
+    parseFloat(sellAmountStr) > 0 && parseFloat(buyAmountFormatted) > 0
+      ? (parseFloat(buyAmountFormatted) / parseFloat(sellAmountStr)).toString()
+      : "0";
+
+  const networkFeeEth = data.totalNetworkFee
+    ? formatAmount(data.totalNetworkFee, 18)
+    : "0";
+
   const sources: SwapRoute[] = (data.route?.fills ?? []).map((f: any) => ({
     name: f.source,
-    proportion: (parseFloat(f.proportionBps ?? "10000") / 100).toFixed(0) + "%",
+    proportion:
+      (parseFloat(f.proportionBps ?? "10000") / 100).toFixed(0) + "%",
   }));
 
   return {
-    buyAmount: data.buyAmount,
+    buyAmount: data.buyAmount ?? "0",
     buyAmountFormatted,
     minBuyAmount: data.minBuyAmount ?? "0",
-    price: data.price ?? "0",
-    estimatedPriceImpact: data.estimatedPriceImpact ?? "0",
+    price: calculatedPrice,
+    estimatedPriceImpact: "0",
     sources,
-    totalNetworkFeeUsd: data.totalNetworkFeeUsd ?? "0",
-    transaction: data.transaction,
+    totalNetworkFee: networkFeeEth,
+    transaction: data.transaction,   // decimal strings from 0x — converted to hex in handleSwap
     issues: data.issues,
     fees: data.fees,
     rawQuote: data,

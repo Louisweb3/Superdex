@@ -104,8 +104,10 @@ export function parseAmount(amount: string, decimals: number): string {
   }
 }
 
-function decimalToHex(dec: string): string {
-  // Convert decimal string to hex string without BigInt
+export function decimalToHex(dec: string): string {
+  // Convert decimal string to hex string without BigInt (safe for large uint256 values)
+  if (!dec || dec === "0") return "0";
+  if (dec.startsWith("0x") || dec.startsWith("0X")) return dec.slice(2) || "0";
   let num = dec.replace(/^0+/, "") || "0";
   if (num === "0") return "0";
   let hex = "";
@@ -120,6 +122,13 @@ function decimalToHex(dec: string): string {
     hex = rem.toString(16) + hex;
   }
   return hex || "0";
+}
+
+// Convert a decimal wei string to 0x-prefixed hex (required by eth_sendTransaction)
+export function toHexWei(dec: string | undefined): string {
+  if (!dec || dec === "0") return "0x0";
+  if (dec.startsWith("0x") || dec.startsWith("0X")) return dec;
+  return "0x" + decimalToHex(dec);
 }
 
 export function encodeApprove(spender: string, amount: string): string {
