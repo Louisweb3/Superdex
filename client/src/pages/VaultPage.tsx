@@ -10,7 +10,6 @@ import {
   Info,
   CheckCircle2,
   Wallet,
-  X,
 } from "lucide-react";
 
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
@@ -348,26 +347,8 @@ export function VaultPage(): JSX.Element {
 
               {/* overlay */}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent px-7 pb-8 pt-20">
-
                 <div className="flex flex-col items-center text-center">
-
-                  <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-1 text-[11px] font-bold uppercase tracking-[0.25em] text-cyan-300">
-                    SuperSwap Vault
-                  </div>
-
-                  <h2 className="mt-4 text-[38px] font-black tracking-[-0.06em] text-white">
-                    Stake & Earn
-                  </h2>
-
-                  <p className="mt-3 max-w-[340px] text-[14px] leading-relaxed text-[#CBD5E1]">
-                    Deposit assets into SuperVaults and earn passive rewards with boosted APY on Base.
-                  </p>
-
-                  <div className="mt-6 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-[12px] font-semibold text-emerald-300">
-                    Live Vaults Available
-                  </div>
-
-                  {/* intentionally no close button */}
+                  {/* intentionally empty */}
                 </div>
               </div>
             </div>
