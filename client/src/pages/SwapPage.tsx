@@ -14,7 +14,7 @@ import { useWalletBalances } from "@/hooks/useWalletBalances";
 const SLIPPAGE_OPTIONS = ["0.1", "0.5", "1.0"];
 const NATIVE_ETH_ADDR_LOWER = NATIVE_ETH_ADDRESS.toLowerCase();
 
-// ─── Token Dropdown (portfolio-aware) ────────────────────────────────────────────
+// ─── Token Dropdown (portfolio-aware, Base-only) ────────────────────────────────────────
 function TokenDropdown({
   selected,
   tokens,
@@ -49,70 +49,11 @@ function TokenDropdown({
     (t) => !holdings.some((h) => h.address === t.address) && !t.isTrending
   );
 
-  function SectionHeader({ icon, label }: { icon: React.ReactNode; label: string }) {
-    return (
-      <div className="sticky top-0 z-10 flex items-center gap-2 bg-[#030c18] px-4 py-2">
-        {icon}
-        <span className="font-['Inter',sans-serif] text-[10px] font-bold uppercase tracking-wider text-[#4d5a6e]">
-          {label}
-        </span>
-      </div>
-    );
-  }
-
-  function TokenRow({ t }: { t: Token }) {
-    return (
-      <button
-        key={t.address}
-        onClick={() => { onSelect(t); onClose(); }}
-        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#040e1c] ${
-          t.address === selected.address ? "bg-[#040f1c]" : ""
-        }`}
-        data-testid={`token-option-${t.symbol}`}
-      >
-        <img
-          src={t.icon}
-          alt={t.symbol}
-          className="h-9 w-9 shrink-0 rounded-full object-cover"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = `https://dd.dexscreener.com/ds-data/tokens/base/${t.address}.png`;
-          }}
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-2">
-            <span className="font-['Inter',sans-serif] text-[14px] font-bold text-[#c8ccd2]">
-              {t.symbol}
-            </span>
-            {t.isTrending && (
-              <span className="rounded-[4px] bg-[#1a3a0a] px-1.5 py-0.5 font-['Inter',sans-serif] text-[9px] font-bold text-[#3acd5b]">
-                TRENDING
-              </span>
-            )}
-          </div>
-          <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c]">{t.name}</span>
-        </div>
-        <div className="flex shrink-0 flex-col items-end">
-          {t.balance !== undefined && (
-            <span className="font-['Inter',sans-serif] text-[13px] font-medium text-[#c8ccd4]">
-              {t.balance.toLocaleString("en-US", { maximumFractionDigits: 6 })} {t.symbol}
-            </span>
-          )}
-          {t.balanceUsd !== undefined && t.balanceUsd > 0 && (
-            <span className="font-['Inter',sans-serif] text-[11px] text-[#4d5a6e]">
-              ${t.balanceUsd.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-            </span>
-          )}
-          {t.address === selected.address && (
-            <div className="mt-1 h-2 w-2 rounded-full bg-[#2dae50]" />
-          )}
-        </div>
-      </button>
-    );
-  }
-
   return (
-    <div className="absolute left-0 top-full z-50 mt-2 w-[360px] overflow-hidden rounded-[18px] border border-[#0f2030] bg-[#030c18] shadow-2xl shadow-black/50">
+    <div
+      className="absolute left-0 top-full z-[999] mt-2 w-[360px] overflow-hidden rounded-[18px] border-2 border-red-500 bg-[#030c18] shadow-2xl shadow-black/50"
+      style={{ minHeight: 200, background: "#ff0000" }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#071522] px-4 py-3">
         <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#7a8494]">
@@ -133,43 +74,148 @@ function TokenDropdown({
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or address"
             className="w-full bg-transparent font-['Inter',sans-serif] text-[13px] text-[#c8ccd4] outline-none placeholder:text-[#3a4a5c]"
+            data-testid="token-search-input"
           />
         </div>
       </div>
 
       {/* Scrollable body */}
       <div className="max-h-[420px] overflow-y-auto">
+        {/* ── Your Holdings ── */}
         {holdings.length > 0 && (
           <>
-            <SectionHeader icon={<Wallet className="h-3.5 w-3.5 text-[#4d5a6e]" />} label="Your Holdings" />
+            <div className="sticky top-0 z-10 flex items-center gap-2 bg-[#030c18] px-4 py-2">
+              <Wallet className="h-3.5 w-3.5 text-[#4d5a6e]" />
+              <span className="font-['Inter',sans-serif] text-[10px] font-bold uppercase tracking-wider text-[#4d5a6e]">
+                Your Holdings
+              </span>
+            </div>
             {holdings.map((t) => (
-              <TokenRow key={t.address} t={t} />
+              <button
+                key={t.address}
+                onClick={() => { onSelect(t); onClose(); }}
+                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#040e1c] ${
+                  t.address === selected.address ? "bg-[#040f1c]" : ""
+                }`}
+                data-testid={`token-option-${t.symbol}`}
+              >
+                <img
+                  src={t.icon}
+                  alt={t.symbol}
+                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://dd.dexscreener.com/ds-data/tokens/base/${t.address}.png`;
+                  }}
+                />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="font-['Inter',sans-serif] text-[14px] font-bold text-[#c8ccd2]">{t.symbol}</span>
+                    {t.isTrending && (
+                      <span className="rounded-[4px] bg-[#1a3a0a] px-1.5 py-0.5 font-['Inter',sans-serif] text-[9px] font-bold text-[#3acd5b]">TRENDING</span>
+                    )}
+                  </div>
+                  <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c]">{t.name}</span>
+                </div>
+                <div className="flex shrink-0 flex-col items-end">
+                  {t.balance !== undefined && (
+                    <span className="font-['Inter',sans-serif] text-[13px] font-medium text-[#c8ccd4]">
+                      {t.balance.toLocaleString("en-US", { maximumFractionDigits: 6 })} {t.symbol}
+                    </span>
+                  )}
+                  {t.balanceUsd !== undefined && t.balanceUsd > 0 && (
+                    <span className="font-['Inter',sans-serif] text-[11px] text-[#4d5a6e]">
+                      ${t.balanceUsd.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                    </span>
+                  )}
+                  {t.address === selected.address && <div className="mt-1 h-2 w-2 rounded-full bg-[#2dae50]" />}
+                </div>
+              </button>
             ))}
           </>
         )}
 
+        {/* ── Trending ── */}
         {trending.length > 0 && (
           <>
-            <SectionHeader icon={<TrendingUp className="h-3.5 w-3.5 text-[#2dae50]" />} label="Trending" />
+            <div className="sticky top-0 z-10 flex items-center gap-2 bg-[#030c18] px-4 py-2">
+              <TrendingUp className="h-3.5 w-3.5 text-[#2dae50]" />
+              <span className="font-['Inter',sans-serif] text-[10px] font-bold uppercase tracking-wider text-[#4d5a6e]">Trending</span>
+            </div>
             {trending.map((t) => (
-              <TokenRow key={t.address} t={t} />
+              <button
+                key={t.address}
+                onClick={() => { onSelect(t); onClose(); }}
+                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#040e1c] ${
+                  t.address === selected.address ? "bg-[#040f1c]" : ""
+                }`}
+                data-testid={`token-option-${t.symbol}`}
+              >
+                <img
+                  src={t.icon}
+                  alt={t.symbol}
+                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://dd.dexscreener.com/ds-data/tokens/base/${t.address}.png`;
+                  }}
+                />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="font-['Inter',sans-serif] text-[14px] font-bold text-[#c8ccd2]">{t.symbol}</span>
+                    <span className="rounded-[4px] bg-[#1a3a0a] px-1.5 py-0.5 font-['Inter',sans-serif] text-[9px] font-bold text-[#3acd5b]">TRENDING</span>
+                  </div>
+                  <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c]">{t.name}</span>
+                </div>
+                <div className="flex shrink-0 flex-col items-end">
+                  {t.address === selected.address && <div className="mt-1 h-2 w-2 rounded-full bg-[#2dae50]" />}
+                </div>
+              </button>
             ))}
           </>
         )}
 
+        {/* ── All Tokens ── */}
         {allOthers.length > 0 && (
           <>
-            <SectionHeader icon={<Search className="h-3.5 w-3.5 text-[#4d5a6e]" />} label="All Tokens" />
+            <div className="sticky top-0 z-10 flex items-center gap-2 bg-[#030c18] px-4 py-2">
+              <Search className="h-3.5 w-3.5 text-[#4d5a6e]" />
+              <span className="font-['Inter',sans-serif] text-[10px] font-bold uppercase tracking-wider text-[#4d5a6e]">All Tokens</span>
+            </div>
             {allOthers.map((t) => (
-              <TokenRow key={t.address} t={t} />
+              <button
+                key={t.address}
+                onClick={() => { onSelect(t); onClose(); }}
+                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#040e1c] ${
+                  t.address === selected.address ? "bg-[#040f1c]" : ""
+                }`}
+                data-testid={`token-option-${t.symbol}`}
+              >
+                <img
+                  src={t.icon}
+                  alt={t.symbol}
+                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://dd.dexscreener.com/ds-data/tokens/base/${t.address}.png`;
+                  }}
+                />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="font-['Inter',sans-serif] text-[14px] font-bold text-[#c8ccd2]">{t.symbol}</span>
+                  </div>
+                  <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c]">{t.name}</span>
+                </div>
+                <div className="flex shrink-0 flex-col items-end">
+                  {t.address === selected.address && <div className="mt-1 h-2 w-2 rounded-full bg-[#2dae50]" />}
+                </div>
+              </button>
             ))}
           </>
         )}
 
         {filtered.length === 0 && (
-          <p className="px-4 py-6 text-center font-['Inter',sans-serif] text-[13px] text-[#4d5a6e]">
-            No tokens found
-          </p>
+          <p className="px-4 py-6 text-center font-['Inter',sans-serif] text-[13px] text-[#4d5a6e]">No tokens found</p>
         )}
       </div>
     </div>
@@ -550,7 +596,7 @@ export function SwapPage() {
           <div className="flex min-w-0 flex-1 flex-col gap-3">
 
             {/* Swap Widget */}
-            <div className="relative w-full overflow-hidden rounded-[22px] border border-[#0c1e30] bg-[#030d1a]">
+            <div className="relative w-full overflow-visible rounded-[22px] border border-[#0c1e30] bg-[#030d1a]">
 
               {/* Header */}
               <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#071625]">
