@@ -14,18 +14,18 @@ import { AnalyticsPage } from "./AnalyticsPage";
 
 // Map URL paths → tab names, and vice-versa
 const PATH_TO_TAB: Record<string, string> = {
-  "/":          "home",
-  "/swap":      "swap",
-  "/rewards":   "rewards",
-  "/vault":     "vault",
+  "/": "home",
+  "/swap": "swap",
+  "/rewards": "rewards",
+  "/vault": "vault",
   "/analytics": "analytics",
 };
 
 const TAB_TO_PATH: Record<string, string> = {
-  home:      "/",
-  swap:      "/swap",
-  rewards:   "/rewards",
-  vault:     "/vault",
+  home: "/",
+  swap: "/swap",
+  rewards: "/rewards",
+  vault: "/vault",
   analytics: "/analytics",
 };
 
@@ -33,31 +33,39 @@ const backgroundLayers = [
   {
     src: "/figmaAssets/top-navbar-background.png",
     alt: "Top navbar",
-    className: "absolute inset-x-0 top-0 h-[72px] sm:h-[101px] w-full object-cover object-top",
+    className:
+      "absolute inset-x-0 top-0 h-[72px] sm:h-[101px] w-full object-cover object-top",
   },
   {
     src: "/figmaAssets/site-background.png",
     alt: "Site background",
-    className: "absolute inset-x-0 top-[72px] sm:top-[98px] bottom-0 w-full object-cover",
+    className:
+      "absolute inset-x-0 top-[72px] sm:top-[98px] bottom-0 w-full object-cover",
   },
   {
     src: "/figmaAssets/background.png",
     alt: "Background",
-    className: "absolute inset-x-0 bottom-0 h-[140px] sm:h-[190px] w-full object-cover object-bottom",
+    className:
+      "absolute inset-x-0 bottom-0 h-[140px] sm:h-[190px] w-full object-cover object-bottom",
   },
 ];
 
-const tabPages: Record<string, { title: string; icon: string; description: string; color: string }> = {
+const tabPages: Record<
+  string,
+  { title: string; icon: string; description: string; color: string }
+> = {
   analytics: {
     title: "Analytics",
     icon: "📊",
-    description: "Deep insights into your trading history and reward performance.",
+    description:
+      "Deep insights into your trading history and reward performance.",
     color: "#5b9bd5",
   },
 };
 
 export const LandinHome = (): JSX.Element => {
   const [location, navigate] = useLocation();
+
   // Derive active tab from current URL path
   const activeTab = PATH_TO_TAB[location] ?? "home";
 
@@ -65,10 +73,10 @@ export const LandinHome = (): JSX.Element => {
     navigate(TAB_TO_PATH[tab] ?? "/");
   };
 
-  const isHome      = activeTab === "home";
-  const isSwap      = activeTab === "swap";
-  const isRewards   = activeTab === "rewards";
-  const isVault     = activeTab === "vault";
+  const isHome = activeTab === "home";
+  const isSwap = activeTab === "swap";
+  const isRewards = activeTab === "rewards";
+  const isVault = activeTab === "vault";
   const isAnalytics = activeTab === "analytics";
 
   return (
@@ -76,7 +84,12 @@ export const LandinHome = (): JSX.Element => {
       <div className="mx-auto flex w-full max-w-[941px] flex-col">
         <div className="relative isolate flex min-h-screen w-full flex-col overflow-hidden">
           {backgroundLayers.map((layer) => (
-            <img key={layer.alt} className={layer.className} alt={layer.alt} src={layer.src} />
+            <img
+              key={layer.alt}
+              className={layer.className}
+              alt={layer.alt}
+              src={layer.src}
+            />
           ))}
 
           <header className="relative z-20 w-full">
@@ -86,15 +99,65 @@ export const LandinHome = (): JSX.Element => {
           <div className="relative z-10 flex w-full flex-1 flex-col">
             {isHome && (
               <>
-                <section className="w-full">
+                {/* HERO SECTION WITH SOCIAL BOX */}
+                <section className="relative w-full">
                   <SwapHeroSection
                     onStartSwap={() => navigate("/swap")}
                     onViewRewards={() => navigate("/rewards")}
                   />
+
+                  {/* FLOATING GLASSY SOCIAL BOX */}
+                  <div className="absolute bottom-4 right-4 z-30">
+                    <div
+                      className="
+                        flex items-center gap-3
+                        rounded-2xl
+                        border border-white/10
+                        bg-white/5
+                        backdrop-blur-md
+                        px-4 py-2
+                        shadow-[0_8px_32px_rgba(0,0,0,0.35)]
+                      "
+                    >
+                      <a
+                        href="https://x.com/superswapfi_"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="
+                          text-xs sm:text-sm
+                          font-medium
+                          text-[#cfd8e3]
+                          transition-all duration-200
+                          hover:text-white hover:scale-105
+                        "
+                      >
+                        X
+                      </a>
+
+                      <div className="h-4 w-px bg-white/10" />
+
+                      <a
+                        href="https://t.me/superswapdex"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="
+                          text-xs sm:text-sm
+                          font-medium
+                          text-[#cfd8e3]
+                          transition-all duration-200
+                          hover:text-white hover:scale-105
+                        "
+                      >
+                        Telegram
+                      </a>
+                    </div>
+                  </div>
                 </section>
+
                 <section className="w-full px-[14px] sm:px-[18px] pt-[10px] sm:pt-[12px]">
                   <RewardsOverviewSection />
                 </section>
+
                 <section
                   aria-labelledby="featured-dexes-heading"
                   className="w-full px-[9px] pt-[12px] sm:pt-[14px]"
@@ -107,13 +170,15 @@ export const LandinHome = (): JSX.Element => {
                       FEATURED DEXES
                     </h2>
                   </div>
+
                   <Card className="h-auto border-0 bg-transparent p-0 shadow-none">
                     <CardContent className="p-0">
                       <DEXHighlightsSection />
                     </CardContent>
                   </Card>
                 </section>
-                <section className="w-full px-[9px] pt-0 mt-3">
+
+                <section className="w-full px-[9px] pt-0 mt-2">
                   <SuperTokenPromoSection />
                 </section>
               </>
@@ -143,19 +208,29 @@ export const LandinHome = (): JSX.Element => {
               </section>
             )}
 
-            {!isHome && !isSwap && !isRewards && !isVault && !isAnalytics && (
-              <section className="w-full flex-1 px-4">
-                <PlaceholderPage
-                  title={tabPages[activeTab]?.title ?? activeTab}
-                  icon={tabPages[activeTab]?.icon ?? "⚡"}
-                  description={tabPages[activeTab]?.description ?? "This page is coming soon."}
-                  color={tabPages[activeTab]?.color ?? "#2dae50"}
-                />
-              </section>
-            )}
+            {!isHome &&
+              !isSwap &&
+              !isRewards &&
+              !isVault &&
+              !isAnalytics && (
+                <section className="w-full flex-1 px-4">
+                  <PlaceholderPage
+                    title={tabPages[activeTab]?.title ?? activeTab}
+                    icon={tabPages[activeTab]?.icon ?? "⚡"}
+                    description={
+                      tabPages[activeTab]?.description ??
+                      "This page is coming soon."
+                    }
+                    color={tabPages[activeTab]?.color ?? "#2dae50"}
+                  />
+                </section>
+              )}
 
             <section className="w-full mt-auto">
-              <AssetTickerNavSection activeTab={activeTab} onTabChange={handleTabChange} />
+              <AssetTickerNavSection
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+              />
             </section>
           </div>
         </div>
