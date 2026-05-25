@@ -1,25 +1,36 @@
 import { useState } from "react";
 import { useWalletContext } from "@/context/WalletContext";
 import {
-  Shield, Lock, TrendingUp, Clock, ArrowRight,
-  ChevronDown, Zap, Info, CheckCircle2, Wallet
+  Shield,
+  Lock,
+  TrendingUp,
+  Clock,
+  ChevronDown,
+  Zap,
+  Info,
+  CheckCircle2,
+  Wallet,
+  X,
 } from "lucide-react";
+
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function shortWallet(addr: string) {
   return addr.slice(0, 6) + "…" + addr.slice(-4);
 }
+
 function fmtUsd(n: number) {
   if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
   if (n >= 1_000) return "$" + (n / 1_000).toFixed(2) + "k";
   return "$" + n.toFixed(2);
 }
+
 function fmtPct(n: number) {
   return n.toFixed(2) + "%";
 }
 
-// ─── Mock vault pools (in production, these come from contract reads) ──────────
+// ─── Mock vault pools ──────────────────────────────────────────────────────────
 interface VaultPool {
   id: string;
   name: string;
@@ -84,27 +95,42 @@ const VAULT_POOLS: VaultPool[] = [
   },
 ];
 
-// ─── Stat card ──────────────────────────────────────────────────────────────────
-function StatCard({ label, value, sub, icon }: { label: string; value: string; sub?: string; icon: React.ReactNode }) {
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+function StatCard({
+  label,
+  value,
+  sub,
+  icon,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  icon: React.ReactNode;
+}) {
   return (
-    <article className="flex flex-col gap-1.5 rounded-[14px] sm:rounded-[18px] border border-[#131b27] bg-[#00040e] px-4 py-4 sm:px-5 sm:py-5">
+    <article className="rounded-[24px] border border-white/[0.06] bg-[#0B1118] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
       <div className="flex items-center gap-2">
-        <span className="text-[#6c778a]">{icon}</span>
-        <span className="font-['Inter',sans-serif] text-[10px] sm:text-[11px] font-medium uppercase tracking-widest text-[#6c778a]">
+        <span className="text-cyan-300">{icon}</span>
+
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#64748B]">
           {label}
         </span>
       </div>
-      <p className="font-['Inter',sans-serif] text-[20px] sm:text-[24px] font-bold leading-none text-[#d0d2d6]">
+
+      <p className="mt-4 text-[28px] font-black tracking-[-0.04em] text-white">
         {value}
       </p>
+
       {sub && (
-        <p className="font-['Inter',sans-serif] text-[11px] sm:text-[12px] text-[#667082]">{sub}</p>
+        <p className="mt-2 text-[13px] text-[#94A3B8]">
+          {sub}
+        </p>
       )}
     </article>
   );
 }
 
-// ─── Pool card ───────────────────────────────────────────────────────────────
+// ─── Pool Card ────────────────────────────────────────────────────────────────
 function PoolCard({
   pool,
   connected,
@@ -117,67 +143,90 @@ function PoolCard({
   const [tab, setTab] = useState<"stake" | "unstake">("stake");
 
   return (
-    <div className="rounded-[18px] sm:rounded-[22px] border border-[#131b27] bg-[#00040e] overflow-hidden">
-      {/* Header row */}
+    <div className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-[#0B1118] transition-all duration-300 hover:border-cyan-400/20">
+
+      {/* HEADER */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-3 sm:gap-4 px-4 py-4 sm:px-6 sm:py-5 text-left"
+        className="flex w-full items-center gap-4 px-5 py-5 text-left"
       >
-        <div className="relative flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full bg-[#071020]">
-          <img src={pool.icon} alt={pool.symbol} className="h-6 w-6 sm:h-7 sm:w-7 object-contain rounded-full" />
-          <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-[#0e3a1e] border border-[#1a5c2a]">
-            <Lock className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-[#2dae50]" />
+
+        {/* TOKEN */}
+        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#111827]">
+
+          <img
+            src={pool.icon}
+            alt={pool.symbol}
+            className="h-8 w-8 rounded-full object-cover"
+          />
+
+          <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-emerald-400/20 bg-emerald-400/10">
+            <Lock className="h-3 w-3 text-emerald-300" />
           </div>
         </div>
 
+        {/* INFO */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between">
+
+          <div className="flex items-center justify-between gap-3">
+
             <div>
-              <p className="font-['Inter',sans-serif] text-[14px] sm:text-[16px] font-semibold text-[#c8ccd4]">
+
+              <p className="text-[18px] font-bold text-white">
                 {pool.name}
               </p>
-              <p className="font-['Inter',sans-serif] text-[11px] sm:text-[12px] text-[#6c778a]">
-                {pool.lockDays > 0 ? `${pool.lockDays}-day lock · ` : "No lock · "}
-                TVL {fmtUsd(pool.tvl)}
+
+              <p className="mt-1 text-[13px] text-[#94A3B8]">
+                {pool.lockDays > 0
+                  ? `${pool.lockDays}-day lock`
+                  : "No lock"} · TVL {fmtUsd(pool.tvl)}
               </p>
             </div>
-            <div className="flex flex-col items-end shrink-0">
-              <span className="font-['Inter',sans-serif] text-[16px] sm:text-[20px] font-bold text-[#3acd5b]">
-                {fmtPct(pool.apy)} APY
-              </span>
-              <span className="font-['Inter',sans-serif] text-[10px] sm:text-[11px] text-[#667082]">
-                {pool.userStaked > 0 ? `Staked: ${fmtUsd(pool.userStaked)}` : "Not staked"}
-              </span>
+
+            <div className="text-right">
+
+              <p className="text-[24px] font-black tracking-[-0.04em] text-emerald-300">
+                {fmtPct(pool.apy)}
+              </p>
+
+              <p className="text-[11px] uppercase tracking-[0.15em] text-[#64748B]">
+                APY
+              </p>
             </div>
           </div>
         </div>
 
         <ChevronDown
-          className={`h-5 w-5 shrink-0 text-[#6c778a] transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+          className={`h-5 w-5 text-[#64748B] transition-transform duration-300 ${
+            expanded ? "rotate-180" : ""
+          }`}
         />
       </button>
 
-      {/* Expanded panel */}
+      {/* EXPANDED */}
       {expanded && (
-        <div className="border-t border-[#0d1624] px-4 py-4 sm:px-6 sm:py-5">
-          {/* Tab switcher */}
-          <div className="mb-4 flex gap-2">
+        <div className="border-t border-white/[0.05] px-5 pb-5 pt-5">
+
+          {/* TABS */}
+          <div className="mb-5 grid grid-cols-2 gap-3">
+
             <button
               onClick={() => setTab("stake")}
-              className={`flex-1 rounded-[10px] py-2 font-['Inter',sans-serif] text-[13px] font-semibold transition-all ${
+              className={`rounded-[16px] py-3 text-[14px] font-bold transition-all ${
                 tab === "stake"
-                  ? "bg-[#0e3a1e] text-[#3acd5b] border border-[#1a5c2a]"
-                  : "bg-[#071020] text-[#6c778a] border border-[#131b27]"
+                  ? "bg-cyan-400 text-black"
+                  : "bg-[#111827] text-[#94A3B8]"
               }`}
             >
               Stake
             </button>
+
             <button
               onClick={() => setTab("unstake")}
-              className={`flex-1 rounded-[10px] py-2 font-['Inter',sans-serif] text-[13px] font-semibold transition-all ${
+              className={`rounded-[16px] py-3 text-[14px] font-bold transition-all ${
                 tab === "unstake"
-                  ? "bg-[#3a0e0e] text-[#c9543a] border border-[#5c1a1a]"
-                  : "bg-[#071020] text-[#6c778a] border border-[#131b27]"
+                  ? "bg-red-400 text-black"
+                  : "bg-[#111827] text-[#94A3B8]"
               }`}
             >
               Unstake
@@ -185,55 +234,77 @@ function PoolCard({
           </div>
 
           {!connected && (
-            <div className="flex flex-col items-center gap-3 py-4">
-              <Wallet className="h-8 w-8 text-[#3a4a5c]" />
-              <p className="font-['Inter',sans-serif] text-[13px] text-[#6c778a]">
-                Connect wallet to {tab}
+            <div className="flex flex-col items-center gap-4 py-8">
+
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#111827]">
+                <Wallet className="h-7 w-7 text-cyan-300" />
+              </div>
+
+              <p className="text-[14px] text-[#94A3B8]">
+                Connect wallet to continue
               </p>
             </div>
           )}
 
           {connected && (
-            <div className="flex flex-col gap-3">
-              <div className="rounded-[14px] border border-[#131b27] bg-[#020816] px-4 py-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-['Inter',sans-serif] text-[11px] text-[#6c778a]">
-                    {tab === "stake" ? "Amount to stake" : "Amount to unstake"}
+            <div className="flex flex-col gap-4">
+
+              {/* INPUT */}
+              <div className="rounded-[20px] border border-white/[0.06] bg-[#111827] p-5">
+
+                <div className="mb-3 flex items-center justify-between">
+
+                  <span className="text-[12px] text-[#64748B]">
+                    Amount
                   </span>
-                  <span className="font-['Inter',sans-serif] text-[11px] text-[#6c778a]">
+
+                  <span className="text-[12px] text-[#64748B]">
                     Balance: —
                   </span>
                 </div>
+
                 <div className="flex items-center gap-3">
+
                   <input
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.0"
-                    className="w-full bg-transparent font-['Inter',sans-serif] text-[20px] sm:text-[24px] font-bold text-[#d0d2d6] outline-none placeholder:text-[#3a4a5c]"
+                    className="w-full bg-transparent text-[32px] font-black tracking-[-0.04em] text-white outline-none placeholder:text-[#334155]"
                   />
-                  <span className="shrink-0 font-['Inter',sans-serif] text-[13px] font-semibold text-[#6c778a]">
+
+                  <span className="text-[14px] font-bold text-[#94A3B8]">
                     {pool.symbol}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 rounded-[10px] bg-[#071020] px-3 py-2">
-                <Info className="h-3.5 w-3.5 shrink-0 text-[#6c778a]" />
-                <span className="font-['Inter',sans-serif] text-[11px] text-[#6c778a]">
+              {/* INFO */}
+              <div className="flex items-start gap-2 rounded-[16px] border border-white/[0.05] bg-[#111827] px-4 py-3">
+
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+
+                <span className="text-[13px] leading-relaxed text-[#94A3B8]">
                   {tab === "stake"
-                    ? `Estimated yearly return: ${amount ? fmtUsd(Number(amount) * pool.apy / 100) : "$0.00"}`
+                    ? `Estimated yearly return: ${
+                        amount
+                          ? fmtUsd((Number(amount) * pool.apy) / 100)
+                          : "$0.00"
+                      }`
                     : pool.lockDays > 0
-                    ? `Unstaking will be available after ${pool.lockDays}-day lock period`
-                    : "No lock period — instant unstake"}
+                    ? `Unstaking available after ${pool.lockDays} days`
+                    : "Instant unstake available"}
                 </span>
               </div>
 
+              {/* BUTTON */}
               <button
                 disabled={!amount || Number(amount) <= 0}
-                className="w-full rounded-[14px] bg-[#0e3a1e] py-3 font-['Inter',sans-serif] text-[15px] font-bold text-[#3acd5b] border border-[#1a5c2a] hover:bg-[#143e22] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-[18px] bg-white py-4 text-[15px] font-bold text-black transition-all hover:bg-zinc-200 disabled:opacity-40"
               >
-                {tab === "stake" ? "Confirm Stake" : "Confirm Unstake"}
+                {tab === "stake"
+                  ? "Confirm Stake"
+                  : "Confirm Unstake"}
               </button>
             </div>
           )}
@@ -243,107 +314,206 @@ function PoolCard({
   );
 }
 
-// ─── Main VaultPage ──────────────────────────────────────────────────────────────
+// ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export function VaultPage(): JSX.Element {
   const wallet = useWalletContext();
+
   const [walletOpen, setWalletOpen] = useState(false);
+
+  // FORCED POPUP
+  const [showVaultPopup] = useState(true);
+
   const addr = wallet.isConnected ? wallet.address : null;
 
   return (
     <>
-      <div className="w-full pb-[8px] px-[14px] sm:px-[18px] pt-[12px] sm:pt-[16px]">
-        {/* Page header */}
-        <div className="mb-4 sm:mb-5 flex items-center justify-between">
+      {/* FORCED POPUP */}
+      {showVaultPopup && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md">
+
+          {/* glow */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.12),transparent_55%)]" />
+
+          {/* popup */}
+          <div className="relative w-full max-w-[540px] px-5">
+
+            <div className="overflow-hidden rounded-[34px] border border-white/[0.08] bg-[#070B11] shadow-[0_30px_120px_rgba(0,0,0,0.75)]">
+
+              {/* image */}
+              <img
+                src="https://i.ibb.co/xSTdr3nh/Chat-GPT-Image-May-25-2026-06-22-11-PM.png"
+                alt="Vault"
+                className="w-full object-cover"
+              />
+
+              {/* overlay */}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent px-7 pb-8 pt-20">
+
+                <div className="flex flex-col items-center text-center">
+
+                  <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-1 text-[11px] font-bold uppercase tracking-[0.25em] text-cyan-300">
+                    SuperSwap Vault
+                  </div>
+
+                  <h2 className="mt-4 text-[38px] font-black tracking-[-0.06em] text-white">
+                    Stake & Earn
+                  </h2>
+
+                  <p className="mt-3 max-w-[340px] text-[14px] leading-relaxed text-[#CBD5E1]">
+                    Deposit assets into SuperVaults and earn passive rewards with boosted APY on Base.
+                  </p>
+
+                  <div className="mt-6 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-[12px] font-semibold text-emerald-300">
+                    Live Vaults Available
+                  </div>
+
+                  {/* intentionally no close button */}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PAGE */}
+      <div className="min-h-screen w-full bg-[#070B11] px-[16px] pb-[30px] pt-[18px]">
+
+        {/* HEADER */}
+        <div className="mb-6 flex items-center justify-between">
+
           <div>
-            <h1 className="font-['Inter',sans-serif] text-[18px] sm:text-[22px] font-bold leading-none text-[#d0d2d6]">
+
+            <h1 className="text-[34px] font-black tracking-[-0.05em] text-white">
               Vault
             </h1>
-            <p className="mt-1 font-['Inter',sans-serif] text-[11px] sm:text-[12px] text-[#5f6a7c]">
-              Stake tokens to earn yield on SuperSwap
+
+            <p className="mt-2 text-[14px] text-[#94A3B8]">
+              Stake tokens and earn passive yield
             </p>
           </div>
+
           {wallet.isConnected && addr && (
-            <div className="flex flex-col items-end gap-0.5">
-              <span className="font-['Inter',sans-serif] text-[11px] sm:text-[12px] font-medium text-[#3acd5b]">
+            <div className="rounded-[18px] border border-white/[0.06] bg-[#0B1118] px-4 py-3">
+
+              <p className="text-[13px] font-semibold text-cyan-300">
                 {shortWallet(addr)}
-              </span>
-              <span className="font-['Inter',sans-serif] text-[10px] text-[#6c778a]">Base Mainnet</span>
+              </p>
+
+              <p className="mt-1 text-[11px] text-[#64748B]">
+                Base Mainnet
+              </p>
             </div>
           )}
         </div>
 
-        {/* Vault stats grid */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-5">
+        {/* STATS */}
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
           <StatCard
-            label="Total Value Locked"
-            value={fmtUsd(VAULT_POOLS.reduce((s, p) => s + p.tvl, 0))}
+            label="TVL"
+            value={fmtUsd(
+              VAULT_POOLS.reduce((s, p) => s + p.tvl, 0)
+            )}
             sub="Across all pools"
             icon={<Shield className="h-4 w-4" />}
           />
+
           <StatCard
-            label="Avg APY"
-            value={fmtPct(VAULT_POOLS.reduce((s, p) => s + p.apy, 0) / VAULT_POOLS.length)}
+            label="Average APY"
+            value={fmtPct(
+              VAULT_POOLS.reduce((s, p) => s + p.apy, 0) /
+                VAULT_POOLS.length
+            )}
             sub="Weighted average"
             icon={<TrendingUp className="h-4 w-4" />}
           />
+
           <StatCard
             label="Your Staked"
             value="$0.00"
-            sub="Connect to view"
+            sub="Connect wallet"
             icon={<Lock className="h-4 w-4" />}
           />
+
           <StatCard
-            label="Rewards Earned"
+            label="Rewards"
             value="$0.00"
-            sub="Lifetime vault yield"
+            sub="Lifetime earnings"
             icon={<Zap className="h-4 w-4" />}
           />
         </div>
 
-        {/* Vault pools */}
+        {/* POOLS */}
         <section>
-          <div className="mb-2.5 flex items-center justify-between">
-            <h2 className="font-['Inter',sans-serif] text-[10px] sm:text-[11px] font-medium uppercase tracking-widest text-[#5f6a7c]">
-              Staking Pools
+
+          <div className="mb-4 flex items-center justify-between">
+
+            <h2 className="text-[12px] font-bold uppercase tracking-[0.2em] text-[#64748B]">
+              Vault Pools
             </h2>
-            <span className="font-['Inter',sans-serif] text-[11px] sm:text-[12px] text-[#6c778a]">
-              {VAULT_POOLS.length} pools available
+
+            <span className="text-[13px] text-[#94A3B8]">
+              {VAULT_POOLS.length} active pools
             </span>
           </div>
-          <div className="flex flex-col gap-3 sm:gap-4">
+
+          <div className="flex flex-col gap-4">
+
             {VAULT_POOLS.map((pool) => (
-              <PoolCard key={pool.id} pool={pool} connected={wallet.isConnected} />
+              <PoolCard
+                key={pool.id}
+                pool={pool}
+                connected={wallet.isConnected}
+              />
             ))}
           </div>
         </section>
 
-        {/* Info section */}
-        <section className="mt-4 sm:mt-5">
-          <div className="rounded-[18px] sm:rounded-[22px] border border-[#131b27] bg-[#00040e] px-4 py-4 sm:px-6 sm:py-5">
-            <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#071020]">
-                <Clock className="h-4 w-4 text-[#6c778a]" />
+        {/* INFO */}
+        <section className="mt-6">
+
+          <div className="rounded-[28px] border border-white/[0.06] bg-[#0B1118] p-6">
+
+            <div className="flex items-start gap-4">
+
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#111827]">
+
+                <Clock className="h-5 w-5 text-cyan-300" />
               </div>
+
               <div>
-                <p className="font-['Inter',sans-serif] text-[13px] sm:text-[14px] font-semibold text-[#c8ccd4]">
+
+                <h3 className="text-[18px] font-bold text-white">
                   How Vault Works
+                </h3>
+
+                <p className="mt-3 max-w-[700px] text-[14px] leading-relaxed text-[#94A3B8]">
+                  Deposit your assets into SuperVaults to earn passive yield. Rewards accrue in real-time and can be claimed anytime. Longer lock periods unlock higher APY rewards.
                 </p>
-                <p className="mt-1 font-['Inter',sans-serif] text-[12px] sm:text-[13px] text-[#6c778a] leading-relaxed">
-                  Deposit your tokens into a vault to earn passive yield. Rewards accrue in real-time and can be claimed at any time. Some pools have lock periods for boosted APY.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
+
+                <div className="mt-5 flex flex-wrap gap-3">
+
                   {[
-                    { label: "Auto-compounding", icon: <Zap className="h-3 w-3" /> },
-                    { label: "No minimum", icon: <CheckCircle2 className="h-3 w-3" /> },
-                    { label: "Base secured", icon: <Shield className="h-3 w-3" /> },
+                    {
+                      label: "Auto-compounding",
+                      icon: <Zap className="h-3 w-3" />,
+                    },
+                    {
+                      label: "Base secured",
+                      icon: <Shield className="h-3 w-3" />,
+                    },
+                    {
+                      label: "No minimum",
+                      icon: <CheckCircle2 className="h-3 w-3" />,
+                    },
                   ].map((item) => (
-                    <span
+                    <div
                       key={item.label}
-                      className="inline-flex items-center gap-1.5 rounded-[8px] bg-[#071020] border border-[#131b27] px-2.5 py-1 font-['Inter',sans-serif] text-[11px] text-[#6c778a]"
+                      className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-[#111827] px-4 py-2 text-[12px] text-[#CBD5E1]"
                     >
                       {item.icon}
                       {item.label}
-                    </span>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -352,6 +522,7 @@ export function VaultPage(): JSX.Element {
         </section>
       </div>
 
+      {/* WALLET MODAL */}
       <ConnectWalletModal
         open={walletOpen}
         onClose={() => setWalletOpen(false)}
