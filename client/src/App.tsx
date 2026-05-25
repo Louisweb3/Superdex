@@ -12,6 +12,10 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={LandinHome} />
+      <Route path="/swap" component={LandinHome} />
+      <Route path="/rewards" component={LandinHome} />
+      <Route path="/analytics" component={LandinHome} />
+      <Route path="/history" component={LandinHome} />
       <Route component={NotFound} />
     </Switch>
   );

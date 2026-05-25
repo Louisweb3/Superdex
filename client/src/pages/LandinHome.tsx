@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { AppHeaderSection } from "./sections/AppHeaderSection";
 import { AssetTickerNavSection } from "./sections/AssetTickerNavSection";
@@ -9,6 +10,23 @@ import { SwapHeroSection } from "./sections/SwapHeroSection";
 import { PlaceholderPage } from "./sections/PlaceholderPage";
 import { SwapPage } from "./SwapPage";
 import { RewardsPage } from "./RewardsPage";
+
+// Map URL paths → tab names, and vice-versa
+const PATH_TO_TAB: Record<string, string> = {
+  "/":          "home",
+  "/swap":      "swap",
+  "/rewards":   "rewards",
+  "/analytics": "analytics",
+  "/history":   "history",
+};
+
+const TAB_TO_PATH: Record<string, string> = {
+  home:      "/",
+  swap:      "/swap",
+  rewards:   "/rewards",
+  analytics: "/analytics",
+  history:   "/history",
+};
 
 const backgroundLayers = [
   {
@@ -44,12 +62,19 @@ const tabPages: Record<string, { title: string; icon: string; description: strin
 };
 
 export const LandinHome = (): JSX.Element => {
-  const [activeTab, setActiveTab] = useState<string>("home");
+  const [location, navigate] = useLocation();
   const rewardsRef = useRef<HTMLElement>(null);
+
+  // Derive active tab from current URL path
+  const activeTab = PATH_TO_TAB[location] ?? "home";
+
+  const handleTabChange = (tab: string) => {
+    navigate(TAB_TO_PATH[tab] ?? "/");
+  };
 
   const handleViewRewards = () => {
     if (activeTab !== "home") {
-      setActiveTab("home");
+      navigate("/");
       setTimeout(() => {
         rewardsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 100);
@@ -71,7 +96,7 @@ export const LandinHome = (): JSX.Element => {
           ))}
 
           <header className="relative z-20 w-full">
-            <AppHeaderSection onNavSelect={(tab) => setActiveTab(tab)} />
+            <AppHeaderSection onNavSelect={handleTabChange} />
           </header>
 
           <div className="relative z-10 flex w-full flex-1 flex-col">
@@ -131,7 +156,7 @@ export const LandinHome = (): JSX.Element => {
             )}
 
             <section className="w-full mt-auto">
-              <AssetTickerNavSection activeTab={activeTab} onTabChange={setActiveTab} />
+              <AssetTickerNavSection activeTab={activeTab} onTabChange={handleTabChange} />
             </section>
           </div>
         </div>
