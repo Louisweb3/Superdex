@@ -8,6 +8,7 @@ import { WalletProvider } from "@/context/WalletContext";
 import NotFound from "@/pages/not-found";
 import { LandinHome } from "@/pages/LandinHome";
 import { AdminPage } from "@/pages/AdminPage";
+import { DocsPage } from "@/pages/DocsPage";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/vault" component={LandinHome} />
       <Route path="/analytics" component={LandinHome} />
       <Route path="/admin" component={AdminPage} />
+      <Route path="/docs" component={DocsPage} />
       <Route component={NotFound} />
     </Switch>
   );

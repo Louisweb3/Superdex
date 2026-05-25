@@ -1,0 +1,708 @@
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  BookOpen, Coins, Zap, Gift, Rocket, Shield, Users, ChevronRight,
+  ExternalLink, ArrowRight, Star, Lock, Globe, TrendingUp, Sparkles,
+} from 'lucide-react';
+import Footer from '@/components/Footer';
+
+// ── Sidebar nav items ─────────────────────────────────────────
+const SECTIONS = [
+  { id: 'intro',       label: 'Introduction',      icon: BookOpen },
+  { id: 'how-it-works',label: 'How It Works',      icon: Zap },
+  { id: 'referral',    label: 'Referral Program',   icon: Users },
+  { id: 'sswap-token', label: 'SSWAP Token',        icon: Coins },
+  { id: 'airdrop',     label: 'Airdrop Program',    icon: Gift },
+  { id: 'rewards',     label: 'Rewards & XP',       icon: Star },
+  { id: 'tokenomics',  label: 'Tokenomics',         icon: TrendingUp },
+  { id: 'roadmap',     label: 'Roadmap',            icon: Rocket },
+  { id: 'security',    label: 'Security',           icon: Shield },
+  { id: 'community',   label: 'Community',          icon: Users },
+  { id: 'legal',       label: 'Legal & Risk',       icon: Lock },
+] as const;
+
+type SectionId = typeof SECTIONS[number]['id'];
+
+// ── Shared section header ─────────────────────────────────────
+function SectionHeader({ icon: Icon, title, subtitle, color }: {
+  icon: React.ElementType; title: string; subtitle?: string; color: string;
+}) {
+  return (
+    <div className="flex items-start gap-4 mb-8 pb-6 border-b border-[hsl(var(--border))]">
+      <div
+        className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 mt-0.5"
+        style={{ background: `${color}18`, border: `1px solid ${color}30` }}
+      >
+        <Icon className="w-6 h-6" style={{ color }} />
+      </div>
+      <div>
+        <h2 className="font-display font-700 text-2xl tracking-tight">{title}</h2>
+        {subtitle && <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1 leading-relaxed">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+// ── Info box ──────────────────────────────────────────────────
+function InfoBox({ children, type = 'info' }: { children: React.ReactNode; type?: 'info' | 'warning' | 'success' }) {
+  const styles = {
+    info:    { bg: 'hsl(var(--neon-blue)/0.06)',   border: 'hsl(var(--neon-blue)/0.25)',   icon: 'hsl(var(--neon-blue))'   },
+    warning: { bg: 'hsl(var(--neon-orange)/0.06)', border: 'hsl(var(--neon-orange)/0.25)', icon: 'hsl(var(--neon-orange))' },
+    success: { bg: 'hsl(var(--neon-green)/0.06)',  border: 'hsl(var(--neon-green)/0.25)',  icon: 'hsl(var(--neon-green))'  },
+  };
+  const s = styles[type];
+  return (
+    <div
+      className="p-4 rounded-xl my-4 text-sm leading-relaxed text-[hsl(var(--muted-foreground))]"
+      style={{ background: s.bg, border: `1px solid ${s.border}` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ── Stat card ─────────────────────────────────────────────────
+function StatCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) {
+  return (
+    <div className="p-5 rounded-2xl glass-card border border-[hsl(var(--border))] text-center">
+      <p className="text-xs font-mono text-[hsl(var(--muted-foreground))] mb-1">{label}</p>
+      <p className="font-display font-700 text-2xl tracking-tight" style={{ color }}>{value}</p>
+      {sub && <p className="text-xs text-[hsl(var(--muted-foreground))] font-mono mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+// ── Roadmap milestone ─────────────────────────────────────────
+function Milestone({ quarter, title, items, done }: {
+  quarter: string; title: string; items: string[]; done?: boolean;
+}) {
+  return (
+    <div className="flex gap-4">
+      <div className="flex flex-col items-center">
+        <div
+          className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm font-mono font-600 ${
+            done
+              ? 'bg-[hsl(var(--neon-green)/0.15)] border border-[hsl(var(--neon-green)/0.4)] text-[hsl(var(--neon-green))]'
+              : 'bg-[hsl(var(--surface-2))] border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'
+          }`}
+        >
+          {done ? '✓' : quarter}
+        </div>
+        <div className="w-px flex-1 bg-[hsl(var(--border))] mt-2" />
+      </div>
+      <div className="pb-10 flex-1">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs font-mono text-[hsl(var(--muted-foreground))]">{quarter}</span>
+          <span className="font-display font-600 text-base">{title}</span>
+          {done && (
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[hsl(var(--neon-green)/0.12)] text-[hsl(var(--neon-green))] border border-[hsl(var(--neon-green)/0.25)]">
+              LIVE
+            </span>
+          )}
+        </div>
+        <ul className="space-y-2">
+          {items.map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-[hsl(var(--muted-foreground))]">
+              <ChevronRight className="w-3 h-3 mt-1 shrink-0 text-[hsl(var(--neon-blue))]" />
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// ── Section content components ────────────────────────────────
+
+function IntroSection() {
+  return (
+    <div>
+      <SectionHeader icon={BookOpen} title="Introduction" subtitle="Welcome to SuperSwap — the next-generation DEX aggregator built natively on Base." color="hsl(var(--neon-blue))" />
+      <p className="text-[hsl(var(--muted-foreground))] leading-relaxed mb-4">
+        SuperSwap is a premium decentralized exchange aggregator on the Base network. We route your swaps across all major DEXes — Uniswap V3, Aerodrome, PancakeSwap, and BaseSwap — in real time, finding the best available rate with every transaction.
+      </p>
+      <p className="text-[hsl(var(--muted-foreground))] leading-relaxed mb-6">
+        Unlike traditional DEXes that only offer liquidity from a single pool, SuperSwap compares quotes across the entire Base ecosystem simultaneously, then executes your swap through whichever protocol offers the highest output.
+      </p>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard label="DEXes Aggregated" value="4+" color="hsl(var(--neon-blue))" />
+        <StatCard label="Fee" value="0.3%" sub="0.15% to users" color="hsl(var(--neon-green))" />
+        <StatCard label="Network" value="Base" sub="Chain ID 8453" color="hsl(var(--neon-purple))" />
+        <StatCard label="Token" value="SSWAP" sub="Coming Soon" color="hsl(var(--neon-orange))" />
+      </div>
+
+      <InfoBox type="info">
+        SuperSwap is non-custodial. Your tokens never sit in our contracts — swaps execute atomically, directly from your wallet to your wallet.
+      </InfoBox>
+
+      <h3 className="font-display font-600 text-lg mt-8 mb-3">Core Principles</h3>
+      <ul className="space-y-3">
+        {[
+          ['Best Rates', 'Every swap fetches live quotes from all supported DEXes. You always see who has the best rate before confirming.'],
+          ['Transparent Fees', 'A flat 0.3% fee is charged per swap. 50% goes to the platform, 50% is redistributed to active users via the RewardVault.'],
+          ['No Hidden Costs', 'No subscription. No token requirement. No lock-ups. Connect a wallet and swap.'],
+          ['User Ownership', 'SSWAP token holders will govern protocol parameters, fee structures, and treasury allocation.'],
+        ].map(([title, desc]) => (
+          <li key={title} className="flex items-start gap-3 p-4 rounded-xl bg-[hsl(var(--surface-2))] border border-[hsl(var(--border))]">
+            <ArrowRight className="w-4 h-4 mt-0.5 shrink-0 text-[hsl(var(--neon-blue))]" />
+            <div>
+              <span className="font-display font-600 text-sm block mb-0.5">{title}</span>
+              <span className="text-sm text-[hsl(var(--muted-foreground))]">{desc}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function HowItWorksSection() {
+  return (
+    <div>
+      <SectionHeader icon={Zap} title="How It Works" subtitle="From quote to confirmation in seconds." color="hsl(var(--neon-cyan))" />
+      <div className="space-y-4 mb-8">
+        {[
+          { step: '01', title: 'Connect Your Wallet', desc: 'Connect any EVM wallet — MetaMask, Coinbase Wallet, WalletConnect, and more. No registration required.' },
+          { step: '02', title: 'Select Tokens', desc: 'Choose the token you want to sell and the token you want to receive. SuperSwap supports all major Base tokens.' },
+          { step: '03', title: 'Compare Quotes', desc: 'SuperSwap fetches live quotes from Uniswap V3, Aerodrome, PancakeSwap, and BaseSwap simultaneously. See all rates side-by-side.' },
+          { step: '04', title: 'Select Your DEX', desc: 'Pick the DEX offering the best rate, or let SuperSwap auto-select the optimal route.' },
+          { step: '05', title: 'One-Tap Confirm', desc: 'Approve tokens if needed, then confirm. The 0.3% fee and the swap execute as a single batched transaction — one wallet popup.' },
+          { step: '06', title: 'Earn Rewards', desc: 'Every swap earns XP. XP accumulates toward SSWAP token allocation and unlocks badges and leaderboard positions.' },
+        ].map(({ step, title, desc }) => (
+          <div key={step} className="flex gap-4 p-5 rounded-2xl glass-card border border-[hsl(var(--border))]">
+            <span className="font-mono font-700 text-2xl text-[hsl(var(--neon-blue)/0.4)] shrink-0 w-10">{step}</span>
+            <div>
+              <h4 className="font-display font-600 text-sm mb-1">{title}</h4>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">{desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <h3 className="font-display font-600 text-lg mb-4">Supported DEXes</h3>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { name: 'Uniswap V3',  logo: 'U', color: '#FF007A', note: 'Concentrated liquidity' },
+          { name: 'Aerodrome',   logo: 'A', color: '#00C2FF', note: 've(3,3) AMM' },
+          { name: 'PancakeSwap', logo: 'P', color: '#1FC7D4', note: 'Multi-tier pools' },
+          { name: 'BaseSwap',    logo: 'B', color: '#0052FF', note: 'Base-native AMM' },
+        ].map((dex) => (
+          <div key={dex.name} className="p-4 rounded-xl glass-card border border-[hsl(var(--border))] text-center">
+            <div className="text-xl font-display font-700 mb-2 w-10 h-10 rounded-full flex items-center justify-center mx-auto" style={{ background: `${dex.color}20`, color: dex.color, border: `1px solid ${dex.color}40` }}>{dex.logo}</div>
+            <p className="font-display font-600 text-sm">{dex.name}</p>
+            <p className="text-[10px] text-[hsl(var(--muted-foreground))] font-mono mt-0.5">{dex.note}</p>
+          </div>
+        ))}
+      </div>
+
+      <InfoBox type="warning">
+        Slippage tolerance can be adjusted before each swap (0.1% – 5%). Higher slippage increases the chance of execution but may result in a worse rate. Default is 0.5%.
+      </InfoBox>
+    </div>
+  );
+}
+
+function SSWAPSection() {
+  return (
+    <div>
+      <SectionHeader icon={Coins} title="SSWAP Token" subtitle="The native governance and utility token of the SuperSwap protocol." color="hsl(var(--neon-purple))" />
+
+      <InfoBox type="warning">
+        SSWAP has not yet launched. All information below describes the planned token design. Specifics may change prior to the Token Generation Event (TGE). Nothing here constitutes financial advice or an offer to sell securities.
+      </InfoBox>
+
+      <p className="text-[hsl(var(--muted-foreground))] leading-relaxed mb-6">
+        SSWAP is an ERC-20 token on Base that will serve as the governance backbone of the SuperSwap protocol. Token holders vote on fee parameters, treasury allocation, new DEX integrations, and protocol upgrades.
+      </p>
+
+      <h3 className="font-display font-600 text-lg mb-4">Token Utility</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+        {[
+          { icon: Globe,    title: 'Governance',        desc: 'Vote on protocol parameters, fee structures, DEX whitelisting, and treasury spend.' },
+          { icon: Gift,     title: 'Fee Sharing',       desc: 'Staked SSWAP accrues a portion of protocol fees proportional to stake size.' },
+          { icon: Zap,      title: 'Fee Discount',      desc: 'Hold SSWAP to reduce your swap fee. Tiered discounts: 25% → 50% → 75% based on balance.' },
+          { icon: Sparkles, title: 'XP Boost',          desc: 'SSWAP holders earn 1.5× XP on all swaps, accelerating rewards and leaderboard position.' },
+        ].map(({ icon: Icon, title, desc }) => (
+          <div key={title} className="p-5 rounded-2xl glass-card border border-[hsl(var(--border))] flex gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[hsl(var(--neon-purple)/0.1)] border border-[hsl(var(--neon-purple)/0.2)]">
+              <Icon className="w-4 h-4 text-[hsl(var(--neon-purple))]" />
+            </div>
+            <div>
+              <h4 className="font-display font-600 text-sm mb-0.5">{title}</h4>
+              <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">{desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <h3 className="font-display font-600 text-lg mb-4">Earning SSWAP Before TGE</h3>
+      <p className="text-[hsl(var(--muted-foreground))] text-sm leading-relaxed mb-4">
+        Users accumulate SSWAP allocations through the XP system before the token launches. Every XP point earned translates to 10 SSWAP tokens claimable at TGE. The earlier you start swapping, the larger your pre-launch allocation.
+      </p>
+      <div className="p-5 rounded-2xl bg-[hsl(var(--neon-purple)/0.06)] border border-[hsl(var(--neon-purple)/0.2)]">
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <p className="font-display font-700 text-2xl text-[hsl(var(--neon-purple))]">10×</p>
+            <p className="text-xs font-mono text-[hsl(var(--muted-foreground))]">XP to SSWAP ratio</p>
+          </div>
+          <div>
+            <p className="font-display font-700 text-2xl text-[hsl(var(--neon-blue))]">1 Swap</p>
+            <p className="text-xs font-mono text-[hsl(var(--muted-foreground))]">= minimum 50 XP</p>
+          </div>
+          <div>
+            <p className="font-display font-700 text-2xl text-[hsl(var(--neon-green))]">TGE</p>
+            <p className="text-xs font-mono text-[hsl(var(--muted-foreground))]">Claim date TBA</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AirdropSection() {
+  return (
+    <div>
+      <SectionHeader icon={Gift} title="Airdrop Program" subtitle="SuperSwap rewards early community members through multiple airdrop phases." color="hsl(var(--neon-green))" />
+
+      <InfoBox type="warning">
+        Airdrops are planned but not guaranteed. All details are subject to change. Participation in SuperSwap does not guarantee any token allocation. This is not a financial offer.
+      </InfoBox>
+
+      <h3 className="font-display font-600 text-lg mb-4">Phase Overview</h3>
+      <div className="space-y-4 mb-8">
+        {[
+          {
+            phase: 'Phase 1 — Early Adopter Airdrop',
+            allocation: '15% of total supply',
+            color: 'hsl(var(--neon-green))',
+            criteria: [
+              'Minimum 10 swaps completed before TGE snapshot',
+              'At least $100 total swap volume',
+              'Wallet connected for 30+ days',
+            ],
+            note: 'Snapshot date will be announced on official channels only.',
+          },
+          {
+            phase: 'Phase 2 — XP Holders Drop',
+            allocation: '10% of total supply',
+            color: 'hsl(var(--neon-blue))',
+            criteria: [
+              'Proportional to XP accumulated at snapshot',
+              'Minimum 500 XP to qualify',
+              'No lock-up period for this tranche',
+            ],
+            note: 'Top 100 XP holders receive a 2× multiplier on their allocation.',
+          },
+          {
+            phase: 'Phase 3 — Community & Referral Drop',
+            allocation: '5% of total supply',
+            color: 'hsl(var(--neon-purple))',
+            criteria: [
+              'Minimum 3 referred users who complete at least 1 swap',
+              'Referred users must not be Sybil-flagged',
+              'Referral codes tracked on-chain',
+            ],
+            note: 'Anti-Sybil measures will be applied. Wallets with suspicious activity will be excluded.',
+          },
+        ].map(({ phase, allocation, color, criteria, note }) => (
+          <div key={phase} className="p-5 rounded-2xl glass-card border border-[hsl(var(--border))]">
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+              <h4 className="font-display font-600 text-sm">{phase}</h4>
+              <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ color, background: `${color.replace(')', '/0.12)').replace('hsl(', 'hsl(')}` }}>
+                {allocation}
+              </span>
+            </div>
+            <ul className="space-y-1.5 mb-3">
+              {criteria.map((c, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+                  <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: color }} />
+                  {c}
+                </li>
+              ))}
+            </ul>
+            <p className="text-[10px] font-mono text-[hsl(var(--muted-foreground))] italic">{note}</p>
+          </div>
+        ))}
+      </div>
+
+      <InfoBox type="info">
+        SuperSwap will never ask you to pay ETH or any token to participate in an airdrop. Any website or social media account claiming otherwise is a scam.
+      </InfoBox>
+    </div>
+  );
+}
+
+function RewardsSection() {
+  return (
+    <div>
+      <SectionHeader icon={Star} title="Rewards & XP" subtitle="Every swap earns XP. XP unlocks levels, badges, and future token allocations." color="hsl(var(--neon-orange))" />
+
+      <h3 className="font-display font-600 text-lg mb-4">XP Sources</h3>
+      <div className="space-y-2 mb-8">
+        {[
+          ['First Swap',           '50 XP',   'One-time bonus for completing your first swap'],
+          ['Each Swap',            '10 XP',   'Awarded per completed swap (any amount)'],
+          ['Volume Bonus',         'Up to 50 XP', 'Larger swaps earn more: $1k = +10 XP, $10k = +50 XP'],
+          ['Daily Streak',         '+20%',    'Swap every day to earn 20% bonus XP on all swaps'],
+          ['Referral',             '200 XP',  'Per referred user who reaches $500 in total swap volume'],
+          ['Swap Milestones',      '1 XP / 100 swaps', 'Bonus XP every time you complete 100 swaps'],
+          ['Badge Unlock',         'Varies',  '50–1000 XP per badge depending on rarity'],
+        ].map(([source, reward, desc]) => (
+          <div key={source} className="flex items-center gap-4 p-4 rounded-xl glass-card border border-[hsl(var(--border))]">
+            <div className="flex-1">
+              <p className="font-display font-600 text-sm">{source}</p>
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">{desc}</p>
+            </div>
+            <span className="text-[hsl(var(--neon-orange))] font-mono font-600 text-sm shrink-0">{reward}</span>
+          </div>
+        ))}
+      </div>
+
+      <h3 className="font-display font-600 text-lg mb-4">Fee Collection & Weekly Airdrops</h3>
+      <p className="text-[hsl(var(--muted-foreground))] text-sm leading-relaxed mb-4">
+        A 0.3% platform fee is collected on every swap through the 0x API. Fees are sent directly to a treasury address. Each week, a portion of collected fees is airdropped to active swappers proportional to their volume and activity.
+      </p>
+      <InfoBox type="success">
+        Rewards are tracked off-chain based on your swap volume and airdropped weekly. The more you swap, the larger your share of the weekly distribution.
+      </InfoBox>
+    </div>
+  );
+}
+
+function TokenomicsSection() {
+  const items = [
+    { label: 'Community Airdrop',  pct: 30, color: 'hsl(var(--neon-green))'  },
+    { label: 'Liquidity & DEX',    pct: 20, color: 'hsl(var(--neon-blue))'   },
+    { label: 'Team & Advisors',    pct: 15, color: 'hsl(var(--neon-purple))', note: '2-year vesting, 6-month cliff' },
+    { label: 'Treasury',           pct: 15, color: 'hsl(var(--neon-orange))', note: 'Governed by SSWAP holders' },
+    { label: 'Ecosystem Grants',   pct: 10, color: 'hsl(var(--neon-cyan))'   },
+    { label: 'Strategic Reserve',  pct: 10, color: 'hsl(var(--muted-foreground))' },
+  ];
+
+  return (
+    <div>
+      <SectionHeader icon={TrendingUp} title="Tokenomics" subtitle="Planned SSWAP token supply structure. Subject to change before TGE." color="hsl(var(--neon-blue))" />
+
+      <InfoBox type="warning">
+        Tokenomics are indicative and may be revised before the Token Generation Event. No binding commitment is made by publishing this information.
+      </InfoBox>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+        <StatCard label="Total Supply"   value="1B"   sub="SSWAP tokens" color="hsl(var(--neon-blue))"   />
+        <StatCard label="Initial Float"  value="~12%" sub="at TGE"        color="hsl(var(--neon-purple))" />
+        <StatCard label="Network"        value="Base" sub="ERC-20"        color="hsl(var(--neon-green))"  />
+      </div>
+
+      <h3 className="font-display font-600 text-lg mb-4">Allocation</h3>
+      <div className="space-y-3">
+        {items.map(({ label, pct, color, note }) => (
+          <div key={label}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-sm font-display font-500">{label}</span>
+              <div className="flex items-center gap-2">
+                {note && <span className="text-[10px] font-mono text-[hsl(var(--muted-foreground))]">{note}</span>}
+                <span className="font-mono font-600 text-sm" style={{ color }}>{pct}%</span>
+              </div>
+            </div>
+            <div className="h-2 rounded-full bg-[hsl(var(--surface-3))] overflow-hidden">
+              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RoadmapSection() {
+  return (
+    <div>
+      <SectionHeader icon={Rocket} title="Roadmap" subtitle="Our planned development milestones. Dates are estimates and subject to change." color="hsl(var(--neon-orange))" />
+      <div className="mt-4">
+        <Milestone quarter="Q1 2025" title="Protocol Launch" done items={['DEX aggregator live on Base mainnet', 'Uniswap V3, Aerodrome, PancakeSwap, BaseSwap integration', '0x API fee collection live (0.3% integrator fee)', 'XP & badge gamification system', 'Referral program']} />
+        <Milestone quarter="Q2 2025" title="SSWAP Token Announcement" items={['SSWAP tokenomics publication', 'Community governance forum launch', 'Airdrop snapshot criteria announcement', 'Additional DEX integrations (SushiSwap, Balancer)', 'Mobile-optimized UI']} />
+        <Milestone quarter="Q3 2025" title="Token Generation Event" items={['SSWAP TGE on Base', 'Airdrop Phase 1 & 2 claim portal', 'SSWAP/ETH liquidity seeded on Aerodrome', 'On-chain governance module activation', 'Fee discount tiers go live for SSWAP holders']} />
+        <Milestone quarter="Q4 2025" title="Ecosystem Expansion" items={['Cross-chain aggregation (Optimism, Arbitrum)', 'Limit orders', 'Dollar-cost averaging (DCA) automation', 'SuperSwap API for developers', 'Ecosystem grants program launch']} />
+        <Milestone quarter="2026" title="Full Decentralisation" items={['DAO-controlled treasury', 'Community-voted fee structure', 'SDK for third-party DEX integration', 'Mobile app (iOS & Android)', 'Advanced portfolio analytics']} />
+      </div>
+    </div>
+  );
+}
+
+function SecuritySection() {
+  return (
+    <div>
+      <SectionHeader icon={Shield} title="Security" color="hsl(var(--neon-green))" />
+      <p className="text-[hsl(var(--muted-foreground))] leading-relaxed mb-6">
+        Security is the highest priority at SuperSwap. All smart contracts are written with reentrancy protection, access control, and circuit-breaker mechanisms. The protocol has been internally reviewed and external audits are planned prior to mainnet scale-up.
+      </p>
+      <div className="space-y-4">
+        {[
+          ['Non-Custodial', 'SuperSwap never holds your tokens. Swaps go directly from your wallet to the DEX and back. The FeeManager contract only receives the 0.3% fee component.'],
+          ['Reentrancy Guards', 'All state-mutating functions in FeeManager and RewardVault use OpenZeppelin ReentrancyGuard.'],
+          ['Pausable', 'The FeeManager includes an emergency pause mechanism. In the event of a vulnerability, the owner can halt fee collection while swaps continue routing directly.'],
+          ['Slippage Protection', 'Every swap encodes a minimum output amount. If the DEX cannot fill the order at the specified rate, the transaction reverts automatically.'],
+          ['Open Source', 'All contracts are verified on Basescan. The frontend is open source.'],
+        ].map(([title, desc]) => (
+          <div key={title} className="p-5 rounded-2xl glass-card border border-[hsl(var(--border))]">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-[hsl(var(--neon-green))]" />
+              <h4 className="font-display font-600 text-sm">{title}</h4>
+            </div>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">{desc}</p>
+          </div>
+        ))}
+      </div>
+      <InfoBox type="info">
+        Audit reports will be published in full before SSWAP token launch. Links will be added here when available.
+      </InfoBox>
+    </div>
+  );
+}
+
+function CommunitySection() {
+  return (
+    <div>
+      <SectionHeader icon={Users} title="Community" color="hsl(var(--neon-cyan))" />
+      <p className="text-[hsl(var(--muted-foreground))] leading-relaxed mb-6">
+        SuperSwap is community-first. The protocol is designed so that value flows back to the people who use it. Community members earn rewards, governance power, and early token access.
+      </p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+        {[
+          { icon: '𝕏', label: 'Twitter / X',  desc: 'Announcements, updates, and community discussions.' },
+          { icon: '💬', label: 'Discord',       desc: 'Support, governance chat, and builder channels.' },
+          { icon: '✈️', label: 'Telegram',      desc: 'Community chat and price discussion.' },
+        ].map(({ icon, label, desc }) => (
+          <div key={label} className="p-5 rounded-2xl glass-card border border-[hsl(var(--border))] text-center">
+            <div className="text-3xl mb-2">{icon}</div>
+            <h4 className="font-display font-600 text-sm mb-1">{label}</h4>
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">{desc}</p>
+          </div>
+        ))}
+      </div>
+      <InfoBox type="warning">
+        Only follow official SuperSwap channels. We will never DM you first, ask for your seed phrase, or ask you to send funds to claim rewards.
+      </InfoBox>
+    </div>
+  );
+}
+
+function LegalSection() {
+  return (
+    <div>
+      <SectionHeader icon={Lock} title="Legal & Risk" color="hsl(var(--destructive))" />
+      <InfoBox type="warning">
+        This documentation does not constitute financial advice, investment advice, legal advice, or any other form of professional advice. Use of SuperSwap is entirely at your own risk.
+      </InfoBox>
+      <div className="space-y-4 mt-4">
+        {[
+          ['No Investment Advice', 'Nothing in this documentation or on the SuperSwap platform constitutes or should be construed as financial, investment, or trading advice. Token prices are volatile. You may lose all funds you use on this platform.'],
+          ['Not an Offering', 'References to SSWAP tokens do not constitute an offer or solicitation to buy or sell securities in any jurisdiction. SSWAP is a utility/governance token, not an investment product.'],
+          ['Regulatory Uncertainty', 'DeFi regulation is evolving. SuperSwap operates in a rapidly changing legal environment. Access to the platform may be restricted in certain jurisdictions at any time without prior notice.'],
+          ['Smart Contract Risk', 'Interacting with any smart contract carries inherent risk including bugs, exploits, and front-running. SuperSwap smart contracts have been carefully designed but are not guaranteed to be bug-free.'],
+          ['No Guarantees', 'Airdrop amounts, tokenomics, roadmap milestones, and platform features described in this documentation are plans, not promises. All are subject to change or cancellation.'],
+        ].map(([title, desc]) => (
+          <div key={title} className="p-5 rounded-2xl border border-[hsl(var(--destructive)/0.2)] bg-[hsl(var(--destructive)/0.04)]">
+            <h4 className="font-display font-600 text-sm mb-2 text-[hsl(var(--destructive))]">{title}</h4>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">{desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Referral Program Section ──────────────────────────────────
+function ReferralSection() {
+  return (
+    <div>
+      <SectionHeader icon={Users} title="Referral Program" subtitle="Earn XP by inviting friends to trade on SuperSwap." color="hsl(var(--neon-green))" />
+
+      <p className="text-[hsl(var(--muted-foreground))] leading-relaxed mb-6">
+        The SuperSwap Referral Program rewards you for growing our community. Every user who connects their wallet receives a unique referral code. Share your link, and when your referrals reach the swap volume threshold, you earn bonus XP.
+      </p>
+
+      <h3 className="font-display font-600 text-lg mb-4">How It Works</h3>
+      <div className="space-y-4 mb-8">
+        {[
+          { step: '01', title: 'Connect Your Wallet', desc: 'Visit superswap.xyz/referral and connect your wallet. Your unique 8-character referral code is generated automatically.' },
+          { step: '02', title: 'Share Your Link', desc: 'Your referral link is superswap.xyz?ref=YOUR_CODE. Share it via social media, DMs, or anywhere you like.' },
+          { step: '03', title: 'Friends Sign Up', desc: 'When someone visits SuperSwap through your link and connects their wallet, they are linked to your referral code.' },
+          { step: '04', title: 'They Swap $500+', desc: 'Your referral must accumulate $500 or more in total swap volume. Volume is tracked automatically across all their swaps.' },
+          { step: '05', title: 'You Earn 200 XP', desc: 'Once the $500 threshold is met, 200 XP is credited to your account instantly. No manual claiming needed.' },
+        ].map(({ step, title, desc }) => (
+          <div key={step} className="flex gap-4 p-5 rounded-2xl glass-card border border-[hsl(var(--border))]">
+            <span className="font-mono font-700 text-2xl text-[hsl(var(--neon-green)/0.4)] shrink-0 w-10">{step}</span>
+            <div>
+              <h4 className="font-display font-600 text-sm mb-1">{title}</h4>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">{desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <h3 className="font-display font-600 text-lg mb-4">XP Earning Rules</h3>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard label="Per Swap" value="10 XP" color="hsl(var(--neon-blue))" />
+        <StatCard label="First Swap" value="50 XP" sub="One-time bonus" color="hsl(var(--neon-cyan))" />
+        <StatCard label="Per Referral" value="200 XP" sub="After $500 volume" color="hsl(var(--neon-green))" />
+        <StatCard label="Milestone" value="1 XP" sub="Every 100 swaps" color="hsl(var(--neon-purple))" />
+      </div>
+
+      <h3 className="font-display font-600 text-lg mb-4">Volume Bonuses (Per Swap)</h3>
+      <div className="space-y-2 mb-8">
+        {[
+          ['$1,000+ swap',  '+10 XP',  'Bonus added on top of base 10 XP per swap'],
+          ['$5,000+ swap',  '+25 XP',  'For high-value single swaps'],
+          ['$10,000+ swap', '+50 XP',  'Maximum volume bonus per individual swap'],
+        ].map(([tier, reward, desc]) => (
+          <div key={tier} className="flex items-center gap-4 p-4 rounded-xl glass-card border border-[hsl(var(--border))]">
+            <div className="flex-1">
+              <p className="font-display font-600 text-sm">{tier}</p>
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">{desc}</p>
+            </div>
+            <span className="text-[hsl(var(--neon-green))] font-mono font-600 text-sm shrink-0">{reward}</span>
+          </div>
+        ))}
+      </div>
+
+      <h3 className="font-display font-600 text-lg mb-4">Important Rules</h3>
+      <InfoBox type="warning">
+        Self-referral is prohibited. Using multiple wallets to game the referral system may result in XP forfeiture and exclusion from future airdrops. Anti-Sybil measures are applied.
+      </InfoBox>
+      <InfoBox type="info">
+        All XP data is stored in Supabase and tied to your wallet address. XP accumulation is real-time — you can see your balance update immediately after each swap. Referral XP is awarded automatically when your referral crosses the $500 threshold.
+      </InfoBox>
+      <InfoBox type="success">
+        Referral link format: <span className="font-mono">https://superswap.xyz?ref=YOUR_CODE</span>. Visit the <a href="/referral" className="underline font-600" style={{ color: 'hsl(var(--neon-green))' }}>Referral Dashboard</a> to see your code and stats.
+      </InfoBox>
+    </div>
+  );
+}
+
+const CONTENT_MAP: Record<SectionId, React.ReactNode> = {
+  'intro':        <IntroSection />,
+  'how-it-works': <HowItWorksSection />,
+  'referral':     <ReferralSection />,
+  'sswap-token':  <SSWAPSection />,
+  'airdrop':      <AirdropSection />,
+  'rewards':      <RewardsSection />,
+  'tokenomics':   <TokenomicsSection />,
+  'roadmap':      <RoadmapSection />,
+  'security':     <SecuritySection />,
+  'community':    <CommunitySection />,
+  'legal':        <LegalSection />,
+};
+
+// ── Main Docs Page ────────────────────────────────────────────
+export default function Docs() {
+  const [active, setActive] = useState<SectionId>('intro');
+
+  return (
+    <div className="min-h-screen bg-mesh pt-20 pb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+
+        {/* Page header */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-12 mb-4"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[hsl(var(--neon-blue)/0.3)] bg-[hsl(var(--neon-blue)/0.06)] text-xs font-mono text-[hsl(var(--neon-blue))] mb-4">
+            <BookOpen className="w-3 h-3" />
+            Documentation
+          </div>
+          <h1 className="font-display font-700 text-4xl lg:text-5xl gradient-text mb-3">SuperSwap Docs</h1>
+          <p className="text-[hsl(var(--muted-foreground))] text-sm max-w-xl mx-auto">
+            Everything you need to know about the protocol, SSWAP token, airdrops, and roadmap.
+          </p>
+        </motion.div>
+
+        <div className="flex gap-8 items-start">
+          {/* Sidebar */}
+          <aside className="hidden lg:block w-56 shrink-0 sticky top-24">
+            <nav className="space-y-1">
+              {SECTIONS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setActive(id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-display font-500 transition-all text-left ${
+                    active === id
+                      ? 'bg-[hsl(var(--neon-blue)/0.1)] text-[hsl(var(--neon-blue))] border border-[hsl(var(--neon-blue)/0.25)]'
+                      : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--surface-2))] hover:text-[hsl(var(--foreground))]'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {label}
+                </button>
+              ))}
+            </nav>
+
+            <div className="mt-6 p-3 rounded-xl border border-[hsl(var(--neon-purple)/0.3)] bg-[hsl(var(--neon-purple)/0.05)]">
+              <p className="text-[10px] font-mono text-[hsl(var(--neon-purple))] mb-1">SSWAP Token</p>
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">Coming Soon — TGE date TBA</p>
+            </div>
+          </aside>
+
+          {/* Mobile nav */}
+          <div className="lg:hidden w-full mb-4 overflow-x-auto">
+            <div className="flex gap-2 pb-2 w-max">
+              {SECTIONS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setActive(id)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-display font-500 whitespace-nowrap transition-all ${
+                    active === id
+                      ? 'bg-[hsl(var(--neon-blue)/0.1)] text-[hsl(var(--neon-blue))] border border-[hsl(var(--neon-blue)/0.25)]'
+                      : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border))]'
+                  }`}
+                >
+                  <Icon className="w-3 h-3" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Content */}
+          <main className="flex-1 min-w-0">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={active}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.2 }}
+                className="glass-card rounded-2xl p-6 lg:p-8 border border-[hsl(var(--border))]"
+              >
+                {CONTENT_MAP[active]}
+
+                {/* Next section link */}
+                <div className="mt-10 pt-6 border-t border-[hsl(var(--border))] flex justify-between items-center">
+                  <span className="text-xs font-mono text-[hsl(var(--muted-foreground))]">
+                    SuperSwap Documentation · Updated May 2025
+                  </span>
+                  {SECTIONS.findIndex(s => s.id === active) < SECTIONS.length - 1 && (
+                    <button
+                      onClick={() => {
+                        const idx = SECTIONS.findIndex(s => s.id === active);
+                        setActive(SECTIONS[idx + 1].id);
+                      }}
+                      className="flex items-center gap-1.5 text-xs font-display font-500 text-[hsl(var(--neon-blue))] hover:text-[hsl(var(--foreground))] transition-colors"
+                    >
+                      Next: {SECTIONS[SECTIONS.findIndex(s => s.id === active) + 1]?.label}
+                      <ExternalLink className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </main>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+}
