@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
@@ -39,7 +40,7 @@ const promoFeatures = [
 ];
 
 export const SuperTokenPromoSection = (): JSX.Element => {
-  const [learnMoreOpen, setLearnMoreOpen] = useState(false);
+  const [, navigate] = useLocation();
   const [featureOpen, setFeatureOpen] = useState<string | null>(null);
 
   return (
@@ -77,7 +78,7 @@ export const SuperTokenPromoSection = (): JSX.Element => {
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => setLearnMoreOpen(true)}
+                      onClick={() => navigate("/docs")}
                       className="h-auto w-fit rounded border border-[#15222a] bg-[#00050f] px-4 sm:px-5 py-2.5 sm:py-3 text-[#229045] hover:bg-[#031018] hover:text-[#2aa74d] active:scale-95 transition-transform"
                     >
                       <span className="font-['Inter',Helvetica] text-[14px] sm:text-[15px] font-normal tracking-[0] leading-[normal]">
@@ -125,12 +126,6 @@ export const SuperTokenPromoSection = (): JSX.Element => {
         </Card>
       </section>
 
-      <ComingSoonModal
-        open={learnMoreOpen}
-        onClose={() => setLearnMoreOpen(false)}
-        title="$SUPER Token"
-        description="The $SUPER token will power governance, boost rewards, and unlock exclusive perks for SuperSwap holders. Details coming soon."
-      />
       <ComingSoonModal
         open={featureOpen !== null}
         onClose={() => setFeatureOpen(null)}
