@@ -82,7 +82,7 @@ export const LandinHome = (): JSX.Element => {
   return (
     <main className="w-full bg-[#020b1c] min-h-screen">
       <div className="mx-auto flex w-full max-w-[941px] flex-col">
-        <div className="relative isolate flex min-h-screen w-full flex-col overflow-hidden">
+        <div className="relative isolate flex min-h-screen w-full flex-col">
           {backgroundLayers.map((layer) => (
             <img
               key={layer.alt}
@@ -92,11 +92,12 @@ export const LandinHome = (): JSX.Element => {
             />
           ))}
 
-          <header className="relative z-20 w-full">
+          <header className="relative z-20 w-full shrink-0">
             <AppHeaderSection onNavSelect={handleTabChange} />
           </header>
 
-          <div className="relative z-10 flex w-full flex-1 flex-col">
+          {/* Scrollable content area — bottom padding matches nav height */}
+          <div className="relative z-10 flex w-full flex-1 flex-col overflow-y-auto pb-[134px] sm:pb-[166px]">
             {isHome && (
               <>
                 {/* HERO SECTION WITH SOCIAL BOX */}
@@ -191,19 +192,19 @@ export const LandinHome = (): JSX.Element => {
             )}
 
             {isRewards && (
-              <section className="w-full flex-1 overflow-y-auto">
+              <section className="w-full flex-1">
                 <RewardsPage />
               </section>
             )}
 
             {isVault && (
-              <section className="w-full flex-1 overflow-y-auto">
+              <section className="w-full flex-1">
                 <VaultPage />
               </section>
             )}
 
             {isAnalytics && (
-              <section className="w-full flex-1 overflow-y-auto">
+              <section className="w-full flex-1">
                 <AnalyticsPage />
               </section>
             )}
@@ -225,13 +226,14 @@ export const LandinHome = (): JSX.Element => {
                   />
                 </section>
               )}
+          </div>
 
-            <section className="w-full mt-auto">
-              <AssetTickerNavSection
-                activeTab={activeTab}
-                onTabChange={handleTabChange}
-              />
-            </section>
+          {/* Fixed bottom nav — always visible, never scrolls */}
+          <div className="fixed bottom-0 left-0 right-0 z-50 mx-auto w-full max-w-[941px]">
+            <AssetTickerNavSection
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+            />
           </div>
         </div>
       </div>

@@ -84,90 +84,92 @@ export const AssetTickerNavSection = ({
 
   return (
     <section className="relative w-full">
-      <div className="w-full border-y-[3px] border-[#060c18] bg-transparent">
-        {/* Scrolling price ticker — live prices */}
-        <div className="w-full overflow-hidden border-b border-[#060c18]">
-          <div className="flex w-max items-center ticker-track">
-            {tickerItems.map((item, i) => (
-              <div key={i} className="flex items-center">
-                <div className="flex items-center gap-2 px-4 sm:px-5 py-[16px] sm:py-[18px]">
-                  <img
-                    className="h-[24px] w-[24px] sm:h-[28px] sm:w-[28px] object-cover rounded-full"
-                    alt={item.symbol}
-                    src={item.iconSrc}
-                  />
-                  <div className="flex items-center gap-2 sm:gap-3 text-[13px] sm:text-[16px] tracking-[0] leading-[normal] font-['Inter',Helvetica] font-normal whitespace-nowrap">
-                    <span className="font-bold text-[#aaaeb6]">{item.symbol}</span>
-                    <span className="text-[#898d94]">{formatPrice(item.price, item.symbol)}</span>
-                    <span className={item.change24h >= 0 ? "text-[#20833f]" : "text-[#7f1930]"}>
-                      {item.change24h >= 0 ? "+" : ""}{item.change24h.toFixed(2)}%
-                    </span>
-                  </div>
+      {/* Scrolling price ticker — frosted glass */}
+      <div className="w-full overflow-hidden border-b border-[#060c18] bg-[#020816]/90 backdrop-blur-md">
+        <div className="flex w-max items-center ticker-track">
+          {tickerItems.map((item, i) => (
+            <div key={i} className="flex items-center">
+              <div className="flex items-center gap-2 px-4 sm:px-5 py-[14px] sm:py-[16px]">
+                <img
+                  className="h-[24px] w-[24px] sm:h-[28px] sm:w-[28px] object-cover rounded-full"
+                  alt={item.symbol}
+                  src={item.iconSrc}
+                />
+                <div className="flex items-center gap-2 sm:gap-3 text-[13px] sm:text-[16px] tracking-[0] leading-[normal] font-['Inter',Helvetica] font-normal whitespace-nowrap">
+                  <span className="font-bold text-[#aaaeb6]">{item.symbol}</span>
+                  <span className="text-[#898d94]">{formatPrice(item.price, item.symbol)}</span>
+                  <span className={item.change24h >= 0 ? "text-[#20833f]" : "text-[#7f1930]"}>
+                    {item.change24h >= 0 ? "+" : ""}{item.change24h.toFixed(2)}%
+                  </span>
                 </div>
-                <div className="h-[22px] w-px bg-[#1a2535] shrink-0" />
               </div>
-            ))}
-          </div>
+              <div className="h-[22px] w-px bg-[#1a2535] shrink-0" />
+            </div>
+          ))}
         </div>
+      </div>
 
-        {/* Bottom nav */}
-        <nav aria-label="Main navigation" className="w-full">
-          <div className="grid w-full grid-cols-5 gap-0">
-            {navItems.map((item) => {
-              const isActive = activeTab === item.value;
-              return (
-                <button
-                  key={item.value}
-                  type="button"
-                  onClick={() => onTabChange(item.value)}
-                  aria-label={item.label}
-                  aria-current={isActive ? "page" : undefined}
-                  data-testid={`button-nav-${item.value}`}
-                  className="relative flex h-[82px] sm:h-[100px] w-full flex-col items-center justify-end pb-[14px] sm:pb-[20px] focus:outline-none transition-all"
-                >
-                  {isActive ? (
-                    <>
+      {/* Bottom nav — glassy, stays fixed on viewport */}
+      <nav
+        aria-label="Main navigation"
+        className="w-full border-y-[3px] border-[#060c18] bg-[#020816]/95 backdrop-blur-xl"
+        style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
+      >
+        <div className="grid w-full grid-cols-5 gap-0">
+          {navItems.map((item) => {
+            const isActive = activeTab === item.value;
+            return (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => onTabChange(item.value)}
+                aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
+                data-testid={`button-nav-${item.value}`}
+                className="relative flex h-[72px] sm:h-[90px] w-full flex-col items-center justify-end pb-[10px] sm:pb-[14px] focus:outline-none transition-all active:scale-95"
+              >
+                {isActive ? (
+                  <>
+                    <img
+                      className="absolute bottom-[4px] sm:bottom-[6px] h-[58px] sm:h-[72px] w-[100px] sm:w-[134px] object-cover pointer-events-none"
+                      alt=""
+                      src={item.activeBg}
+                    />
+                    <img
+                      className="absolute bottom-[4px] sm:bottom-[6px] h-[3px] w-[80px] sm:w-[108px] object-cover pointer-events-none"
+                      alt=""
+                      src={item.activeUnderline}
+                    />
+                    <div className="relative z-10 flex flex-col items-center gap-1 sm:gap-2">
                       <img
-                        className="absolute bottom-[6px] sm:bottom-[8px] h-[66px] sm:h-[80px] w-[110px] sm:w-[148px] object-cover pointer-events-none"
-                        alt=""
-                        src={item.activeBg}
-                      />
-                      <img
-                        className="absolute bottom-[6px] sm:bottom-[8px] h-[3px] w-[90px] sm:w-[120px] object-cover pointer-events-none"
-                        alt=""
-                        src={item.activeUnderline}
-                      />
-                      <div className="relative z-10 flex flex-col items-center gap-1 sm:gap-2">
-                        <img
-                          className={`${iconSizes[item.value]} object-cover`}
-                          alt={item.label}
-                          src={item.iconSrc}
-                        />
-                        <span className="text-[12px] sm:text-[14px] tracking-[0] leading-[normal] font-['Inter',Helvetica] font-normal text-[#2dae50]">
-                          {item.label}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center gap-1 sm:gap-2">
-                      <img
-                        className={`${iconSizes[item.value]} object-cover opacity-60`}
+                        className={`${iconSizes[item.value]} object-cover`}
                         alt={item.label}
                         src={item.iconSrc}
                       />
-                      <span
-                        className={`text-[12px] sm:text-[14px] tracking-[0] leading-[normal] font-['Inter',Helvetica] font-normal ${inactiveColors[item.value] ?? "text-[#5b6577]"}`}
-                      >
+                      <span className="text-[11px] sm:text-[13px] tracking-[0] leading-[normal] font-['Inter',Helvetica] font-normal text-[#2dae50]">
                         {item.label}
                       </span>
                     </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-      </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-1 sm:gap-2">
+                    <img
+                      className={`${iconSizes[item.value]} object-cover opacity-60`}
+                      alt={item.label}
+                      src={item.iconSrc}
+                    />
+                    <span
+                      className={`text-[11px] sm:text-[13px] tracking-[0] leading-[normal] font-['Inter',Helvetica] font-normal ${inactiveColors[item.value] ?? "text-[#5b6577]"}`}
+                    >
+                      {item.label}
+                    </span>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </section>
   );
 };
