@@ -1,5 +1,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
+import { db } from "./db";
 import { adminStorage } from "./storage";
+import { sql } from "drizzle-orm";
+import { users, rewardUsers, swapEvents, dailyQuests, siteSettings, pageBlocks, adminEvents, socialLinks } from "@shared/schema";
 
 const ADMIN_PASSWORD = "MKM2026";
 const SESSION_TTL = 1000 * 60 * 60 * 4; // 4 hours
@@ -150,5 +153,40 @@ export function registerAdminRoutes(app: Express) {
   app.get("/api/social", async (_req, res) => {
     const links = await adminStorage.getSocialLinks();
     return res.json(links.filter((l) => l.active));
+  });
+
+  // ── Database Explorer ───────────────────────────────────────────────────────────────────────
+  type DbTableKey = "users" | "reward_users" | "swap_events" | "daily_quests" | "site_settings" | "page_blocks" | "admin_events" | "social_links";
+
+  const TABLE_MAP: Record<DbTableKey, any> = {
+    users,
+    reward_users: rewardUsers,
+    swap_events: swapEvents,
+    daily_quests: dailyQuests,
+    site_settings: siteSettings,
+    page_blocks: pageBlocks,
+    admin_events: adminEvents,
+    social_links: socialLinks,
+  };
+
+  app.get("/api/admin/database", requireAdmin, async (_req, res) => {
+    const counts = await Promise.all(
+      (Object.keys(TABLE_MAP) as DbTableKey[]).map(async (key) => {
+        const [row] = await db.select({ count: sql<number>`COUNT(*)` }).from(TABLE_MAP[key]);
+        return { table: key, count: Number(row?.count ?? 0) };
+      })
+    );
+    return res.json(counts);
+  });
+
+  app.get("/api/admin/database/:table", requireAdmin, async (req, res) => {
+    const tableKey = String(req.params.table) as DbTableKey;
+    const table = TABLE_MAP[tableKey];
+    if (!table) return res.status(400).json({ error: "Unknown table" });
+
+    const limit = Math.min(Number(req.query.limit ?? 500), 2000);
+    const offset = Number(req.query.offset ?? 0);
+    const rows = await db.select().from(table).limit(limit).offset(offset);
+    return res.json({ table: tableKey, rows, limit, offset });
   });
 }

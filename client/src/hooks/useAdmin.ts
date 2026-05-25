@@ -221,3 +221,28 @@ export function usePublicSocial() {
     queryFn: () => fetch("/api/social").then((r) => r.json()),
   });
 }
+
+// ── Database Explorer ──────────────────────────────────────────────────────────────────────
+export interface DbTableCount {
+  table: string;
+  count: number;
+}
+
+export function useAdminDatabase() {
+  const qc = useQueryClient();
+
+  const tables = useQuery<DbTableCount[]>({
+    queryKey: ["/api/admin/database"],
+    queryFn: () => adminFetch("/api/admin/database"),
+    enabled: !!getToken(),
+  });
+
+  const rows = (table: string, page = 0, limit = 200) =>
+    useQuery<{ table: string; rows: any[]; limit: number; offset: number }>({
+      queryKey: ["/api/admin/database", table, page, limit],
+      queryFn: () => adminFetch(`/api/admin/database/${table}?limit=${limit}&offset=${page * limit}`),
+      enabled: !!getToken() && !!table,
+    });
+
+  return { tables, rows };
+}

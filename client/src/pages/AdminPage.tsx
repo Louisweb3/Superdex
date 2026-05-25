@@ -5,11 +5,12 @@ import {
   useAdminBlocks,
   useAdminEvents,
   useAdminSocial,
+  useAdminDatabase,
   type PageBlock,
   type CmsEvent,
   type CmsSocialLink,
 } from "@/hooks/useAdmin";
-import { Shield, Settings, FileText, Calendar, Link2, Save, Trash2, Plus, ChevronDown, Eye, Lock, CheckCircle, AlertCircle } from "lucide-react";
+import { Shield, Settings, FileText, Calendar, Link2, Save, Trash2, Plus, ChevronDown, Eye, Lock, CheckCircle, AlertCircle, Database, Download, ChevronLeft, ChevronRight } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const PAGES = ["home", "swap", "rewards", "vault", "analytics"];
@@ -526,10 +527,148 @@ function SocialTab() {
   );
 }
 
+// ─── Database Tab ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+function csvEscape(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  const s = String(v);
+  if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function downloadCSV(filename: string, headers: string[], rows: Record<string, unknown>[]) {
+  const lines = [
+    headers.join(","),
+    ...rows.map((r) => headers.map((h) => csvEscape(r[h])).join(",")),
+  ];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function DatabaseTab() {
+  const { tables, rows } = useAdminDatabase();
+  const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 100;
+
+  const tableData = selectedTable ? rows(selectedTable, page, PAGE_SIZE) : null;
+
+  if (tables.isLoading) return <p className="text-[#6c778a] font-['Inter',sans-serif] text-[13px]">Loading tables...</p>;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-['Inter',sans-serif] text-[16px] font-bold text-[#d0d2d6]">Database Explorer</h2>
+        {selectedTable && tableData?.data && (
+          <Button
+            onClick={() => {
+              const allRows = tableData.data.rows;
+              if (allRows.length === 0) return;
+              const headers = Object.keys(allRows[0]);
+              downloadCSV(`${selectedTable}.csv`, headers, allRows);
+            }}
+          >
+            <Download className="h-4 w-4" /> Download CSV
+          </Button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        {(tables.data ?? []).map((t) => (
+          <button
+            key={t.table}
+            onClick={() => { setSelectedTable(t.table); setPage(0); }}
+            className={`flex flex-col items-start rounded-[12px] border px-4 py-3 text-left transition-all ${
+              selectedTable === t.table
+                ? "border-[#1a5c2a] bg-[#0e3a1e]"
+                : "border-[#131b27] bg-[#00040e] hover:border-[#1a2535]"
+            }`}
+          >
+            <span className="font-['Inter',sans-serif] text-[12px] font-semibold text-[#c8ccd4] capitalize">
+              {t.table.replace(/_/g, " ")}
+            </span>
+            <span className="font-['Inter',sans-serif] text-[11px] text-[#6c778a]">
+              {t.count.toLocaleString()} rows
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {selectedTable && tableData && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="font-['Inter',sans-serif] text-[13px] text-[#c8ccd4]">
+              {tableData.data
+                ? `Showing ${tableData.data.rows.length} of ~${tables.data?.find((t) => t.table === selectedTable)?.count.toLocaleString() ?? 0} rows`
+                : "Loading..."}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                <ChevronLeft className="h-4 w-4" /> Prev
+              </Button>
+              <span className="font-['Inter',sans-serif] text-[13px] text-[#6c778a]">Page {page + 1}</span>
+              <Button
+                variant="secondary"
+                disabled={!tableData.data || tableData.data.rows.length < PAGE_SIZE}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {tableData.isLoading || !tableData.data ? (
+            <p className="text-[#6c778a] font-['Inter',sans-serif] text-[13px]">Loading rows...</p>
+          ) : tableData.data.rows.length === 0 ? (
+            <p className="text-[#6c778a] font-['Inter',sans-serif] text-[13px]">No rows in this table.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-[12px] border border-[#131b27]">
+              <table className="w-full text-left">
+                <thead className="bg-[#071020]">
+                  <tr>
+                    {Object.keys(tableData.data.rows[0]).map((h) => (
+                      <th key={h} className="px-3 py-2 font-['Inter',sans-serif] text-[11px] font-semibold text-[#6c778a] uppercase tracking-wide whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableData.data.rows.map((row, i) => (
+                    <tr key={i} className="border-t border-[#0e1620] hover:bg-[#071020]/50">
+                      {Object.values(row).map((cell, j) => (
+                        <td key={j} className="px-3 py-2 font-['Inter',sans-serif] text-[12px] text-[#c8ccd4] whitespace-nowrap max-w-[200px] overflow-hidden text-ellipsis">
+                          {cell === null || cell === undefined ? "—" : String(cell).slice(0, 80)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main AdminPage ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 export function AdminPage(): JSX.Element {
   const auth = useAdminAuth();
-  const [tab, setTab] = useState<"settings" | "pages" | "events" | "social">("settings");
+  const [tab, setTab] = useState<"settings" | "pages" | "events" | "social" | "database">("settings");
 
   if (!auth.isLoggedIn) {
     return <LoginScreen onLogin={auth.login} />;
@@ -540,6 +679,7 @@ export function AdminPage(): JSX.Element {
     { key: "pages" as const, label: "Page Editor", icon: <FileText className="h-4 w-4" /> },
     { key: "events" as const, label: "Events", icon: <Calendar className="h-4 w-4" /> },
     { key: "social" as const, label: "Social", icon: <Link2 className="h-4 w-4" /> },
+    { key: "database" as const, label: "Database", icon: <Database className="h-4 w-4" /> },
   ];
 
   return (
@@ -586,6 +726,7 @@ export function AdminPage(): JSX.Element {
         {tab === "pages" && <PageEditorTab />}
         {tab === "events" && <EventsTab />}
         {tab === "social" && <SocialTab />}
+        {tab === "database" && <DatabaseTab />}
       </main>
     </div>
   );
