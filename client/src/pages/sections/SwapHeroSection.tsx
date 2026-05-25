@@ -1,19 +1,23 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
+import { usePublicSettings } from "@/hooks/useAdmin";
 
 interface SwapHeroSectionProps {
   onViewRewards?: () => void;
 }
 
-const heroLines = [
-  { text: "SWAP.", className: "text-[#ecedef]" },
-  { text: "EARN.", className: "text-[#edeef0]" },
-  { text: "REPEAT.", className: "text-[#45ec62]" },
-];
-
 export const SwapHeroSection = ({ onViewRewards }: SwapHeroSectionProps): JSX.Element => {
   const [swapOpen, setSwapOpen] = useState(false);
+  const { data: settings } = usePublicSettings();
+
+  const heroLines = [
+    { text: settings?.hero_title_line1 || "SWAP.", className: "text-[#ecedef]" },
+    { text: settings?.hero_title_line2 || "EARN.", className: "text-[#edeef0]" },
+    { text: settings?.hero_title_line3 || "REPEAT.", className: "text-[#45ec62]" },
+  ];
+  const tagline = settings?.site_tagline || "REWARD-FIRST DEX";
+  const subtitle = settings?.hero_subtitle || "The DEX on Base that rewards you\nevery time you trade.";
 
   return (
     <>
@@ -34,7 +38,7 @@ export const SwapHeroSection = ({ onViewRewards }: SwapHeroSectionProps): JSX.El
                     src="/figmaAssets/image-29.png"
                   />
                   <span className="flex items-center font-['Inter',Helvetica] text-[13px] sm:text-[15px] font-medium leading-[normal] tracking-[0] text-[#768296]">
-                    REWARD-FIRST DEX
+                    {tagline}
                   </span>
                 </div>
                 <header className="space-y-0">
@@ -47,10 +51,8 @@ export const SwapHeroSection = ({ onViewRewards }: SwapHeroSectionProps): JSX.El
                     </h1>
                   ))}
                 </header>
-                <p className="max-w-[280px] sm:max-w-[336px] font-['Inter',Helvetica] text-base sm:text-xl font-normal leading-[24px] sm:leading-[26.9px] tracking-[0] text-[#6d788b]">
-                  The DEX on Base that rewards you
-                  <br />
-                  every time you trade.
+                <p className="max-w-[280px] sm:max-w-[336px] font-['Inter',Helvetica] text-base sm:text-xl font-normal leading-[24px] sm:leading-[26.9px] tracking-[0] text-[#6d788b] whitespace-pre-line">
+                  {subtitle}
                 </p>
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3 sm:gap-4">

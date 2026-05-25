@@ -441,3 +441,196 @@ export class RewardsStorage {
 }
 
 export const rewardsStorage = new RewardsStorage();
+
+// ─── Admin CMS Storage ───────────────────────────────────────────────────────────────────
+import { asc } from "drizzle-orm";
+import { siteSettings, pageBlocks, adminEvents, socialLinks } from "@shared/schema";
+
+export interface CmsPageBlock {
+  id: string;
+  page: string;
+  section: string;
+  block_key: string;
+  content_type: string;
+  value: string;
+  sort_order: number;
+}
+
+export interface CmsEvent {
+  id: string;
+  title: string;
+  description: string;
+  event_type: string;
+  start_date: string;
+  end_date: string;
+  active: boolean;
+  xp_bonus: number;
+  cashback_multiplier: number;
+}
+
+export interface CmsSocialLink {
+  id: string;
+  platform: string;
+  url: string;
+  icon: string;
+  active: boolean;
+  sort_order: number;
+}
+
+export class AdminStorage {
+  // ── Site Settings ───────────────────────────────────────────────────────────────
+  async getSetting(key: string): Promise<string | undefined> {
+    const [row] = await db.select().from(siteSettings).where(eq(siteSettings.key, key)).limit(1);
+    return row?.value;
+  }
+
+  async setSetting(key: string, value: string): Promise<void> {
+    const [existing] = await db.select().from(siteSettings).where(eq(siteSettings.key, key)).limit(1);
+    if (existing) {
+      await db.update(siteSettings).set({ value, updated_at: new Date() }).where(eq(siteSettings.key, key));
+    } else {
+      await db.insert(siteSettings).values({ key, value, updated_at: new Date() });
+    }
+  }
+
+  async getAllSettings(): Promise<Record<string, string>> {
+    const rows = await db.select().from(siteSettings);
+    const out: Record<string, string> = {};
+    for (const r of rows) out[r.key] = r.value;
+    return out;
+  }
+
+  // ── Page Blocks ─────────────────────────────────────────────────────────────────────────
+  async getPageBlocks(page?: string): Promise<CmsPageBlock[]> {
+    if (page) {
+      return db
+        .select()
+        .from(pageBlocks)
+        .where(eq(pageBlocks.page, page))
+        .orderBy(asc(pageBlocks.sort_order));
+    }
+    return db.select().from(pageBlocks).orderBy(asc(pageBlocks.sort_order));
+  }
+
+  async setPageBlock(block: Omit<CmsPageBlock, "id"> & { id?: string }): Promise<CmsPageBlock> {
+    const id = block.id ?? randomUUID();
+    const [existing] = await db.select().from(pageBlocks).where(eq(pageBlocks.id, id)).limit(1);
+    if (existing) {
+      await db
+        .update(pageBlocks)
+        .set({
+          page: block.page,
+          section: block.section,
+          block_key: block.block_key,
+          content_type: block.content_type,
+          value: block.value,
+          sort_order: block.sort_order,
+          updated_at: new Date(),
+        })
+        .where(eq(pageBlocks.id, id));
+    } else {
+      await db.insert(pageBlocks).values({
+        id,
+        page: block.page,
+        section: block.section,
+        block_key: block.block_key,
+        content_type: block.content_type,
+        value: block.value,
+        sort_order: block.sort_order,
+        updated_at: new Date(),
+      });
+    }
+    const [row] = await db.select().from(pageBlocks).where(eq(pageBlocks.id, id)).limit(1);
+    return row as CmsPageBlock;
+  }
+
+  async deletePageBlock(id: string): Promise<void> {
+    await db.delete(pageBlocks).where(eq(pageBlocks.id, id));
+  }
+
+  // ── Events ───────────────────────────────────────────────────────────────────────────────
+  async getEvents(): Promise<CmsEvent[]> {
+    const rows = await db.select().from(adminEvents).orderBy(desc(adminEvents.created_at));
+    return rows.map((r) => ({ ...r, cashback_multiplier: Number(r.cashback_multiplier) }));
+  }
+
+  async createEvent(ev: Omit<CmsEvent, "id">): Promise<CmsEvent> {
+    const id = randomUUID();
+    await db.insert(adminEvents).values({
+      id,
+      title: ev.title,
+      description: ev.description,
+      event_type: ev.event_type,
+      start_date: ev.start_date,
+      end_date: ev.end_date,
+      active: ev.active,
+      xp_bonus: ev.xp_bonus,
+      cashback_multiplier: String(ev.cashback_multiplier),
+      created_at: new Date(),
+    });
+    const [row] = await db.select().from(adminEvents).where(eq(adminEvents.id, id)).limit(1);
+    return { ...row, cashback_multiplier: Number(row.cashback_multiplier) } as CmsEvent;
+  }
+
+  async updateEvent(id: string, patch: Partial<CmsEvent>): Promise<CmsEvent | null> {
+    const [existing] = await db.select().from(adminEvents).where(eq(adminEvents.id, id)).limit(1);
+    if (!existing) return null;
+    const setObj: any = {};
+    if (patch.title !== undefined) setObj.title = patch.title;
+    if (patch.description !== undefined) setObj.description = patch.description;
+    if (patch.event_type !== undefined) setObj.event_type = patch.event_type;
+    if (patch.start_date !== undefined) setObj.start_date = patch.start_date;
+    if (patch.end_date !== undefined) setObj.end_date = patch.end_date;
+    if (patch.active !== undefined) setObj.active = patch.active;
+    if (patch.xp_bonus !== undefined) setObj.xp_bonus = patch.xp_bonus;
+    if (patch.cashback_multiplier !== undefined) setObj.cashback_multiplier = String(patch.cashback_multiplier);
+    await db.update(adminEvents).set(setObj).where(eq(adminEvents.id, id));
+    const [row] = await db.select().from(adminEvents).where(eq(adminEvents.id, id)).limit(1);
+    return { ...row, cashback_multiplier: Number(row.cashback_multiplier) } as CmsEvent;
+  }
+
+  async deleteEvent(id: string): Promise<void> {
+    await db.delete(adminEvents).where(eq(adminEvents.id, id));
+  }
+
+  // ── Social Links ─────────────────────────────────────────────────────────────────────────────────
+  async getSocialLinks(): Promise<CmsSocialLink[]> {
+    return db.select().from(socialLinks).orderBy(asc(socialLinks.sort_order));
+  }
+
+  async upsertSocialLink(link: Partial<CmsSocialLink> & { platform: string; url: string }): Promise<CmsSocialLink> {
+    const id = link.id ?? randomUUID();
+    const [existing] = await db.select().from(socialLinks).where(eq(socialLinks.id, id)).limit(1);
+    if (existing) {
+      await db
+        .update(socialLinks)
+        .set({
+          platform: link.platform,
+          url: link.url,
+          icon: link.icon ?? existing.icon,
+          active: link.active ?? existing.active,
+          sort_order: link.sort_order ?? existing.sort_order,
+          updated_at: new Date(),
+        })
+        .where(eq(socialLinks.id, id));
+    } else {
+      await db.insert(socialLinks).values({
+        id,
+        platform: link.platform,
+        url: link.url,
+        icon: link.icon ?? "",
+        active: link.active ?? true,
+        sort_order: link.sort_order ?? 0,
+        updated_at: new Date(),
+      });
+    }
+    const [row] = await db.select().from(socialLinks).where(eq(socialLinks.id, id)).limit(1);
+    return row as CmsSocialLink;
+  }
+
+  async deleteSocialLink(id: string): Promise<void> {
+    await db.delete(socialLinks).where(eq(socialLinks.id, id));
+  }
+}
+
+export const adminStorage = new AdminStorage();

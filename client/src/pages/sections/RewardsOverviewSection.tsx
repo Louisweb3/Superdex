@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { useWalletContext } from "@/context/WalletContext";
 import { useRewardUser } from "@/hooks/useRewards";
+import { usePublicSettings } from "@/hooks/useAdmin";
 
 function fmtUsd(n: number | undefined | null) {
   if (n == null || isNaN(n)) return "$0.00";
@@ -24,10 +25,14 @@ export const RewardsOverviewSection = (): JSX.Element => {
   const addr = wallet.isConnected ? wallet.address : null;
   const { data: user } = useRewardUser(addr);
   const { data: stats } = useGlobalStats();
+  const { data: settings } = usePublicSettings();
 
-  // Use live data when available, fall back to static display values
-  const totalRewardsPaid = stats?.totalCashbackUsd
-    ? fmtUsd(stats.totalCashbackUsd + 2_481_092)   // seed with display value
+  // Admin overrides: use CMS setting if available, else fall back to computed + seed
+  const adminTotalRewards = settings?.total_rewards_paid;
+  const totalRewardsPaid = adminTotalRewards
+    ? adminTotalRewards
+    : stats?.totalCashbackUsd
+    ? fmtUsd(stats.totalCashbackUsd + 2_481_092)
     : "$2,481,092";
 
   const todayEarned = user ? fmtUsd(user.cashback_usd) : (addr ? "Loading…" : "$0.00");

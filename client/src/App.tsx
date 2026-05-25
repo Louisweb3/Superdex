@@ -7,6 +7,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WalletProvider } from "@/context/WalletContext";
 import NotFound from "@/pages/not-found";
 import { LandinHome } from "@/pages/LandinHome";
+import { AdminPage } from "@/pages/AdminPage";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/rewards" component={LandinHome} />
       <Route path="/vault" component={LandinHome} />
       <Route path="/analytics" component={LandinHome} />
+      <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />
     </Switch>
   );

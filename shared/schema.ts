@@ -68,3 +68,47 @@ export const dailyQuests = pgTable("daily_quests", {
   claimed: boolean("claimed").notNull().default(false),
   created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
+
+// ─── Admin CMS: Site Settings ─────────────────────────────────────────────────
+export const siteSettings = pgTable("site_settings", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  value: text("value").notNull(),
+  updated_at: timestamp("updated_at", { mode: "date" }).defaultNow(),
+});
+
+// ─── Admin CMS: Page Blocks (editable content per page) ───────────────────────
+export const pageBlocks = pgTable("page_blocks", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  page: varchar("page", { length: 32 }).notNull(),      // e.g. "home", "swap", "rewards"
+  section: varchar("section", { length: 32 }).notNull(), // e.g. "hero", "overview"
+  block_key: varchar("block_key", { length: 64 }).notNull(), // e.g. "title", "subtitle", "image"
+  content_type: varchar("content_type", { length: 16 }).notNull().default("text"), // text | image | html
+  value: text("value").notNull(),
+  sort_order: integer("sort_order").notNull().default(0),
+  updated_at: timestamp("updated_at", { mode: "date" }).defaultNow(),
+});
+
+// ─── Admin CMS: Events/Announcements ──────────────────────────────────────────
+export const adminEvents = pgTable("admin_events", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  event_type: varchar("event_type", { length: 16 }).notNull().default("announcement"), // announcement | reward_event | promo
+  start_date: varchar("start_date", { length: 10 }).notNull(),
+  end_date: varchar("end_date", { length: 10 }).notNull(),
+  active: boolean("active").notNull().default(true),
+  xp_bonus: integer("xp_bonus").notNull().default(0),
+  cashback_multiplier: numeric("cashback_multiplier", { precision: 5, scale: 2 }).notNull().default("1"),
+  created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+// ─── Admin CMS: Social Links ──────────────────────────────────────────────────
+export const socialLinks = pgTable("social_links", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  platform: varchar("platform", { length: 32 }).notNull(), // twitter, discord, telegram, github
+  url: text("url").notNull(),
+  icon: text("icon").notNull().default(""),
+  active: boolean("active").notNull().default(true),
+  sort_order: integer("sort_order").notNull().default(0),
+  updated_at: timestamp("updated_at", { mode: "date" }).defaultNow(),
+});
