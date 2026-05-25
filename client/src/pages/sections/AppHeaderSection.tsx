@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { useWalletContext } from "@/context/WalletContext";
+import { ExternalLink, X } from "lucide-react";
 
 interface AppHeaderSectionProps {
   onNavSelect?: (tab: string) => void;
@@ -36,33 +37,64 @@ export const AppHeaderSection = ({ onNavSelect }: AppHeaderSectionProps): JSX.El
             </span>
           </button>
 
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              if (wallet.isConnected) {
-                wallet.disconnect();
-              } else {
-                setWalletOpen(true);
-              }
-            }}
-            data-testid="button-connect-wallet"
-            className="h-auto rounded-[22px] border border-[#12352d] bg-[#000d10] px-3 sm:px-5 py-2.5 sm:py-4 text-[#2ca84c] hover:bg-[#041418] hover:text-[#2ca84c] transition-all"
-          >
-            <span className="flex items-center gap-2 sm:gap-3 font-['Inter',Helvetica] text-[15px] sm:text-[19px] font-bold leading-[normal] tracking-[0]">
-              <img
-                className="h-4 w-4 sm:h-5 sm:w-5 object-cover"
-                alt="Wallet"
-                src="/figmaAssets/image-30.png"
-              />
-              {wallet.isConnected && wallet.address
-                ? <span className="text-[13px] sm:text-[16px]">{shortAddr(wallet.address)}</span>
-                : wallet.isConnecting
-                ? <span className="text-[13px]">Connecting…</span>
-                : <span>Connect</span>
-              }
-            </span>
-          </Button>
+          {wallet.isConnected && wallet.address ? (
+            <div className="flex items-center gap-2">
+              {/* Connected wallet button — opens Basescan */}
+              <a
+                href={`https://basescan.org/address/${wallet.address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="button-view-on-basescan"
+                className="flex items-center gap-2 sm:gap-3 h-auto rounded-[22px] border border-[#12352d] bg-[#000d10] px-3 sm:px-5 py-2.5 sm:py-4 text-[#2ca84c] hover:bg-[#041418] transition-all"
+              >
+                <img
+                  className="h-4 w-4 sm:h-5 sm:w-5 object-cover"
+                  alt="Wallet"
+                  src="/figmaAssets/image-30.png"
+                />
+                <div className="flex flex-col items-start leading-none">
+                  <span className="font-['Inter',Helvetica] text-[13px] sm:text-[16px] font-bold text-[#2ca84c]">
+                    {shortAddr(wallet.address)}
+                  </span>
+                  {wallet.balance && (
+                    <span className="font-['Inter',Helvetica] text-[10px] sm:text-[11px] text-[#5f8a6e] mt-0.5">
+                      {wallet.balance} ETH
+                    </span>
+                  )}
+                </div>
+                <ExternalLink className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#3a7a52] shrink-0" />
+              </a>
+              {/* Disconnect button */}
+              <button
+                onClick={() => wallet.disconnect()}
+                data-testid="button-disconnect-wallet"
+                className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-[#3a0e0e] bg-[#1a0a0a] text-[#c9543a] hover:bg-[#2a1010] transition-all"
+                title="Disconnect wallet"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setWalletOpen(true)}
+              data-testid="button-connect-wallet"
+              className="h-auto rounded-[22px] border border-[#12352d] bg-[#000d10] px-3 sm:px-5 py-2.5 sm:py-4 text-[#2ca84c] hover:bg-[#041418] hover:text-[#2ca84c] transition-all"
+            >
+              <span className="flex items-center gap-2 sm:gap-3 font-['Inter',Helvetica] text-[15px] sm:text-[19px] font-bold leading-[normal] tracking-[0]">
+                <img
+                  className="h-4 w-4 sm:h-5 sm:w-5 object-cover"
+                  alt="Wallet"
+                  src="/figmaAssets/image-30.png"
+                />
+                {wallet.isConnecting
+                  ? <span className="text-[13px]">Connecting…</span>
+                  : <span>Connect</span>
+                }
+              </span>
+            </Button>
+          )}
         </div>
 
         {wallet.isWrongNetwork && wallet.isConnected && (
