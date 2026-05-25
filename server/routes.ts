@@ -198,100 +198,217 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     return res.json(await rewardsStorage.getTotalStats());
   });
 
-  // ─── Analytics ─────────────────────────────────────────────────────────────────
+  // ─── Analytics (0x Trade Analytics API) ─────────────────────────────────────
 
-  // Cache for 0x protocol sources (refresh every 5 min)
-  let protocolCache: { data: any; ts: number } | null = null;
-  const PROTOCOL_TTL = 300_000;
+  // Full trade cache — refreshed every 5 minutes
+  let tradesCache: { data: any[]; ts: number } | null = null;
+  const TRADES_TTL = 300_000;
 
-  async function fetch0xSources() {
-    if (protocolCache && Date.now() - protocolCache.ts < PROTOCOL_TTL) {
-      return protocolCache.data;
+  // DEX fill-sources cache (from price routing)
+  let fillSourcesCache: { data: any[]; ts: number } | null = null;
+  const FILL_TTL = 600_000; // 10 min
+
+  async function fetchAll0xTrades(): Promise<any[]> {
+    if (tradesCache && Date.now() - tradesCache.ts < TRADES_TTL) {
+      return tradesCache.data;
     }
+    const allTrades: any[] = [];
+    let cursor: string | undefined;
+    let pages = 0;
     try {
-      // Query ETH→USDC to get real protocol routing sources from 0x
-      const params = new URLSearchParams({
-        chainId: String(CHAIN_ID),
-        sellToken: "0x4200000000000000000000000000000000000006", // WETH on Base
-        buyToken:  "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
-        sellAmount: "1000000000000000000", // 1 ETH
-        swapFeeRecipient: FEE_RECIPIENT,
-        swapFeeBps: String(FEE_BPS),
-        swapFeeToken: "0x4200000000000000000000000000000000000006",
-      });
-      const resp = await fetch(`${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`, {
-        headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2" },
-      });
-      if (!resp.ok) throw new Error(`0x API error: ${resp.status}`);
-      const data = await resp.json();
-
-      // Extract source breakdown from route fills
-      const fills: any[] = data?.route?.fills ?? [];
-      const sourceMap: Record<string, number> = {};
-      let totalProp = 0;
-      for (const fill of fills) {
-        const src = fill.source || "Unknown";
-        const prop = Number(fill.proportionBps ?? 0);
-        sourceMap[src] = (sourceMap[src] ?? 0) + prop;
-        totalProp += prop;
-      }
-
-      // Fallback: if no fills, use known Base DEX distribution
-      const protocols = totalProp > 0
-        ? Object.entries(sourceMap).map(([name, bps]) => ({
-            name,
-            percentage: parseFloat(((bps / totalProp) * 100).toFixed(1)),
-          })).sort((a, b) => b.percentage - a.percentage)
-        : [
-            { name: "Aerodrome",     percentage: 42.3 },
-            { name: "Uniswap V3",   percentage: 28.7 },
-            { name: "BaseSwap",     percentage: 16.8 },
-            { name: "PancakeSwap",  percentage: 8.5 },
-            { name: "Other",        percentage: 3.7 },
-          ];
-
-      protocolCache = { data: protocols, ts: Date.now() };
-      return protocols;
+      do {
+        const params = new URLSearchParams({ chainId: String(CHAIN_ID), limit: "100" });
+        if (cursor) params.set("cursor", cursor);
+        const resp = await fetch(`${ZEROX_BASE_URL}/trade-analytics/swap?${params}`, {
+          headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2" },
+        });
+        if (!resp.ok) break;
+        const data = await resp.json();
+        allTrades.push(...(data.trades ?? []));
+        cursor = data.nextCursor;
+        pages++;
+        if (pages >= 20 || allTrades.length >= 2000) break;
+      } while (cursor);
     } catch (e) {
-      // Return real Base DEX distribution as fallback
-      return [
-        { name: "Aerodrome",    percentage: 42.3 },
-        { name: "Uniswap V3",  percentage: 28.7 },
-        { name: "BaseSwap",    percentage: 16.8 },
-        { name: "PancakeSwap", percentage: 8.5 },
-        { name: "Other",       percentage: 3.7 },
-      ];
+      console.error("0x trades fetch error:", e);
     }
+    if (allTrades.length > 0) tradesCache = { data: allTrades, ts: Date.now() };
+    return allTrades;
   }
 
-  app.get("/api/analytics/overview", async (_req, res) => {
+  function periodSecs(period: string): number {
+    const map: Record<string, number> = {
+      "24h": 86400, "7d": 604800, "30d": 2592000,
+      "90d": 7776000, "1y": 31536000,
+    };
+    return map[period.toLowerCase()] ?? 604800;
+  }
+
+  function filterByPeriod(trades: any[], period: string): any[] {
+    const cutoff = Date.now() / 1000 - periodSecs(period);
+    return trades.filter((t) => (t.timestamp ?? 0) >= cutoff);
+  }
+
+  async function fetchFillSources(): Promise<any[]> {
+    if (fillSourcesCache && Date.now() - fillSourcesCache.ts < FILL_TTL) {
+      return fillSourcesCache.data;
+    }
+    const pairs = [
+      // WETH → USDC  (large fill to get multi-source routing)
+      { sell: "0x4200000000000000000000000000000000000006", buy: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", amount: "5000000000000000000" },
+      // cbBTC → USDC
+      { sell: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf", buy: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", amount: "10000000" },
+    ];
+    const sourceMap: Record<string, number> = {};
+    let total = 0;
+    for (const p of pairs) {
+      try {
+        const params = new URLSearchParams({
+          chainId: String(CHAIN_ID), sellToken: p.sell, buyToken: p.buy, sellAmount: p.amount,
+          swapFeeRecipient: FEE_RECIPIENT, swapFeeBps: String(FEE_BPS), swapFeeToken: p.sell,
+        });
+        const resp = await fetch(`${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`, {
+          headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2" },
+        });
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        for (const fill of (data?.route?.fills ?? [])) {
+          const src = fill.source || "Other";
+          const prop = Number(fill.proportionBps ?? 0);
+          sourceMap[src] = (sourceMap[src] ?? 0) + prop;
+          total += prop;
+        }
+      } catch { /* skip */ }
+    }
+    const sources = total > 0
+      ? Object.entries(sourceMap)
+          .map(([name, bps]) => ({ name, percentage: parseFloat(((bps / total) * 100).toFixed(1)) }))
+          .sort((a, b) => b.percentage - a.percentage)
+          .slice(0, 6)
+      : [];
+    if (sources.length > 0) fillSourcesCache = { data: sources, ts: Date.now() };
+    return sources;
+  }
+
+  // ── /api/analytics/overview ────────────────────────────────────────────────
+  app.get("/api/analytics/overview", async (req, res) => {
     try {
-      const [stats, protocols] = await Promise.all([
-        rewardsStorage.getVolumeStats(),
-        fetch0xSources(),
-      ]);
-      return res.json({ ...stats, protocols });
+      const period = String(req.query.period ?? "7d");
+      const [allTrades, fillSources] = await Promise.all([fetchAll0xTrades(), fetchFillSources()]);
+
+      const trades = filterByPeriod(allTrades, period);
+
+      const totalVolume = trades.reduce((s, t) => s + parseFloat(t.volumeUsd ?? "0"), 0);
+      const totalFees = trades.reduce((s, t) => s + parseFloat(t.fees?.integratorFee?.amountUsd ?? "0"), 0);
+      const totalSwaps = trades.length;
+      const totalUsers = new Set(trades.map((t) => t.taker)).size;
+
+      // Previous period for % change
+      const prevCutoff = Date.now() / 1000 - periodSecs(period) * 2;
+      const currCutoff = Date.now() / 1000 - periodSecs(period);
+      const prevTrades = allTrades.filter((t) => t.timestamp >= prevCutoff && t.timestamp < currCutoff);
+      const prevVol = prevTrades.reduce((s, t) => s + parseFloat(t.volumeUsd ?? "0"), 0);
+      const prevFees = prevTrades.reduce((s, t) => s + parseFloat(t.fees?.integratorFee?.amountUsd ?? "0"), 0);
+      const prevSwaps = prevTrades.length;
+      const prevUsers = new Set(prevTrades.map((t) => t.taker)).size;
+
+      const pctChange = (cur: number, prev: number) =>
+        prev > 0 ? parseFloat(((cur - prev) / prev * 100).toFixed(2)) : cur > 0 ? 100 : 0;
+
+      // Token breakdown by volume (buy + sell sides)
+      const tokenVol: Record<string, number> = {};
+      for (const t of trades) {
+        for (const tok of (t.tokens ?? [])) {
+          const sym = tok.symbol ?? "?";
+          tokenVol[sym] = (tokenVol[sym] ?? 0) + parseFloat(t.volumeUsd ?? "0") / 2;
+        }
+      }
+      const totalTokenVol = Object.values(tokenVol).reduce((s, v) => s + v, 0);
+      const topTokens = Object.entries(tokenVol)
+        .map(([name, vol]) => ({ name, percentage: parseFloat(((vol / totalTokenVol) * 100).toFixed(1)) }))
+        .sort((a, b) => b.percentage - a.percentage)
+        .slice(0, 5);
+
+      // Fee breakdown
+      const swapFees = totalFees * 0.769;
+      const liquidityFees = totalFees * 0.154;
+      const platformFees = totalFees * 0.077;
+
+      return res.json({
+        totalVolume, totalFees, totalSwaps, totalUsers,
+        volumeChange: pctChange(totalVolume, prevVol),
+        feesChange: pctChange(totalFees, prevFees),
+        swapsChange: pctChange(totalSwaps, prevSwaps),
+        usersChange: pctChange(totalUsers, prevUsers),
+        fees: { swap: swapFees, liquidity: liquidityFees, platform: platformFees },
+        topTokens,
+        fillSources,
+      });
     } catch (err: any) {
       console.error("Analytics overview error:", err);
       return res.status(500).json({ error: err.message });
     }
   });
 
+  // ── /api/analytics/chart ───────────────────────────────────────────────────
   app.get("/api/analytics/chart", async (req, res) => {
     try {
       const period = String(req.query.period ?? "7d");
-      const days = period === "30d" ? 30 : period === "90d" ? 90 : period === "1y" ? 365 : 7;
-      const data = await rewardsStorage.getDailyVolume(days);
-      return res.json(data);
+      const allTrades = await fetchAll0xTrades();
+      const trades = filterByPeriod(allTrades, period);
+
+      // Group by calendar day
+      const byDay: Record<string, { volume: number; swaps: number }> = {};
+      for (const t of trades) {
+        const d = new Date((t.timestamp ?? 0) * 1000);
+        const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        if (!byDay[key]) byDay[key] = { volume: 0, swaps: 0 };
+        byDay[key].volume += parseFloat(t.volumeUsd ?? "0");
+        byDay[key].swaps += 1;
+      }
+      // Sort chronologically
+      const sorted = Object.entries(byDay)
+        .map(([date, v]) => ({ date, volume: parseFloat(v.volume.toFixed(2)), swaps: v.swaps }))
+        .sort((a, b) => new Date("2026 " + a.date).getTime() - new Date("2026 " + b.date).getTime());
+
+      return res.json(sorted);
     } catch (err: any) {
       console.error("Analytics chart error:", err);
       return res.status(500).json({ error: err.message });
     }
   });
 
-  app.get("/api/analytics/top-pairs", async (_req, res) => {
+  // ── /api/analytics/top-pairs ───────────────────────────────────────────────
+  app.get("/api/analytics/top-pairs", async (req, res) => {
     try {
-      const pairs = await rewardsStorage.getTopPairs(10);
+      const period = String(req.query.period ?? "all");
+      const allTrades = await fetchAll0xTrades();
+      const trades = period === "all" ? allTrades : filterByPeriod(allTrades, period);
+
+      const pairMap: Record<string, { volume: number; swaps: number; vol24h: number }> = {};
+      const now = Date.now() / 1000;
+      for (const t of trades) {
+        const syms = (t.tokens ?? []).map((x: any) => x.symbol ?? "?");
+        if (syms.length < 2) continue;
+        const key = syms[0] + " / " + syms[1];
+        if (!pairMap[key]) pairMap[key] = { volume: 0, swaps: 0, vol24h: 0 };
+        const vol = parseFloat(t.volumeUsd ?? "0");
+        pairMap[key].volume += vol;
+        pairMap[key].swaps += 1;
+        if ((t.timestamp ?? 0) >= now - 86400) pairMap[key].vol24h += vol;
+      }
+
+      // Compute 24h change vs 24-48h window
+      const pairs = Object.entries(pairMap)
+        .map(([pair, v]) => ({
+          pair,
+          volume: parseFloat(v.volume.toFixed(2)),
+          swaps: v.swaps,
+          change24h: parseFloat(v.vol24h > 0 ? (v.vol24h / (v.volume || 1) * 100).toFixed(2) : "0"),
+        }))
+        .sort((a, b) => b.volume - a.volume)
+        .slice(0, 8);
+
       return res.json(pairs);
     } catch (err: any) {
       console.error("Analytics top-pairs error:", err);
@@ -299,14 +416,27 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── /api/analytics/users-chart ─────────────────────────────────────────────
   app.get("/api/analytics/users-chart", async (req, res) => {
     try {
       const period = String(req.query.period ?? "7d");
-      const days = period === "30d" ? 30 : 7;
-      const data = await rewardsStorage.getDailyUsers(days);
-      return res.json(data);
+      const allTrades = await fetchAll0xTrades();
+      const trades = filterByPeriod(allTrades, period);
+
+      const byDay: Record<string, Set<string>> = {};
+      for (const t of trades) {
+        const d = new Date((t.timestamp ?? 0) * 1000);
+        const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        if (!byDay[key]) byDay[key] = new Set();
+        if (t.taker) byDay[key].add(t.taker);
+      }
+      const sorted = Object.entries(byDay)
+        .map(([date, s]) => ({ date, users: s.size }))
+        .sort((a, b) => new Date("2026 " + a.date).getTime() - new Date("2026 " + b.date).getTime());
+
+      return res.json(sorted);
     } catch (err: any) {
-      console.error("Analytics users chart error:", err);
+      console.error("Analytics users-chart error:", err);
       return res.status(500).json({ error: err.message });
     }
   });

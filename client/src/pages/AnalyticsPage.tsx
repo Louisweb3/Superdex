@@ -7,8 +7,8 @@ import {
 } from "recharts";
 import {
   TrendingUp, TrendingDown, Activity, Users, Repeat2,
-  DollarSign, ArrowUpRight, ChevronDown, Info,
-  Zap, BarChart2, AlertCircle,
+  DollarSign, ArrowUpRight, Info,
+  BarChart2,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -17,12 +17,13 @@ interface AnalyticsOverview {
   totalFees: number;
   totalSwaps: number;
   totalUsers: number;
-  volume24h: number;
-  swaps24h: number;
-  activeUsers24h: number;
-  volumeChange24h: number;
+  volumeChange: number;
+  feesChange: number;
+  swapsChange: number;
+  usersChange: number;
   fees: { swap: number; liquidity: number; platform: number };
-  protocols: { name: string; percentage: number }[];
+  topTokens: { name: string; percentage: number }[];
+  fillSources: { name: string; percentage: number }[];
 }
 interface ChartPoint { date: string; volume: number; swaps: number }
 interface UserPoint { date: string; users: number }
@@ -44,18 +45,17 @@ function fmtNum(n: number): string {
   return n.toLocaleString("en-US");
 }
 function pct(n: number): string {
-  return (n >= 0 ? "+" : "") + n.toFixed(2) + "%";
+  if (!isFinite(n) || Math.abs(n) > 9999) return n >= 0 ? "New ↑" : "—";
+  return (n >= 0 ? "+" : "") + n.toFixed(1) + "%";
 }
 
-const PERIOD_DAYS: Record<string, number> = { "24H": 1, "7D": 7, "30D": 30, "90D": 90, "1Y": 365 };
-
-const PROTOCOL_COLORS = ["#2dae50", "#3b82f6", "#f59e0b", "#8b5cf6", "#64748b"];
+const PROTOCOL_COLORS = ["#2dae50", "#3b82f6", "#f59e0b", "#8b5cf6", "#64748b", "#e05a3a"];
 
 const TOKEN_ICONS: Record<string, string> = {
-  ETH: "/figmaAssets/image-7.png",
-  WETH: "/figmaAssets/image-7.png",
+  ETH:   "/figmaAssets/image-7.png",
+  WETH:  "/figmaAssets/image-7.png",
   cbBTC: "/figmaAssets/image-6.png",
-  USDC: "/figmaAssets/image-5.png",
+  USDC:  "/figmaAssets/image-5.png",
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -158,12 +158,12 @@ export const AnalyticsPage = (): JSX.Element => {
   const [period, setPeriod] = useState("7D");
   const [userPeriod, setUserPeriod] = useState("7D");
 
-  const periodParam = period.toLowerCase().replace("h", "h");
+  const periodParam = period.toLowerCase();
 
   const { data: overview, isLoading: ovLoading } = useQuery<AnalyticsOverview>({
-    queryKey: ["/api/analytics/overview"],
+    queryKey: ["/api/analytics/overview", period],
     queryFn: async () => {
-      const r = await fetch("/api/analytics/overview");
+      const r = await fetch(`/api/analytics/overview?period=${period.toLowerCase()}`);
       return r.json();
     },
     refetchInterval: 60_000,
@@ -173,7 +173,7 @@ export const AnalyticsPage = (): JSX.Element => {
   const { data: chartData = [], isLoading: chartLoading } = useQuery<ChartPoint[]>({
     queryKey: ["/api/analytics/chart", period],
     queryFn: async () => {
-      const r = await fetch(`/api/analytics/chart?period=${period.toLowerCase()}`);
+      const r = await fetch(`/api/analytics/chart?period=${periodParam}`);
       return r.json();
     },
     staleTime: 30_000,
@@ -199,29 +199,28 @@ export const AnalyticsPage = (): JSX.Element => {
   });
 
   const ov = overview;
-  const hasData = !!ov;
+  const hasData = !!ov && !ovLoading;
 
-  // Spark data derived from chart
   const sparkVolume = chartData.map((d) => d.volume);
-  const sparkSwaps = chartData.map((d) => d.swaps);
+  const sparkSwaps  = chartData.map((d) => d.swaps);
 
-  // Protocol pie data
-  const protocols = ov?.protocols ?? [];
+  // Token breakdown pie — prefer topTokens, fall back to fillSources
+  const pieData = (ov?.topTokens ?? []).length > 0 ? ov!.topTokens : (ov?.fillSources ?? []);
 
   const insights = [
     {
       icon: TrendingUp,
       color: "#2dae50",
       title: ov
-        ? `Volume is ${pct(ov.volumeChange24h)} vs previous 24h.`
+        ? `Volume is ${pct(ov.volumeChange)} vs previous period.`
         : "Volume change tracking active.",
-      sub: "Traders are more active today.",
+      sub: "Based on 0x Trade Analytics on Base.",
     },
     {
       icon: Users,
       color: "#3b82f6",
       title: `${fmtNum(ov?.totalUsers ?? 0)} unique traders on SuperSwap.`,
-      sub: "Growing community on Base.",
+      sub: "Growing community on Base chain.",
     },
     {
       icon: Activity,
@@ -245,7 +244,7 @@ export const AnalyticsPage = (): JSX.Element => {
           <h1 className="font-['Inter',Helvetica] text-[20px] sm:text-[22px] font-bold text-white">
             Analytics Overview
           </h1>
-          <p className="mt-0.5 text-[12px] text-[#4a5a6a]">Track the performance of SuperSwap on Base.</p>
+          <p className="mt-0.5 text-[12px] text-[#4a5a6a]">Real-time SuperSwap data on Base via 0x Trade Analytics.</p>
         </div>
         <PeriodSelector value={period} onChange={setPeriod} options={["24H", "7D", "30D", "90D", "1Y"]} />
       </div>
@@ -253,33 +252,33 @@ export const AnalyticsPage = (): JSX.Element => {
       {/* ── Stat Cards ── */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <StatCard
-          label="Total Volume"
+          label={`Volume (${period})`}
           value={hasData ? fmtUsd(ov!.totalVolume, true) : "—"}
-          change={ov?.volumeChange24h}
+          change={ov?.volumeChange}
           icon={DollarSign}
           color="#2dae50"
           sparkData={sparkVolume}
         />
         <StatCard
-          label="Total Fees"
+          label={`Fees (${period})`}
           value={hasData ? fmtUsd(ov!.totalFees, true) : "—"}
-          change={ov ? ov.volumeChange24h * 0.8 : undefined}
+          change={ov?.feesChange}
           icon={TrendingUp}
           color="#8b5cf6"
           sparkData={sparkVolume.map((v) => v * 0.003)}
         />
         <StatCard
-          label="Total Swaps"
+          label={`Swaps (${period})`}
           value={hasData ? fmtNum(ov!.totalSwaps) : "—"}
-          change={ov ? ov.volumeChange24h * 0.6 : undefined}
+          change={ov?.swapsChange}
           icon={Repeat2}
           color="#3b82f6"
           sparkData={sparkSwaps}
         />
         <StatCard
-          label="Unique Users"
+          label={`Unique Users (${period})`}
           value={hasData ? fmtNum(ov!.totalUsers) : "—"}
-          change={ov ? Math.abs(ov.volumeChange24h) * 0.4 : undefined}
+          change={ov?.usersChange}
           icon={Users}
           color="#f59e0b"
           sparkData={usersData.map((d) => d.users)}
@@ -305,13 +304,13 @@ export const AnalyticsPage = (): JSX.Element => {
         </div>
 
         <div className="flex items-center gap-2 mb-3">
-          <span className={`flex items-center gap-1 text-[11px] font-medium ${(ov?.volumeChange24h ?? 0) >= 0 ? "text-[#2dae50]" : "text-[#e05a3a]"}`}>
+          <span className={`flex items-center gap-1 text-[11px] font-medium ${(ov?.volumeChange ?? 0) >= 0 ? "text-[#2dae50]" : "text-[#e05a3a]"}`}>
             <div className="h-2 w-2 rounded-full bg-[#2dae50]" />
             Volume (USD)
           </span>
           {ov && (
-            <span className={`text-[11px] font-medium ${ov.volumeChange24h >= 0 ? "text-[#2dae50]" : "text-[#e05a3a]"}`}>
-              {pct(ov.volumeChange24h)}
+            <span className={`text-[11px] font-medium ${ov.volumeChange >= 0 ? "text-[#2dae50]" : "text-[#e05a3a]"}`}>
+              {pct(ov.volumeChange)}
             </span>
           )}
         </div>
@@ -326,8 +325,7 @@ export const AnalyticsPage = (): JSX.Element => {
             ) : (
               <div className="flex flex-col items-center gap-2 text-center">
                 <BarChart2 className="h-8 w-8 text-[#1a2a3a]" />
-                <span className="text-[12px] text-[#3a4a5a]">No swap data yet</span>
-                <span className="text-[10px] text-[#2a3a4a]">Make a swap to start tracking volume</span>
+                <span className="text-[12px] text-[#3a4a5a]">No data for this period</span>
               </div>
             )}
           </div>
@@ -352,13 +350,20 @@ export const AnalyticsPage = (): JSX.Element => {
         )}
       </div>
 
-      {/* ── Volume by Protocol ── */}
+      {/* ── Volume by Token ── */}
       <div className="rounded-[18px] border border-[#0f2030] bg-[#030c18] p-4 mb-4">
-        <SectionHeader title="Volume by Protocol" sub="Live routing data from 0x API" />
+        <SectionHeader
+          title="Volume by Token"
+          sub={`Top tokens by trading volume — ${period} period`}
+        />
 
-        {protocols.length === 0 ? (
+        {ovLoading || pieData.length === 0 ? (
           <div className="h-[160px] flex items-center justify-center">
-            <div className="h-6 w-6 rounded-full border-2 border-[#2dae50] border-t-transparent animate-spin" />
+            {ovLoading ? (
+              <div className="h-6 w-6 rounded-full border-2 border-[#2dae50] border-t-transparent animate-spin" />
+            ) : (
+              <span className="text-[12px] text-[#3a4a5a]">No token data yet</span>
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-4">
@@ -366,7 +371,7 @@ export const AnalyticsPage = (): JSX.Element => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={protocols}
+                    data={pieData}
                     cx="50%"
                     cy="50%"
                     innerRadius={42}
@@ -374,7 +379,7 @@ export const AnalyticsPage = (): JSX.Element => {
                     dataKey="percentage"
                     strokeWidth={0}
                   >
-                    {protocols.map((_: any, i: number) => (
+                    {pieData.map((_: any, i: number) => (
                       <Cell key={i} fill={PROTOCOL_COLORS[i % PROTOCOL_COLORS.length]} />
                     ))}
                   </Pie>
@@ -386,7 +391,7 @@ export const AnalyticsPage = (): JSX.Element => {
               </div>
             </div>
             <div className="flex flex-col gap-2 flex-1 min-w-0">
-              {protocols.map((p: any, i: number) => (
+              {pieData.map((p: any, i: number) => (
                 <div key={p.name} className="flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: PROTOCOL_COLORS[i % PROTOCOL_COLORS.length] }} />
@@ -396,7 +401,7 @@ export const AnalyticsPage = (): JSX.Element => {
                 </div>
               ))}
               <button className="mt-1 flex items-center gap-1 text-[11px] text-[#2dae50] hover:text-[#3acd5b] transition-colors">
-                View All Protocols <ArrowUpRight className="h-3 w-3" />
+                Live 0x data <ArrowUpRight className="h-3 w-3" />
               </button>
             </div>
           </div>
@@ -405,7 +410,7 @@ export const AnalyticsPage = (): JSX.Element => {
 
       {/* ── Top Trading Pairs ── */}
       <div className="rounded-[18px] border border-[#0f2030] bg-[#030c18] p-4 mb-4">
-        <SectionHeader title="Top Trading Pairs" sub="Ranked by all-time volume" />
+        <SectionHeader title="Top Trading Pairs" sub="Ranked by all-time volume from 0x Trade Analytics" />
         {pairsLoading ? (
           <div className="h-[120px] flex items-center justify-center">
             <div className="h-6 w-6 rounded-full border-2 border-[#2dae50] border-t-transparent animate-spin" />
@@ -414,7 +419,6 @@ export const AnalyticsPage = (): JSX.Element => {
           <div className="flex flex-col items-center gap-2 py-8 text-center">
             <Repeat2 className="h-8 w-8 text-[#1a2a3a]" />
             <span className="text-[12px] text-[#3a4a5a]">No swap data yet</span>
-            <span className="text-[10px] text-[#2a3a4a]">Trading pairs will appear here after swaps</span>
           </div>
         ) : (
           <>
@@ -422,11 +426,11 @@ export const AnalyticsPage = (): JSX.Element => {
               <span className="text-[10px] text-[#3a4a5a] font-medium uppercase tracking-wide">Pair</span>
               <div className="flex items-center gap-6">
                 <span className="text-[10px] text-[#3a4a5a] font-medium uppercase tracking-wide">Volume</span>
-                <span className="text-[10px] text-[#3a4a5a] font-medium uppercase tracking-wide w-16 text-right">24H Chg</span>
+                <span className="text-[10px] text-[#3a4a5a] font-medium uppercase tracking-wide w-14 text-right">Swaps</span>
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              {topPairs.slice(0, 5).map((p, i) => {
+              {topPairs.slice(0, 6).map((p, i) => {
                 const [sell, buy] = p.pair.split(" / ");
                 return (
                   <div key={p.pair} className="flex items-center justify-between rounded-[12px] border border-[#0a1828] bg-[#020b15] px-3 py-2.5" data-testid={`row-pair-${i}`}>
@@ -443,8 +447,8 @@ export const AnalyticsPage = (): JSX.Element => {
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-[13px] font-medium text-[#c0c8d0]">{fmtUsd(p.volume, true)}</span>
-                      <span className={`text-[12px] font-bold w-16 text-right ${p.change24h >= 0 ? "text-[#2dae50]" : "text-[#e05a3a]"}`}>
-                        {pct(p.change24h)}
+                      <span className="text-[12px] font-medium text-[#3a4a5a] w-14 text-right">
+                        {fmtNum(p.swaps)}
                       </span>
                     </div>
                   </div>
@@ -469,8 +473,8 @@ export const AnalyticsPage = (): JSX.Element => {
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[20px] font-bold text-white">{hasData ? fmtNum(ov!.totalUsers) : "—"}</span>
               {ov && (
-                <span className="text-[12px] text-[#2dae50] font-medium">
-                  +{fmtNum(ov.activeUsers24h)} active 24h
+                <span className={`text-[12px] font-medium ${ov.usersChange >= 0 ? "text-[#2dae50]" : "text-[#e05a3a]"}`}>
+                  {pct(ov.usersChange)} vs prev period
                 </span>
               )}
             </div>
@@ -518,51 +522,49 @@ export const AnalyticsPage = (): JSX.Element => {
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[20px] font-bold text-white">{hasData ? fmtUsd(ov!.totalFees) : "—"}</span>
               {ov && (
-                <span className={`text-[12px] font-medium ${ov.volumeChange24h >= 0 ? "text-[#2dae50]" : "text-[#e05a3a]"}`}>
-                  {pct(ov.volumeChange24h * 0.8)}
+                <span className={`text-[12px] font-medium ${ov.feesChange >= 0 ? "text-[#2dae50]" : "text-[#e05a3a]"}`}>
+                  {pct(ov.feesChange)}
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        {hasData && (
-          <div className="mt-3 flex flex-col gap-3">
-            {[
-              { label: "Swap Fees", value: ov!.fees.swap, pct: 76.9, color: "#2dae50" },
-              { label: "Liquidity Fees", value: ov!.fees.liquidity, pct: 15.3, color: "#3b82f6" },
-              { label: "Platform Fees", value: ov!.fees.platform, pct: 7.8, color: "#8b5cf6" },
-            ].map((f) => (
-              <div key={f.label}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[12px] text-[#c0c8d0]">{f.label}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[12px] font-medium text-white">{fmtUsd(f.value)}</span>
-                    <span className="text-[11px] text-[#4a5a6a] w-12 text-right">{f.pct}%</span>
-                  </div>
+        <div className="mt-3 flex flex-col gap-2.5">
+          {hasData && [
+            { label: "Swap Fees (76.9%)",    value: ov!.fees.swap,      color: "#2dae50" },
+            { label: "Liquidity Fees (15.4%)", value: ov!.fees.liquidity, color: "#3b82f6" },
+            { label: "Platform Fees (7.7%)",  value: ov!.fees.platform,  color: "#8b5cf6" },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-3">
+              <div className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ background: item.color }} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] text-[#4a5a6a]">{item.label}</span>
+                  <span className="text-[12px] font-bold text-white">{fmtUsd(item.value)}</span>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-[#0a1520]">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${f.pct}%`, background: f.color }} />
+                <div className="h-1.5 w-full rounded-full bg-[#0a1828] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${(item.value / (ov!.totalFees || 1)) * 100}%`,
+                      background: item.color,
+                    }}
+                  />
                 </div>
               </div>
-            ))}
-            <button className="mt-1 flex items-center gap-1 text-[11px] text-[#2dae50] hover:text-[#3acd5b] transition-colors">
-              View Fee Model <ArrowUpRight className="h-3 w-3" />
-            </button>
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* ── Analytics Insights ── */}
+      {/* ── Insights ── */}
       <div className="rounded-[18px] border border-[#0f2030] bg-[#030c18] p-4">
-        <SectionHeader title="Analytics Insights" />
+        <SectionHeader title="Insights" sub="Key observations from 0x trade data" />
         <div className="flex flex-col gap-3">
           {insights.map((ins, i) => (
-            <div key={i} className="flex items-start gap-3 rounded-[12px] border border-[#0a1828] bg-[#020b15] px-3 py-3">
-              <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]"
-                style={{ background: `${ins.color}15`, border: `1px solid ${ins.color}25` }}
-              >
+            <div key={i} className="flex items-start gap-3 rounded-[12px] border border-[#0a1828] bg-[#020b15] px-3 py-2.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px]" style={{ background: `${ins.color}15` }}>
                 <ins.icon className="h-4 w-4" style={{ color: ins.color }} />
               </div>
               <div>
@@ -571,9 +573,6 @@ export const AnalyticsPage = (): JSX.Element => {
               </div>
             </div>
           ))}
-          <button className="mt-1 flex items-center gap-1 text-[11px] text-[#2dae50] hover:text-[#3acd5b] transition-colors">
-            View All Insights <ArrowUpRight className="h-3 w-3" />
-          </button>
         </div>
       </div>
     </div>
