@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { rewardsStorage } from "./storage";
+import { verifyTransaction } from "./basescan";
 
 const ZEROX_API_KEY = process.env.ZEROX_API_KEY || "";
 const ZEROX_BASE_URL = "https://api.0x.org";
@@ -112,7 +113,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           },
         ];
       } else {
-        // Fallback static prices
         prices = [
           { symbol: "ETH",   price: 0, change24h: 0, iconSrc: "/figmaAssets/image-7.png" },
           { symbol: "cbBTC", price: 0, change24h: 0, iconSrc: "/figmaAssets/image-6.png" },
@@ -124,7 +124,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       return res.json(prices);
     } catch (err: any) {
       console.error("Market prices error:", err);
-      // Return fallback on error
       return res.json([
         { symbol: "ETH",   price: 0, change24h: 0, iconSrc: "/figmaAssets/image-7.png" },
         { symbol: "cbBTC", price: 0, change24h: 0, iconSrc: "/figmaAssets/image-6.png" },
@@ -133,58 +132,63 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ─── Rewards API ────────────────────────────────────────────────────────────
+  // ─── Rewards API ───────────────────────────────────────────────────────────────
 
-  // Get or init user rewards profile
-  app.get("/api/rewards/user/:wallet", (req, res) => {
+  app.get("/api/rewards/user/:wallet", async (req, res) => {
     const { wallet } = req.params;
     if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
-    const user = rewardsStorage.upsertUser(wallet);
+    const user = await rewardsStorage.upsertUser(wallet);
     return res.json(user);
   });
 
-  // Record a completed swap → award XP + cashback
-  app.post("/api/rewards/swap", (req, res) => {
+  app.post("/api/rewards/swap", async (req, res) => {
     const { wallet, txHash, sellSymbol, buySymbol, volumeUsd } = req.body;
     if (!wallet || !txHash || !sellSymbol || !buySymbol || volumeUsd == null) {
       return res.status(400).json({ error: "Missing fields: wallet, txHash, sellSymbol, buySymbol, volumeUsd" });
     }
-    const result = rewardsStorage.recordSwap(wallet, txHash, sellSymbol, buySymbol, Number(volumeUsd));
+
+    // Optionally verify on Basescan
+    let verified = false;
+    try {
+      const bscan = await verifyTransaction(txHash);
+      verified = bscan.ok && bscan.status === "1";
+    } catch {
+      verified = false;
+    }
+
+    const result = await rewardsStorage.recordSwap(
+      wallet, txHash, sellSymbol, buySymbol, Number(volumeUsd), { verified }
+    );
     return res.json(result);
   });
 
-  // Get daily quests
-  app.get("/api/rewards/quests/:wallet", (req, res) => {
+  app.get("/api/rewards/quests/:wallet", async (req, res) => {
     const { wallet } = req.params;
     if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
-    return res.json(rewardsStorage.getDailyQuests(wallet));
+    return res.json(await rewardsStorage.getDailyQuests(wallet));
   });
 
-  // Claim a completed quest
-  app.post("/api/rewards/quests/:wallet/claim", (req, res) => {
+  app.post("/api/rewards/quests/:wallet/claim", async (req, res) => {
     const { wallet } = req.params;
     const { questType } = req.body;
     if (!wallet || !questType) return res.status(400).json({ error: "Missing wallet or questType" });
-    const result = rewardsStorage.claimQuest(wallet, questType);
+    const result = await rewardsStorage.claimQuest(wallet, questType);
     if (!result) return res.status(400).json({ error: "Quest not claimable" });
     return res.json(result);
   });
 
-  // Reward history for wallet
-  app.get("/api/rewards/history/:wallet", (req, res) => {
+  app.get("/api/rewards/history/:wallet", async (req, res) => {
     const { wallet } = req.params;
     if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
-    return res.json(rewardsStorage.getSwapHistory(wallet, 20));
+    return res.json(await rewardsStorage.getSwapHistory(wallet, 20));
   });
 
-  // Leaderboard
-  app.get("/api/rewards/leaderboard", (_req, res) => {
-    return res.json(rewardsStorage.getLeaderboard(10));
+  app.get("/api/rewards/leaderboard", async (_req, res) => {
+    return res.json(await rewardsStorage.getLeaderboard(10));
   });
 
-  // Global stats (for home page)
-  app.get("/api/rewards/stats", (_req, res) => {
-    return res.json(rewardsStorage.getTotalStats());
+  app.get("/api/rewards/stats", async (_req, res) => {
+    return res.json(await rewardsStorage.getTotalStats());
   });
 
   return httpServer;

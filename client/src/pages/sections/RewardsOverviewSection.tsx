@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useWalletContext } from "@/context/WalletContext";
 import { useRewardUser } from "@/hooks/useRewards";
 
-function fmtUsd(n: number) {
+function fmtUsd(n: number | undefined | null) {
+  if (n == null || isNaN(n)) return "$0.00";
   if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
   if (n >= 1_000) return "$" + (n / 1_000).toFixed(2) + "k";
   return "$" + n.toFixed(2);
