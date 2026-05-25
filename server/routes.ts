@@ -198,5 +198,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     return res.json(await rewardsStorage.getTotalStats());
   });
 
+  // ── Mini App webhook stub (required by manifest) ────────────────────────────────────────────────────────────────────
+  app.post("/api/webhook", async (req, res) => {
+    const { event } = req.body || {};
+    console.log("[webhook]", event);
+    return res.json({ ok: true });
+  });
+
   return httpServer;
 }

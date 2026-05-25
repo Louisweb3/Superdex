@@ -1,0 +1,23 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjAsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAifQ",
+    "payload": "eyJkb21haW4iOiJzdXBlcnN3YXBmaS54eXoifQ",
+    "signature": ""
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "SuperSwap",
+    "iconUrl": "https://superswapfi.xyz/figmaAssets/logo.png",
+    "homeUrl": "https://superswapfi.xyz/",
+    "imageUrl": "https://superswapfi.xyz/figmaAssets/image-1779712623879.png",
+    "buttonTitle": "Swap",
+    "splashImageUrl": "https://superswapfi.xyz/figmaAssets/logo.png",
+    "splashBackgroundColor": "#020816",
+    "webhookUrl": "https://superswapfi.xyz/api/webhook",
+    "requiredChains": ["eip155:8453"],
+    "requiredCapabilities": [
+      "actions.signIn",
+      "wallet.getEthereumProvider"
+    ]
+  }
+}

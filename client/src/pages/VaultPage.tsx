@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWalletContext } from "@/context/WalletContext";
 import {
   Shield,
@@ -149,8 +149,6 @@ function PoolCard({
         onClick={() => setExpanded(!expanded)}
         className="flex w-full items-center gap-4 px-5 py-5 text-left"
       >
-
-        {/* TOKEN */}
         <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#111827]">
 
           <img
@@ -164,7 +162,6 @@ function PoolCard({
           </div>
         </div>
 
-        {/* INFO */}
         <div className="min-w-0 flex-1">
 
           <div className="flex items-center justify-between gap-3">
@@ -202,11 +199,9 @@ function PoolCard({
         />
       </button>
 
-      {/* EXPANDED */}
       {expanded && (
         <div className="border-t border-white/[0.05] px-5 pb-5 pt-5">
 
-          {/* TABS */}
           <div className="mb-5 grid grid-cols-2 gap-3">
 
             <button
@@ -248,7 +243,6 @@ function PoolCard({
           {connected && (
             <div className="flex flex-col gap-4">
 
-              {/* INPUT */}
               <div className="rounded-[20px] border border-white/[0.06] bg-[#111827] p-5">
 
                 <div className="mb-3 flex items-center justify-between">
@@ -278,7 +272,6 @@ function PoolCard({
                 </div>
               </div>
 
-              {/* INFO */}
               <div className="flex items-start gap-2 rounded-[16px] border border-white/[0.05] bg-[#111827] px-4 py-3">
 
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
@@ -296,7 +289,6 @@ function PoolCard({
                 </span>
               </div>
 
-              {/* BUTTON */}
               <button
                 disabled={!amount || Number(amount) <= 0}
                 className="rounded-[18px] bg-white py-4 text-[15px] font-bold text-black transition-all hover:bg-zinc-200 disabled:opacity-40"
@@ -319,45 +311,51 @@ export function VaultPage(): JSX.Element {
 
   const [walletOpen, setWalletOpen] = useState(false);
 
-  // FORCED POPUP
   const [showVaultPopup] = useState(true);
 
   const addr = wallet.isConnected ? wallet.address : null;
+
+  // LOCK SCROLL WHEN POPUP OPEN
+  useEffect(() => {
+    if (showVaultPopup) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, [showVaultPopup]);
 
   return (
     <>
       {/* FORCED POPUP */}
       {showVaultPopup && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md">
+        <div className="fixed inset-x-0 top-0 bottom-[76px] z-[9999] overflow-hidden bg-black/95 backdrop-blur-xl">
 
           {/* glow */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.12),transparent_55%)]" />
 
-          {/* popup */}
-          <div className="relative w-full max-w-[540px] px-5">
+          {/* CENTER */}
+          <div className="flex h-full w-full items-center justify-center px-5">
 
-            <div className="overflow-hidden rounded-[34px] border border-white/[0.08] bg-[#070B11] shadow-[0_30px_120px_rgba(0,0,0,0.75)]">
+            {/* popup */}
+            <div className="relative w-full max-w-[540px] overflow-hidden rounded-[34px] border border-white/[0.08] bg-[#070B11] shadow-[0_30px_120px_rgba(0,0,0,0.75)]">
 
               {/* image */}
               <img
                 src="https://i.ibb.co/xSTdr3nh/Chat-GPT-Image-May-25-2026-06-22-11-PM.png"
                 alt="Vault"
-                className="w-full object-cover"
+                className="block w-full object-cover"
               />
-
-              {/* overlay */}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent px-7 pb-8 pt-20">
-                <div className="flex flex-col items-center text-center">
-                  {/* intentionally empty */}
-                </div>
-              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* PAGE */}
-      <div className="min-h-screen w-full bg-[#070B11] px-[16px] pb-[30px] pt-[18px]">
+      <div className="min-h-screen w-full bg-[#070B11] px-[16px] pb-[120px] pt-[18px]">
 
         {/* HEADER */}
         <div className="mb-6 flex items-center justify-between">
@@ -447,58 +445,6 @@ export function VaultPage(): JSX.Element {
                 connected={wallet.isConnected}
               />
             ))}
-          </div>
-        </section>
-
-        {/* INFO */}
-        <section className="mt-6">
-
-          <div className="rounded-[28px] border border-white/[0.06] bg-[#0B1118] p-6">
-
-            <div className="flex items-start gap-4">
-
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#111827]">
-
-                <Clock className="h-5 w-5 text-cyan-300" />
-              </div>
-
-              <div>
-
-                <h3 className="text-[18px] font-bold text-white">
-                  How Vault Works
-                </h3>
-
-                <p className="mt-3 max-w-[700px] text-[14px] leading-relaxed text-[#94A3B8]">
-                  Deposit your assets into SuperVaults to earn passive yield. Rewards accrue in real-time and can be claimed anytime. Longer lock periods unlock higher APY rewards.
-                </p>
-
-                <div className="mt-5 flex flex-wrap gap-3">
-
-                  {[
-                    {
-                      label: "Auto-compounding",
-                      icon: <Zap className="h-3 w-3" />,
-                    },
-                    {
-                      label: "Base secured",
-                      icon: <Shield className="h-3 w-3" />,
-                    },
-                    {
-                      label: "No minimum",
-                      icon: <CheckCircle2 className="h-3 w-3" />,
-                    },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-[#111827] px-4 py-2 text-[12px] text-[#CBD5E1]"
-                    >
-                      {item.icon}
-                      {item.label}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         </section>
       </div>

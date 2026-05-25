@@ -115,6 +115,37 @@ export function useWallet() {
     }
   }, []);
 
+  // ── Auto-connect when running inside Base Mini App frame ────────────────────────────────────────────────────────────────────
+  const autoConnectMiniApp = useCallback(async () => {
+    if (!window.ethereum) return;
+    // When the host (Base App / Coinbase Wallet) embeds us, the provider
+    // is already injected and often pre-authorised. We try eth_accounts
+    // silently first — if there’s already an account, we connect without
+    // popping a permission prompt.
+    try {
+      const accounts: string[] = await window.ethereum.request({ method: "eth_accounts" });
+      if (accounts.length > 0) {
+        const chainIdHex: string = await window.ethereum.request({ method: "eth_chainId" });
+        const chainId = parseInt(chainIdHex, 16);
+        updateState({
+          address: accounts[0],
+          chainId,
+          isConnected: true,
+          isConnecting: false,
+          isWrongNetwork: chainId !== BASE_CHAIN_ID,
+          error: null,
+        });
+        await fetchBalance(accounts[0]);
+        return true;
+      }
+      // No pre-authorised accounts → fall back to full connect
+      await connect();
+      return true;
+    } catch {
+      return false;
+    }
+  }, [connect, fetchBalance]);
+
   const switchToBase = useCallback(async () => {
     if (!window.ethereum) return;
     try {
@@ -155,5 +186,5 @@ export function useWallet() {
     return txHash;
   }, [state.address]);
 
-  return { ...state, connect, disconnect, switchToBase, sendTransaction };
+  return { ...state, connect, disconnect, switchToBase, sendTransaction, autoConnectMiniApp };
 }
