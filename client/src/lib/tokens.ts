@@ -5,6 +5,12 @@ export interface Token {
   decimals: number;
   icon: string;
   isNative?: boolean;
+
+  // portfolio / market enrichments
+  price?: number;
+  balance?: number;
+  balanceUsd?: number;
+  isTrending?: boolean;
 }
 
 export const BASE_CHAIN_ID = 8453;

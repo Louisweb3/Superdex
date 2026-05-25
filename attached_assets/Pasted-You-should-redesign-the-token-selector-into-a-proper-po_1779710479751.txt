@@ -1,0 +1,341 @@
+You should redesign the token selector into a proper portfolio-aware swap picker instead of a static `TOKENS.map()` list. Your current dropdown only renders local token constants, so it has no balances, no trending separation, and no DexScreener metadata. 
+
+Here’s the structure you should implement.
+
+---
+
+# What To Add
+
+## 1. Dropdown Sections
+
+Inside the token dropdown create:
+
+* **Your Holdings**
+
+  * Tokens user owns
+  * Sorted by USD value descending
+
+* **Trending**
+
+  * Top 25 trending tokens from DexScreener
+
+* **All Tokens**
+
+  * Full searchable token list
+
+---
+
+# 2. What Each Row Should Show
+
+Each token row should display:
+
+* Logo
+* Symbol
+* Name
+* User balance
+* USD value
+* Small “Trending” badge (if applicable)
+
+Example:
+
+```txt
+[logo] ETH
+Ethereum
+1.42 ETH   $5,021
+
+[logo] BRETT
+Brett
+12,500 BRETT   $312
+```
+
+---
+
+# 3. Replace Static TOKENS
+
+Right now you use:
+
+```ts
+tokens={allTokens.filter((t) => t.address !== disabledToken.address)}
+```
+
+and everything comes from:
+
+```ts
+TOKENS
+```
+
+That’s the core limitation. 
+
+You need dynamic token state.
+
+---
+
+# Recommended Architecture
+
+## Create Token Types
+
+Extend your `Token` type:
+
+```ts
+export type Token = {
+  address: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  icon: string;
+
+  price?: number;
+  balance?: number;
+  balanceUsd?: number;
+
+  isTrending?: boolean;
+}
+```
+
+---
+
+# 4. Fetch Trending Tokens From DexScreener
+
+Use DexScreener API:
+
+```txt
+https://api.dexscreener.com/token-profiles/latest/v1
+```
+
+OR
+
+```txt
+https://api.dexscreener.com/latest/dex/search?q=base
+```
+
+You want:
+
+* logo
+* symbol
+* liquidity
+* volume
+* price
+* chain
+* pair address
+
+---
+
+# 5. Create Hook
+
+## `useTrendingTokens.ts`
+
+```ts
+export function useTrendingTokens() {
+  const [tokens, setTokens] = useState<Token[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      const res = await fetch(
+        "https://api.dexscreener.com/token-profiles/latest/v1"
+      );
+
+      const data = await res.json();
+
+      const formatted = data
+        .slice(0, 25)
+        .map((t: any) => ({
+          address: t.tokenAddress,
+          symbol: t.symbol,
+          name: t.name,
+          icon: t.icon,
+          isTrending: true,
+        }));
+
+      setTokens(formatted);
+    }
+
+    load();
+  }, []);
+
+  return tokens;
+}
+```
+
+---
+
+# 6. Holdings Section
+
+Use wallet balances.
+
+You already have:
+
+```ts
+const wallet = useWalletContext();
+```
+
+So add:
+
+```ts
+const holdings = useWalletBalances(wallet.address);
+```
+
+Return:
+
+```ts
+[
+  {
+    symbol: "ETH",
+    balance: 1.2,
+    balanceUsd: 4200
+  }
+]
+```
+
+Sort:
+
+```ts
+.sort((a,b) => b.balanceUsd - a.balanceUsd)
+```
+
+---
+
+# 7. Dropdown Layout
+
+Replace current dropdown body:
+
+```tsx
+<div className="flex flex-col py-1">
+```
+
+with:
+
+```tsx
+<div className="max-h-[420px] overflow-y-auto">
+```
+
+---
+
+Then:
+
+```tsx
+<TokenSection title="Your Holdings" />
+<TokenSection title="Trending" />
+<TokenSection title="All Tokens" />
+```
+
+---
+
+# 8. Add Search
+
+Top of dropdown:
+
+```tsx
+<input
+  placeholder="Search token"
+  className="..."
+/>
+```
+
+Filter by:
+
+* symbol
+* name
+* address
+
+---
+
+# 9. Better Token Row
+
+Replace current row with:
+
+```tsx
+<div className="flex items-center justify-between">
+  <div className="flex items-center gap-3">
+    <img />
+    <div>
+      <p>{token.symbol}</p>
+      <p>{token.name}</p>
+    </div>
+  </div>
+
+  <div className="text-right">
+    <p>{balance}</p>
+    <p>${usd}</p>
+  </div>
+</div>
+```
+
+---
+
+# 10. Add Fallback Logos
+
+DexScreener sometimes returns null logos.
+
+Fallback:
+
+```ts
+icon:
+  t.icon ||
+  `https://dd.dexscreener.com/ds-data/tokens/base/${address}.png`
+```
+
+---
+
+# 11. Better UX
+
+Add:
+
+* sticky section headers
+* recently used tokens
+* skeleton loading
+* virtualized list (`react-window`)
+* keyboard navigation
+
+---
+
+# 12. Most Important Improvement
+
+Currently the dropdown is tiny and feels like a basic select menu.
+
+Make it:
+
+* wider (`w-[360px]`)
+* searchable
+* scrollable
+* categorized
+* portfolio-aware
+
+That alone will make the swap feel much more like Jupiter / Uniswap / Rabby.
+
+---
+
+# Suggested Final Flow
+
+```txt
+Search...
+
+YOUR HOLDINGS
+ETH      1.2      $4,200
+USDC     1,550    $1,550
+
+TRENDING
+BRETT
+TOSHI
+DEGEN
+KEYCAT
+
+ALL TOKENS
+...
+```
+
+---
+
+# Files You Should Refactor
+
+Main areas:
+
+* `TokenDropdown`
+* `TokenBox`
+* `TOKENS`
+* Add:
+
+  * `useTrendingTokens.ts`
+  * `useWalletBalances.ts`
+  * `TokenSection.tsx`
+
+Your current dropdown implementation is entirely inside `TokenDropdown` and should be split into reusable components. 

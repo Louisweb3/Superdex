@@ -1,17 +1,20 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import {
   Settings, ChevronDown, ArrowUpDown, ChevronRight,
-  Info, Zap, CheckSquare, Square, Loader2, ExternalLink, X, AlertTriangle
+  Info, Zap, CheckSquare, Square, Loader2, ExternalLink, X, AlertTriangle,
+  Search, TrendingUp, Wallet
 } from "lucide-react";
 import { TOKENS, DEX_SOURCES, type Token, parseAmount, encodeApprove, NATIVE_ETH_ADDRESS, toHexWei } from "@/lib/tokens";
 import { useWalletContext } from "@/context/WalletContext";
 import { useSwapPrice, fetchSwapQuote, type SwapQuote } from "@/hooks/useSwapQuote";
 import { recordSwapReward } from "@/hooks/useRewards";
+import { useTrendingTokens } from "@/hooks/useTrendingTokens";
+import { useWalletBalances } from "@/hooks/useWalletBalances";
 
 const SLIPPAGE_OPTIONS = ["0.1", "0.5", "1.0"];
 const NATIVE_ETH_ADDR_LOWER = NATIVE_ETH_ADDRESS.toLowerCase();
 
-// ─── Token Dropdown ────────────────────────────────────────────────────────────
+// ─── Token Dropdown (portfolio-aware) ────────────────────────────────────────────
 function TokenDropdown({
   selected,
   tokens,
@@ -23,34 +26,151 @@ function TokenDropdown({
   onSelect: (t: Token) => void;
   onClose: () => void;
 }) {
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    if (!q) return tokens;
+    return tokens.filter(
+      (t) =>
+        t.symbol.toLowerCase().includes(q) ||
+        t.name.toLowerCase().includes(q) ||
+        t.address.toLowerCase().includes(q)
+    );
+  }, [tokens, search]);
+
+  const holdings = filtered
+    .filter((t) => t.balance !== undefined && t.balance > 0)
+    .sort((a, b) => (b.balanceUsd || 0) - (a.balanceUsd || 0));
+  const trending = filtered.filter(
+    (t) => t.isTrending && !holdings.some((h) => h.address === t.address)
+  );
+  const allOthers = filtered.filter(
+    (t) => !holdings.some((h) => h.address === t.address) && !t.isTrending
+  );
+
+  function SectionHeader({ icon, label }: { icon: React.ReactNode; label: string }) {
+    return (
+      <div className="sticky top-0 z-10 flex items-center gap-2 bg-[#030c18] px-4 py-2">
+        {icon}
+        <span className="font-['Inter',sans-serif] text-[10px] font-bold uppercase tracking-wider text-[#4d5a6e]">
+          {label}
+        </span>
+      </div>
+    );
+  }
+
+  function TokenRow({ t }: { t: Token }) {
+    return (
+      <button
+        key={t.address}
+        onClick={() => { onSelect(t); onClose(); }}
+        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#040e1c] ${
+          t.address === selected.address ? "bg-[#040f1c]" : ""
+        }`}
+        data-testid={`token-option-${t.symbol}`}
+      >
+        <img
+          src={t.icon}
+          alt={t.symbol}
+          className="h-9 w-9 shrink-0 rounded-full object-cover"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = `https://dd.dexscreener.com/ds-data/tokens/base/${t.address}.png`;
+          }}
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center gap-2">
+            <span className="font-['Inter',sans-serif] text-[14px] font-bold text-[#c8ccd2]">
+              {t.symbol}
+            </span>
+            {t.isTrending && (
+              <span className="rounded-[4px] bg-[#1a3a0a] px-1.5 py-0.5 font-['Inter',sans-serif] text-[9px] font-bold text-[#3acd5b]">
+                TRENDING
+              </span>
+            )}
+          </div>
+          <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c]">{t.name}</span>
+        </div>
+        <div className="flex shrink-0 flex-col items-end">
+          {t.balance !== undefined && (
+            <span className="font-['Inter',sans-serif] text-[13px] font-medium text-[#c8ccd4]">
+              {t.balance.toLocaleString("en-US", { maximumFractionDigits: 6 })} {t.symbol}
+            </span>
+          )}
+          {t.balanceUsd !== undefined && t.balanceUsd > 0 && (
+            <span className="font-['Inter',sans-serif] text-[11px] text-[#4d5a6e]">
+              ${t.balanceUsd.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+            </span>
+          )}
+          {t.address === selected.address && (
+            <div className="mt-1 h-2 w-2 rounded-full bg-[#2dae50]" />
+          )}
+        </div>
+      </button>
+    );
+  }
+
   return (
-    <div className="absolute left-0 top-full z-50 mt-2 w-[260px] overflow-hidden rounded-[18px] border border-[#0f2030] bg-[#030c18] shadow-2xl shadow-black/50">
+    <div className="absolute left-0 top-full z-50 mt-2 w-[360px] overflow-hidden rounded-[18px] border border-[#0f2030] bg-[#030c18] shadow-2xl shadow-black/50">
+      {/* Header */}
       <div className="flex items-center justify-between border-b border-[#071522] px-4 py-3">
-        <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#7a8494]">Select Token</span>
+        <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#7a8494]">
+          Select Token
+        </span>
         <button onClick={onClose} className="text-[#3a4a5c] hover:text-[#7a8494]">
           <X className="h-4 w-4" />
         </button>
       </div>
-      <div className="flex flex-col py-1">
-        {tokens.map((t) => (
-          <button
-            key={t.address}
-            onClick={() => { onSelect(t); onClose(); }}
-            className={`flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#040e1c] ${
-              t.address === selected.address ? "bg-[#040f1c]" : ""
-            }`}
-            data-testid={`token-option-${t.symbol}`}
-          >
-            <img src={t.icon} alt={t.symbol} className="h-8 w-8 shrink-0 rounded-full object-cover" />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <span className="font-['Inter',sans-serif] text-[14px] font-bold text-[#c8ccd2]">{t.symbol}</span>
-              <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c]">{t.name}</span>
-            </div>
-            {t.address === selected.address && (
-              <div className="h-2 w-2 shrink-0 rounded-full bg-[#2dae50]" />
-            )}
-          </button>
-        ))}
+
+      {/* Search */}
+      <div className="border-b border-[#071522] px-4 py-2">
+        <div className="flex items-center gap-2 rounded-[10px] border border-[#0f2030] bg-[#040e1e] px-3 py-2">
+          <Search className="h-4 w-4 shrink-0 text-[#3a4a5c]" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name or address"
+            className="w-full bg-transparent font-['Inter',sans-serif] text-[13px] text-[#c8ccd4] outline-none placeholder:text-[#3a4a5c]"
+          />
+        </div>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="max-h-[420px] overflow-y-auto">
+        {holdings.length > 0 && (
+          <>
+            <SectionHeader icon={<Wallet className="h-3.5 w-3.5 text-[#4d5a6e]" />} label="Your Holdings" />
+            {holdings.map((t) => (
+              <TokenRow key={t.address} t={t} />
+            ))}
+          </>
+        )}
+
+        {trending.length > 0 && (
+          <>
+            <SectionHeader icon={<TrendingUp className="h-3.5 w-3.5 text-[#2dae50]" />} label="Trending" />
+            {trending.map((t) => (
+              <TokenRow key={t.address} t={t} />
+            ))}
+          </>
+        )}
+
+        {allOthers.length > 0 && (
+          <>
+            <SectionHeader icon={<Search className="h-3.5 w-3.5 text-[#4d5a6e]" />} label="All Tokens" />
+            {allOthers.map((t) => (
+              <TokenRow key={t.address} t={t} />
+            ))}
+          </>
+        )}
+
+        {filtered.length === 0 && (
+          <p className="px-4 py-6 text-center font-['Inter',sans-serif] text-[13px] text-[#4d5a6e]">
+            No tokens found
+          </p>
+        )}
       </div>
     </div>
   );
@@ -265,6 +385,36 @@ function TxModal({ hash, onClose }: { hash: string; onClose: () => void }) {
 // ─── Main SwapPage ───────────────────────────────────────────────────────────────
 export function SwapPage() {
   const wallet = useWalletContext();
+  const { tokens: trendingRaw } = useTrendingTokens();
+  const { balances } = useWalletBalances(wallet.address, TOKENS);
+
+  // ── Build unified token list ─────────────────────────────────────────────
+  const allTokens: Token[] = useMemo(() => {
+    // Start with base TOKENS enriched with balances
+    const base = TOKENS.map((t) => {
+      const bal = balances.find((b) => b.address.toLowerCase() === t.address.toLowerCase());
+      return {
+        ...t,
+        balance: bal?.balance,
+        balanceUsd: bal?.balanceUsd,
+      };
+    });
+
+    // Add trending tokens not already in base list
+    const baseAddrs = new Set(base.map((t) => t.address.toLowerCase()));
+    const trending: Token[] = trendingRaw.map((t) => ({
+      address: t.address,
+      symbol: t.symbol,
+      name: t.name,
+      decimals: 18, // default; real value not available from DexScreener profiles
+      icon: t.icon,
+      isTrending: true,
+      balance: undefined,
+      balanceUsd: undefined,
+    })).filter((t) => !baseAddrs.has(t.address.toLowerCase()));
+
+    return [...base, ...trending];
+  }, [balances, trendingRaw]);
 
   const [sellToken, setSellToken] = useState<Token>(TOKENS[0]); // ETH
   const [buyToken, setBuyToken] = useState<Token>(TOKENS[1]);   // USDC
@@ -481,7 +631,7 @@ export function SwapPage() {
                   amount={sellAmount}
                   onAmountChange={setSellAmount}
                   usdValue={quote && parseFloat(quote.price) > 0 ? `≈ $${(parseFloat(sellAmount || "0") * parseFloat(quote.price)).toLocaleString("en-US", { maximumFractionDigits: 2 })}` : ""}
-                  allTokens={TOKENS}
+                  allTokens={allTokens}
                   onTokenChange={setSellToken}
                   disabledToken={buyToken}
                 />
@@ -507,7 +657,7 @@ export function SwapPage() {
                       ? `≈ $${(parseFloat(quote.buyAmountFormatted) * 1).toLocaleString("en-US", { maximumFractionDigits: 2 })}`
                       : ""
                   }
-                  allTokens={TOKENS}
+                  allTokens={allTokens}
                   onTokenChange={setBuyToken}
                   disabledToken={sellToken}
                 />
