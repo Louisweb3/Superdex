@@ -16,6 +16,12 @@ import tokenLogo from "@assets/token_logo_1779712623899.png";
 const SLIPPAGE_OPTIONS = ["0.1", "0.5", "1.0"];
 const NATIVE_ETH_ADDR_LOWER = NATIVE_ETH_ADDRESS.toLowerCase();
 
+function fmtUsd(n: number) {
+  if (!n || isNaN(n)) return "$0.00";
+  if (n >= 1000) return "$" + (n / 1000).toFixed(2) + "k";
+  return "$" + n.toFixed(4);
+}
+
 // ─── Token Picker Modal (fixed position — bypasses all overflow clipping) ─────
 function TokenPickerModal({
   tokens,
@@ -798,6 +804,12 @@ export function SwapPage() {
                   <div className="flex items-center justify-between">
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">Integrator Fee</span>
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#4d5a6e]">0.3%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">Est. Cashback</span>
+                    <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#2dae50]">
+                      {quote && sellAmount ? fmtUsd(parseFloat(sellAmount) * parseFloat(quote.price ?? "0") * 0.0015) : "—"}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">SuperSwap Reward</span>

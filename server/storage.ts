@@ -39,10 +39,13 @@ export interface RewardUser {
   wallet_address: string;
   xp: number;
   weekly_xp: number;
-  cashback_usd: number;
+  cashback_usd: number;           // lifetime claimed
+  weekly_cashback_usd?: number;   // earned this week (unclaimed until week ends)
+  pending_cashback_usd?: number; // past-week pending (ready to claim)
   total_swaps: number;
   streak: number;
   last_activity_date: string;
+  last_weekly_reset?: string;
   tier: "Bronze" | "Silver" | "Gold" | "Diamond";
   total_volume_usd: number;
   level: number;
@@ -98,7 +101,16 @@ function xpForSwap(volumeUsd: number, streak: number): number {
 }
 
 function cashbackForSwap(volumeUsd: number): number {
-  return parseFloat((volumeUsd * 0.001).toFixed(4));
+  // 50% of the 0.3% integrator fee = 0.15% of volume
+  return parseFloat((volumeUsd * 0.0015).toFixed(6));
+}
+
+function weekStartUTC(): string {
+  const d = new Date();
+  const day = d.getUTCDay();
+  const diff = d.getUTCDate() - day; // Sunday-based week
+  d.setUTCDate(diff);
+  return d.toISOString().slice(0, 10);
 }
 
 // ─── DB-backed rewards storage ──────────────────────────────────────────────────────────
@@ -117,9 +129,12 @@ export class RewardsStorage {
         xp: existing.xp,
         weekly_xp: existing.weekly_xp,
         cashback_usd: Number(existing.cashback_usd),
+        weekly_cashback_usd: Number(existing.weekly_cashback_usd ?? 0),
+        pending_cashback_usd: Number(existing.pending_cashback_usd ?? 0),
         total_swaps: existing.total_swaps,
         streak: existing.streak,
         last_activity_date: existing.last_activity_date,
+        last_weekly_reset: existing.last_weekly_reset ?? "",
         tier: existing.tier as RewardUser["tier"],
         total_volume_usd: Number(existing.total_volume_usd),
         level: existing.level,
@@ -132,9 +147,12 @@ export class RewardsStorage {
       xp: 0,
       weekly_xp: 0,
       cashback_usd: "0",
+      weekly_cashback_usd: "0",
+      pending_cashback_usd: "0",
       total_swaps: 0,
       streak: 0,
       last_activity_date: "",
+      last_weekly_reset: "",
       tier: "Bronze",
       total_volume_usd: "0",
       level: 1,
@@ -142,18 +160,50 @@ export class RewardsStorage {
     });
     return {
       wallet_address: key, xp: 0, weekly_xp: 0, cashback_usd: 0,
+      weekly_cashback_usd: 0, pending_cashback_usd: 0,
       total_swaps: 0, streak: 0, last_activity_date: "",
+      last_weekly_reset: "",
       tier: "Bronze", total_volume_usd: 0, level: 1,
       created_at: now.getTime(),
     };
   }
 
+  // ── Reset weekly cashback if a new week has started ─────────────────────────────
+  private async maybeResetWeeklyCashback(user: RewardUser): Promise<RewardUser> {
+    const currentWeek = weekStartUTC();
+    if (user.last_weekly_reset === currentWeek) return user;
+
+    // New week: flush weekly_cashback into pending (it becomes claimable)
+    const flushToPending = (user.weekly_cashback_usd ?? 0);
+    const newPending = (user.pending_cashback_usd ?? 0) + flushToPending;
+
+    await db
+      .update(rewardUsers)
+      .set({
+        weekly_cashback_usd: "0",
+        pending_cashback_usd: String(newPending),
+        weekly_xp: 0,
+        last_weekly_reset: currentWeek,
+      })
+      .where(eq(rewardUsers.wallet_address, user.wallet_address));
+
+    return {
+      ...user,
+      weekly_cashback_usd: 0,
+      pending_cashback_usd: newPending,
+      weekly_xp: 0,
+      last_weekly_reset: currentWeek,
+    };
+  }
+
   async getUser(wallet: string): Promise<RewardUser | undefined> {
-    return this.ensureUser(wallet);
+    const user = await this.ensureUser(wallet);
+    return this.maybeResetWeeklyCashback(user);
   }
 
   async upsertUser(wallet: string): Promise<RewardUser> {
-    return this.ensureUser(wallet);
+    const user = await this.ensureUser(wallet);
+    return this.maybeResetWeeklyCashback(user);
   }
 
   async recordSwap(
@@ -165,8 +215,11 @@ export class RewardsStorage {
     opts?: { verified?: boolean }
   ): Promise<{ user: RewardUser; xpEarned: number; cashbackUsd: number }> {
     const key = wallet.toLowerCase();
-    const user = await this.ensureUser(key);
+    let user = await this.ensureUser(key);
     const today = todayUTC();
+
+    // Reset weekly stats if new week started
+    user = await this.maybeResetWeeklyCashback(user);
 
     // Streak logic
     let newStreak = user.streak;
@@ -180,21 +233,25 @@ export class RewardsStorage {
 
     const xpEarned = xpForSwap(volumeUsd, newStreak);
     const cashbackUsd = cashbackForSwap(volumeUsd);
+    const isVerified = opts?.verified ?? false;
+
     const newXp = user.xp + xpEarned;
     const newWeeklyXp = user.weekly_xp + xpEarned;
-    const newCashback = user.cashback_usd + cashbackUsd;
     const newSwaps = user.total_swaps + 1;
     const newVolume = user.total_volume_usd + volumeUsd;
     const newTier = tierFromXP(newXp);
     const newLevel = levelFromXP(newXp);
 
-    // Update DB
+    // Cashback only awarded for verified swaps (Basescan-confirmed)
+    const addWeeklyCashback = isVerified ? cashbackUsd : 0;
+    const newWeeklyCashback = (user.weekly_cashback_usd ?? 0) + addWeeklyCashback;
+
     await db
       .update(rewardUsers)
       .set({
         xp: newXp,
         weekly_xp: newWeeklyXp,
-        cashback_usd: String(newCashback),
+        weekly_cashback_usd: String(newWeeklyCashback),
         total_swaps: newSwaps,
         streak: newStreak,
         last_activity_date: today,
@@ -214,7 +271,7 @@ export class RewardsStorage {
       volume_usd: String(volumeUsd),
       xp_earned: xpEarned,
       cashback_usd: String(cashbackUsd),
-      verified: opts?.verified ?? false,
+      verified: isVerified,
     });
 
     // Update quest progress
@@ -225,7 +282,7 @@ export class RewardsStorage {
       ...user,
       xp: newXp,
       weekly_xp: newWeeklyXp,
-      cashback_usd: newCashback,
+      weekly_cashback_usd: newWeeklyCashback,
       total_swaps: newSwaps,
       streak: newStreak,
       last_activity_date: today,
@@ -233,7 +290,35 @@ export class RewardsStorage {
       total_volume_usd: newVolume,
       level: newLevel,
     };
-    return { user: updated, xpEarned, cashbackUsd };
+    return { user: updated, xpEarned, cashbackUsd: addWeeklyCashback };
+  }
+
+  // ── Claim weekly cashback (moves pending → lifetime claimed) ──────────────────────────────────
+  async claimCashback(wallet: string): Promise<{ claimed: number; user: RewardUser }> {
+    const key = wallet.toLowerCase();
+    let user = await this.ensureUser(key);
+    user = await this.maybeResetWeeklyCashback(user);
+
+    const claimable = user.pending_cashback_usd ?? 0;
+    if (claimable <= 0) return { claimed: 0, user };
+
+    const newLifetime = user.cashback_usd + claimable;
+    const newPending = 0;
+
+    await db
+      .update(rewardUsers)
+      .set({
+        cashback_usd: String(newLifetime),
+        pending_cashback_usd: String(newPending),
+      })
+      .where(eq(rewardUsers.wallet_address, key));
+
+    const updated: RewardUser = {
+      ...user,
+      cashback_usd: newLifetime,
+      pending_cashback_usd: newPending,
+    };
+    return { claimed: claimable, user: updated };
   }
 
   private async updateQuestProgressDB(
@@ -406,9 +491,12 @@ export class RewardsStorage {
       xp: r.xp,
       weekly_xp: r.weekly_xp,
       cashback_usd: Number(r.cashback_usd),
+      weekly_cashback_usd: Number(r.weekly_cashback_usd ?? 0),
+      pending_cashback_usd: Number(r.pending_cashback_usd ?? 0),
       total_swaps: r.total_swaps,
       streak: r.streak,
       last_activity_date: r.last_activity_date,
+      last_weekly_reset: r.last_weekly_reset ?? "",
       tier: r.tier as RewardUser["tier"],
       total_volume_usd: Number(r.total_volume_usd),
       level: r.level,
@@ -427,13 +515,17 @@ export class RewardsStorage {
       .select({
         totalXp: sql<number>`COALESCE(SUM(${rewardUsers.xp}), 0)`,
         totalCashback: sql<number>`COALESCE(SUM(${rewardUsers.cashback_usd}), 0)`,
+        totalPending: sql<number>`COALESCE(SUM(${rewardUsers.pending_cashback_usd}), 0)`,
+        totalWeekly: sql<number>`COALESCE(SUM(${rewardUsers.weekly_cashback_usd}), 0)`,
       })
       .from(rewardUsers);
-    const agg = aggRows[0] ?? { totalXp: 0, totalCashback: 0 };
+    const agg = aggRows[0] ?? { totalXp: 0, totalCashback: 0, totalPending: 0, totalWeekly: 0 };
 
     return {
       totalXp: Number(agg.totalXp ?? 0),
       totalCashbackUsd: Number(agg.totalCashback ?? 0),
+      totalPendingCashbackUsd: Number(agg.totalPending ?? 0),
+      totalWeeklyCashbackUsd: Number(agg.totalWeekly ?? 0),
       totalUsers: Number(usersRow?.count ?? 0),
       totalSwapEvents: Number(swapsRow?.count ?? 0),
     };

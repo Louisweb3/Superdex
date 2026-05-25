@@ -6,6 +6,7 @@ import {
   useRewardHistory,
   useLeaderboard,
   useClaimQuest,
+  useClaimCashback,
   tierProgress,
   type RewardUser,
   type DailyQuest,
@@ -149,6 +150,7 @@ export function RewardsPage(): JSX.Element {
   const { data: leaderboard } = useLeaderboard();
 
   const claim = useClaimQuest(addr || "");
+  const claimCb = useClaimCashback(addr);
 
   const loading = userLoading && addr;
 
@@ -310,6 +312,56 @@ export function RewardsPage(): JSX.Element {
                 </div>
               </div>
             </div>
+
+            {/* CASHBACK */}
+            <section>
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-[13px] font-bold uppercase tracking-[0.28em] text-[#7f8b9d]">
+                    Cashback
+                  </h2>
+                  <p className="mt-1 text-[13px] text-[#6f7b8e]">
+                    0.15% of swap volume (50% of 0.3% fee) — distributed weekly
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {/* Weekly earned */}
+                <div className="relative overflow-hidden rounded-[22px] border border-[#182332] bg-[#060d17] p-5 backdrop-blur-xl">
+                  <div className="absolute right-[-20px] top-[-20px] h-[90px] w-[90px] rounded-full bg-emerald-500/10 blur-[60px]" />
+                  <div className="relative z-10">
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-[#6f7b8e]">This Week Earned</p>
+                    <p className="mt-1 text-[28px] font-black text-[#3acd5b]">{fmtUsd(user.weekly_cashback_usd ?? 0)}</p>
+                    <p className="mt-1 text-[12px] text-[#7f8b9d]">Unclaimed until Sunday midnight UTC</p>
+                  </div>
+                </div>
+
+                {/* Pending + claim */}
+                <div className="relative overflow-hidden rounded-[22px] border border-[#182332] bg-[#060d17] p-5 backdrop-blur-xl">
+                  <div className="absolute left-[-20px] bottom-[-20px] h-[90px] w-[90px] rounded-full bg-cyan-400/10 blur-[60px]" />
+                  <div className="relative z-10">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.22em] text-[#6f7b8e]">Ready to Claim</p>
+                        <p className="mt-1 text-[28px] font-black text-white">{fmtUsd(user.pending_cashback_usd ?? 0)}</p>
+                      </div>
+                      <div className="shrink-0 rounded-full border border-[#1d3428] bg-[#0b1811] px-3 py-1 text-[11px] font-bold text-[#3acd5b]">
+                        {fmtUsd(user.cashback_usd ?? 0)} lifetime
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => claimCb.mutate()}
+                      disabled={claimCb.isPending || (user.pending_cashback_usd ?? 0) <= 0}
+                      data-testid="button-claim-cashback"
+                      className="mt-4 w-full rounded-[15px] bg-gradient-to-r from-[#22d3ee] to-[#2dae50] px-4 py-3 text-[14px] font-bold text-white shadow-[0_10px_30px_rgba(45,174,80,0.2)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {claimCb.isPending ? "Claiming…" : "Claim Cashback"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
 
             {/* QUESTS */}
             <section>

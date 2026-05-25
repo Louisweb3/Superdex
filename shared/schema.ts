@@ -31,10 +31,13 @@ export const rewardUsers = pgTable("reward_users", {
   wallet_address: varchar("wallet_address", { length: 42 }).primaryKey(),
   xp: integer("xp").notNull().default(0),
   weekly_xp: integer("weekly_xp").notNull().default(0),
-  cashback_usd: numeric("cashback_usd", { precision: 24, scale: 8 }).notNull().default("0"),
+  cashback_usd: numeric("cashback_usd", { precision: 24, scale: 8 }).notNull().default("0"),         // lifetime claimed cashback
+  weekly_cashback_usd: numeric("weekly_cashback_usd", { precision: 24, scale: 8 }).notNull().default("0"), // current week earned (unclaimed)
+  pending_cashback_usd: numeric("pending_cashback_usd", { precision: 24, scale: 8 }).notNull().default("0"), // total unverified/unclaimed
   total_swaps: integer("total_swaps").notNull().default(0),
   streak: integer("streak").notNull().default(0),
   last_activity_date: varchar("last_activity_date", { length: 10 }).notNull().default(""),
+  last_weekly_reset: varchar("last_weekly_reset", { length: 10 }).notNull().default(""), // YYYY-MM-DD of last weekly reset
   tier: varchar("tier", { length: 16 }).notNull().default("Bronze"),
   total_volume_usd: numeric("total_volume_usd", { precision: 24, scale: 8 }).notNull().default("0"),
   level: integer("level").notNull().default(1),

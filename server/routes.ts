@@ -187,6 +187,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     return res.json(await rewardsStorage.getLeaderboard(10));
   });
 
+  app.post("/api/rewards/cashback/claim", async (req, res) => {
+    const { wallet } = req.body;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    const result = await rewardsStorage.claimCashback(wallet);
+    return res.json(result);
+  });
+
   app.get("/api/rewards/stats", async (_req, res) => {
     return res.json(await rewardsStorage.getTotalStats());
   });

@@ -5,10 +5,13 @@ export interface RewardUser {
   wallet_address: string;
   xp: number;
   weekly_xp: number;
-  cashback_usd: number;
+  cashback_usd: number;           // lifetime claimed
+  weekly_cashback_usd: number;  // earned this week (unclaimed until week ends)
+  pending_cashback_usd: number; // past-week pending (ready to claim)
   total_swaps: number;
   streak: number;
   last_activity_date: string;
+  last_weekly_reset?: string;
   tier: "Bronze" | "Silver" | "Gold" | "Diamond";
   total_volume_usd: number;
   level: number;
@@ -117,6 +120,26 @@ export function useClaimQuest(wallet: string | null) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/rewards/user", wallet] });
       qc.invalidateQueries({ queryKey: ["/api/rewards/quests", wallet] });
+    },
+  });
+}
+
+// ─── Claim cashback (moves pending → lifetime) ─────────────────────────────────────────────
+export function useClaimCashback(wallet: string | null) {
+  const qc = useQueryClient();
+  return useMutation<{ claimed: number; user: RewardUser }, Error>({
+    mutationFn: async () => {
+      const r = await fetch("/api/rewards/cashback/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet }),
+      });
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/rewards/user", wallet] });
+      qc.invalidateQueries({ queryKey: ["/api/rewards/stats"] });
     },
   });
 }

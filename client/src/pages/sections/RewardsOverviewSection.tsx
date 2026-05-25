@@ -35,7 +35,7 @@ export const RewardsOverviewSection = (): JSX.Element => {
     ? fmtUsd(stats.totalCashbackUsd + 2_481_092)
     : "$2,481,092";
 
-  const todayEarned = user ? fmtUsd(user.cashback_usd) : (addr ? "Loading…" : "$0.00");
+  const todayEarned = user ? fmtUsd(user.weekly_cashback_usd ?? 0) : (addr ? "Loading…" : "$0.00");
   const todaySwaps  = user ? `${user.total_swaps} swaps` : "—";
   const streakValue = user ? `${user.streak} DAYS` : "0 DAYS";
   const streakDesc  = user && user.streak > 0 ? "Keep it going!" : addr ? "Start swapping!" : "Connect wallet";
