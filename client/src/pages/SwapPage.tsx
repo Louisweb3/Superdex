@@ -542,8 +542,7 @@ export function SwapPage() {
   const slippageBps = Math.round(parseFloat(slippage || "0.5") * 100);
 
   const { quote, isLoading, error: quoteError } = useSwapPrice(
-    sellToken, buyToken, sellAmount, slippageBps, selectedSources,
-    wallet.isConnected ? wallet.address : null
+    sellToken, buyToken, sellAmount, slippageBps, selectedSources
   );
 
   const toggleSource = useCallback((id: string) => {
@@ -802,7 +801,7 @@ export function SwapPage() {
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">Slippage</span>
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#7a8494]">{slippage}%</span>
                   </div>
-                
+
                   <div className="flex items-center justify-between">
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">Est. Cashback</span>
                     <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#2dae50]">
