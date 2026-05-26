@@ -7,7 +7,6 @@ import {
   integer,
   numeric,
   boolean,
-  primaryKey,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -116,52 +115,3 @@ export const socialLinks = pgTable("social_links", {
   sort_order: integer("sort_order").notNull().default(0),
   updated_at: timestamp("updated_at", { mode: "date" }).defaultNow(),
 });
-
-// ─── Earn Tasks ─────────────────────────────────────────────────────────────
-export const earnTasks = pgTable("earn_tasks", {
-  id: varchar("id", { length: 36 }).primaryKey(),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  category: varchar("category", { length: 16 }).notNull(), // onchain | offchain
-  task_type: varchar("task_type", { length: 32 }).notNull(), // swap_eth_usdc, retweet, like, etc.
-  xp_reward: integer("xp_reward").notNull().default(0),
-  cashback_reward: numeric("cashback_reward", { precision: 24, scale: 8 }).notNull().default("0"), // USD amount
-  action_url: text("action_url").notNull().default(""), // link to perform the task
-  action_label: text("action_label").notNull().default(""), // button text
-  active: boolean("active").notNull().default(true),
-  sort_order: integer("sort_order").notNull().default(0),
-  created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
-});
-
-export const insertEarnTaskSchema = createInsertSchema(earnTasks).omit({ id: true, created_at: true });
-export type InsertEarnTask = z.infer<typeof insertEarnTaskSchema>;
-export type EarnTask = typeof earnTasks.$inferSelect;
-
-// ─── User Earn Completions ───────────────────────────────────────────────────
-export const userEarnCompletions = pgTable("user_earn_completions", {
-  id: varchar("id", { length: 36 }).primaryKey(),
-  wallet_address: varchar("wallet_address", { length: 42 }).notNull(),
-  task_id: varchar("task_id", { length: 36 }).notNull(),
-  xp_awarded: integer("xp_awarded").notNull().default(0),
-  cashback_awarded: numeric("cashback_awarded", { precision: 24, scale: 8 }).notNull().default("0"),
-  completed_at: timestamp("completed_at", { mode: "date" }).defaultNow(),
-});
-
-export type UserEarnCompletion = typeof userEarnCompletions.$inferSelect;
-
-// ─── Per-token Cashback Rewards ─────────────────────────────────────────────
-// One row per (wallet × token). Tracks native-token and USD cashback earned
-// from swapping that specific token.
-export const tokenCashbackRewards = pgTable("token_cashback_rewards", {
-  wallet_address: varchar("wallet_address", { length: 42 }).notNull(),
-  token_symbol:  varchar("token_symbol",  { length: 24 }).notNull(),
-  token_address: varchar("token_address", { length: 42 }).notNull(),
-  cashback_native: numeric("cashback_native", { precision: 36, scale: 18 }).notNull().default("0"),
-  cashback_usd:    numeric("cashback_usd",    { precision: 24, scale: 8  }).notNull().default("0"),
-  swap_count:  integer("swap_count").notNull().default(0),
-  last_updated: timestamp("last_updated", { mode: "date" }).defaultNow(),
-}, (t) => ({
-  pk: primaryKey({ columns: [t.wallet_address, t.token_address] }),
-}));
-
-export type TokenCashbackReward = typeof tokenCashbackRewards.$inferSelect;
