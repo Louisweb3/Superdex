@@ -801,7 +801,7 @@ export function SwapPage() {
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">Slippage</span>
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#7a8494]">{slippage}%</span>
                   </div>
-
+                
                   <div className="flex items-center justify-between">
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">Est. Cashback</span>
                     <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#2dae50]">
