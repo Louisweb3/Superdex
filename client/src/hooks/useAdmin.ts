@@ -32,7 +32,7 @@ async function adminFetch(url: string, opts?: RequestInit) {
   return r.json();
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────────────────────
 export function useAdminAuth() {
   const [token, setTokenState] = useState<string | null>(getToken);
 
@@ -62,7 +62,7 @@ export function useAdminAuth() {
   return { isLoggedIn, login, logout, token };
 }
 
-// ── Settings ──────────────────────────────────────────────────────────────────────────────────────────
+// ── Settings ──────────────────────────────────────────────────────────────────────────
 export function useAdminSettings() {
   const qc = useQueryClient();
   const settings = useQuery<Record<string, string>>({
@@ -90,7 +90,7 @@ export function usePublicSettings() {
   });
 }
 
-// ── Page Blocks ──────────────────────────────────────────────────────────────────────────────────────────
+// ── Page Blocks ──────────────────────────────────────────────────────────────────────────
 export interface PageBlock {
   id: string;
   page: string;
@@ -136,7 +136,7 @@ export function usePublicBlocks(page?: string) {
   });
 }
 
-// ── Events ────────────────────────────────────────────────────────────────────────────────────────────────
+// ── Events ─────────────────────────────────────────────────────────────────────────────
 export interface CmsEvent {
   id: string;
   title: string;
@@ -183,7 +183,7 @@ export function usePublicEvents() {
   });
 }
 
-// ── Social Links ────────────────────────────────────────────────────────────────────────────────────────────────
+// ── Social Links ──────────────────────────────────────────────────────────────────────────
 export interface CmsSocialLink {
   id: string;
   platform: string;
@@ -222,7 +222,81 @@ export function usePublicSocial() {
   });
 }
 
-// ── Database Explorer ──────────────────────────────────────────────────────────────────────
+// ── Earn Tasks Admin ───────────────────────────────────────────────────────────────────
+export interface AdminEarnTask {
+  id: string;
+  title: string;
+  description: string;
+  type: "onchain" | "offchain";
+  category: string;
+  target_value: number;
+  target_count: number;
+  xp_reward: number;
+  cashback_reward: number;
+  icon: string;
+  verification_url: string;
+  sort_order: number;
+  active: boolean;
+}
+
+export interface AdminAnnouncementItem {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  active: boolean;
+  start_date: string;
+  end_date: string;
+  icon: string;
+}
+
+export function useAdminEarnTasks() {
+  const qc = useQueryClient();
+  const tasks = useQuery<AdminEarnTask[]>({
+    queryKey: ["/api/admin/earn-tasks"],
+    queryFn: () => adminFetch("/api/admin/earn-tasks"),
+    enabled: !!getToken(),
+  });
+  const create = useMutation({
+    mutationFn: (task: Omit<AdminEarnTask, "id">) => adminFetch("/api/admin/earn-tasks", { method: "POST", body: JSON.stringify(task) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/earn-tasks"] }),
+  });
+  const update = useMutation({
+    mutationFn: ({ id, ...patch }: Partial<AdminEarnTask> & { id: string }) =>
+      adminFetch(`/api/admin/earn-tasks/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/earn-tasks"] }),
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => adminFetch(`/api/admin/earn-tasks/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/earn-tasks"] }),
+  });
+  return { tasks, create, update, remove };
+}
+
+export function useAdminAnnouncements() {
+  const qc = useQueryClient();
+  const announcements = useQuery<AdminAnnouncementItem[]>({
+    queryKey: ["/api/admin/announcements"],
+    queryFn: () => adminFetch("/api/admin/announcements"),
+    enabled: !!getToken(),
+  });
+  const create = useMutation({
+    mutationFn: (ann: Omit<AdminAnnouncementItem, "id">) => adminFetch("/api/admin/announcements", { method: "POST", body: JSON.stringify(ann) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/announcements"] }),
+  });
+  const update = useMutation({
+    mutationFn: ({ id, ...patch }: Partial<AdminAnnouncementItem> & { id: string }) =>
+      adminFetch(`/api/admin/announcements/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/announcements"] }),
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => adminFetch(`/api/admin/announcements/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/announcements"] }),
+  });
+  return { announcements, create, update, remove };
+}
+
+// ── Database Explorer ───────────────────────────────────────────────────────────────────
 export interface DbTableCount {
   table: string;
   count: number;

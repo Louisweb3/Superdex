@@ -7,9 +7,17 @@ import {
   swapEvents,
   dailyQuests,
   tokenCashback,
+  earnTasks,
+  taskCompletions,
+  adminAnnouncements,
   type User,
   type InsertUser,
   type TokenCashback,
+  type EarnTask,
+  type InsertEarnTask,
+  type TaskCompletion,
+  type InsertTaskCompletion,
+  type AdminAnnouncement,
 } from "@shared/schema";
 
 // ─── Base user storage (keep for auth compat) ────────────────────────────────────────────────
@@ -738,8 +746,116 @@ export class RewardsStorage {
 
 export const rewardsStorage = new RewardsStorage();
 
+// ─── Earn System Storage ────────────────────────────────────────────────────────────────
+import { asc, gte } from "drizzle-orm";
+
+export class EarnStorage {
+  async getTasks(type?: string): Promise<EarnTask[]> {
+    const rows = await db.select().from(earnTasks).where(eq(earnTasks.active, true)).orderBy(asc(earnTasks.sort_order));
+    if (type) return rows.filter((r) => r.type === type);
+    return rows;
+  }
+  async getTask(id: string): Promise<EarnTask | undefined> {
+    const [row] = await db.select().from(earnTasks).where(eq(earnTasks.id, id)).limit(1);
+    return row;
+  }
+  async createTask(task: Omit<InsertEarnTask, "id">): Promise<EarnTask> {
+    const id = randomUUID();
+    const [row] = await db.insert(earnTasks).values({ ...task, id }).returning();
+    return row;
+  }
+  async updateTask(id: string, updates: Partial<InsertEarnTask>): Promise<EarnTask | undefined> {
+    const [existing] = await db.select().from(earnTasks).where(eq(earnTasks.id, id)).limit(1);
+    if (!existing) return undefined;
+    await db.update(earnTasks).set(updates).where(eq(earnTasks.id, id));
+    const [row] = await db.select().from(earnTasks).where(eq(earnTasks.id, id)).limit(1);
+    return row;
+  }
+  async deleteTask(id: string): Promise<void> {
+    await db.delete(earnTasks).where(eq(earnTasks.id, id));
+  }
+  async getCompletions(wallet: string): Promise<(TaskCompletion & { task?: EarnTask })[]> {
+    const key = wallet.toLowerCase();
+    const comps = await db.select().from(taskCompletions).where(eq(taskCompletions.wallet_address, key));
+    const tasks = await this.getTasks();
+    return comps.map((c) => ({ ...c, task: tasks.find((t) => t.id === c.task_id) }));
+  }
+  async getOrCreateCompletion(wallet: string, taskId: string): Promise<TaskCompletion> {
+    const key = wallet.toLowerCase();
+    const [existing] = await db.select().from(taskCompletions).where(and(eq(taskCompletions.wallet_address, key), eq(taskCompletions.task_id, taskId))).limit(1);
+    if (existing) return existing;
+    const task = await this.getTask(taskId);
+    if (!task) throw new Error("Task not found");
+    const [inserted] = await db.insert(taskCompletions).values({ id: randomUUID(), wallet_address: key, task_id: taskId, progress: "0", target_value: task.type === "onchain" ? String(task.target_value ?? 0) : String(task.target_count ?? 1), completed: false, claimed: false }).returning();
+    return inserted;
+  }
+  async updateCompletionProgress(wallet: string, taskId: string, amount: number): Promise<TaskCompletion> {
+    const key = wallet.toLowerCase();
+    const comp = await this.getOrCreateCompletion(key, taskId);
+    const task = await this.getTask(taskId);
+    if (!task || comp.completed) return comp;
+    const target = Number(comp.target_value || (task.type === "onchain" ? task.target_value : task.target_count));
+    const newProgress = Math.min(Number(comp.progress) + amount, target);
+    const completed = newProgress >= target;
+    await db.update(taskCompletions).set({ progress: String(newProgress), completed }).where(eq(taskCompletions.id, comp.id));
+    const [updated] = await db.select().from(taskCompletions).where(eq(taskCompletions.id, comp.id)).limit(1);
+    return updated;
+  }
+  async claimTask(wallet: string, taskId: string): Promise<{ success: boolean; xpReward: number; cashbackReward: number; task: EarnTask } | null> {
+    const key = wallet.toLowerCase();
+    const comp = await this.getOrCreateCompletion(key, taskId);
+    if (!comp.completed || comp.claimed) return null;
+    const task = await this.getTask(taskId);
+    if (!task) return null;
+    const now = new Date();
+    await db.update(taskCompletions).set({ claimed: true, claimed_at: now }).where(eq(taskCompletions.id, comp.id));
+    await rewardsStorage.upsertUser(key);
+    const user = await rewardsStorage.getUser(key);
+    if (user) {
+      const newXp = user.xp + task.xp_reward;
+      await db.update(rewardUsers).set({ xp: newXp, weekly_xp: user.weekly_xp + task.xp_reward, level: levelFromXP(newXp), tier: tierFromXP(newXp), weekly_cashback_usd: String(Number(user.weekly_cashback_usd ?? 0) + Number(task.cashback_reward ?? 0)) }).where(eq(rewardUsers.wallet_address, key));
+    }
+    return { success: true, xpReward: task.xp_reward, cashbackReward: Number(task.cashback_reward ?? 0), task };
+  }
+  async syncOnchainProgress(wallet: string): Promise<void> {
+    const key = wallet.toLowerCase();
+    const onchainTasks = await this.getTasks("onchain");
+    const user = await rewardsStorage.getUser(key);
+    const totalVolume = user?.total_volume_usd ?? 0;
+    for (const task of onchainTasks) {
+      const comp = await this.getOrCreateCompletion(key, task.id);
+      if (comp.completed) continue;
+      await this.updateCompletionProgress(key, task.id, totalVolume);
+    }
+  }
+  async getAnnouncements(activeOnly = true): Promise<AdminAnnouncement[]> {
+    const today = new Date().toISOString().slice(0, 10);
+    let query = db.select().from(adminAnnouncements);
+    if (activeOnly) {
+      query = query.where(and(eq(adminAnnouncements.active, true), gte(adminAnnouncements.end_date, today))) as any;
+    }
+    const rows = await query.orderBy(desc(adminAnnouncements.created_at));
+    return rows;
+  }
+  async createAnnouncement(data: { title: string; message: string; type?: string; start_date?: string; end_date?: string; icon?: string }): Promise<AdminAnnouncement> {
+    const id = randomUUID();
+    const today = new Date().toISOString().slice(0, 10);
+    const [row] = await db.insert(adminAnnouncements).values({ id, title: data.title, message: data.message, type: data.type ?? "info", active: true, start_date: data.start_date ?? today, end_date: data.end_date ?? today, icon: data.icon ?? "" }).returning();
+    return row;
+  }
+  async updateAnnouncement(id: string, updates: Partial<AdminAnnouncement>): Promise<AdminAnnouncement | undefined> {
+    await db.update(adminAnnouncements).set(updates).where(eq(adminAnnouncements.id, id));
+    const [row] = await db.select().from(adminAnnouncements).where(eq(adminAnnouncements.id, id)).limit(1);
+    return row;
+  }
+  async deleteAnnouncement(id: string): Promise<void> {
+    await db.delete(adminAnnouncements).where(eq(adminAnnouncements.id, id));
+  }
+}
+
+export const earnStorage = new EarnStorage();
+
 // ─── Admin CMS Storage ───────────────────────────────────────────────────────────────────
-import { asc } from "drizzle-orm";
 import { siteSettings, pageBlocks, adminEvents, socialLinks } from "@shared/schema";
 
 export interface CmsPageBlock {

@@ -2,7 +2,8 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { db } from "./db";
 import { adminStorage } from "./storage";
 import { sql } from "drizzle-orm";
-import { users, rewardUsers, swapEvents, dailyQuests, siteSettings, pageBlocks, adminEvents, socialLinks } from "@shared/schema";
+import { users, rewardUsers, swapEvents, dailyQuests, siteSettings, pageBlocks, adminEvents, socialLinks, earnTasks, taskCompletions, adminAnnouncements } from "@shared/schema";
+import { earnStorage } from "./storage";
 
 const ADMIN_PASSWORD = "MKM2026";
 const SESSION_TTL = 1000 * 60 * 60 * 4; // 4 hours
@@ -156,7 +157,50 @@ export function registerAdminRoutes(app: Express) {
   });
 
   // ── Database Explorer ───────────────────────────────────────────────────────────────────────
-  type DbTableKey = "users" | "reward_users" | "swap_events" | "daily_quests" | "site_settings" | "page_blocks" | "admin_events" | "social_links";
+  // ── Earn Tasks Admin ──────────────────────────────────────────────────────
+  app.get("/api/admin/earn-tasks", requireAdmin, async (_req, res) => {
+    return res.json(await earnStorage.getTasks());
+  });
+
+  app.post("/api/admin/earn-tasks", requireAdmin, async (req, res) => {
+    const task = await earnStorage.createTask(req.body);
+    return res.json(task);
+  });
+
+  app.patch("/api/admin/earn-tasks/:id", requireAdmin, async (req, res) => {
+    const task = await earnStorage.updateTask(req.params.id as string, req.body);
+    if (!task) return res.status(404).json({ error: "Task not found" });
+    return res.json(task);
+  });
+
+  app.delete("/api/admin/earn-tasks/:id", requireAdmin, async (req, res) => {
+    await earnStorage.deleteTask(req.params.id as string);
+    return res.json({ ok: true });
+  });
+
+  // ── Announcements Admin ─────────────────────────────────────────────────
+  app.get("/api/admin/announcements", requireAdmin, async (_req, res) => {
+    return res.json(await earnStorage.getAnnouncements(false));
+  });
+
+  app.post("/api/admin/announcements", requireAdmin, async (req, res) => {
+    const ann = await earnStorage.createAnnouncement(req.body);
+    return res.json(ann);
+  });
+
+  app.patch("/api/admin/announcements/:id", requireAdmin, async (req, res) => {
+    const ann = await earnStorage.updateAnnouncement(req.params.id as string, req.body);
+    if (!ann) return res.status(404).json({ error: "Not found" });
+    return res.json(ann);
+  });
+
+  app.delete("/api/admin/announcements/:id", requireAdmin, async (req, res) => {
+    await earnStorage.deleteAnnouncement(req.params.id as string);
+    return res.json({ ok: true });
+  });
+
+  // ── Database Explorer ───────────────────────────────────────────────────
+  type DbTableKey = "users" | "reward_users" | "swap_events" | "daily_quests" | "site_settings" | "page_blocks" | "admin_events" | "social_links" | "earn_tasks" | "task_completions" | "admin_announcements";
 
   const TABLE_MAP: Record<DbTableKey, any> = {
     users,
@@ -167,6 +211,9 @@ export function registerAdminRoutes(app: Express) {
     page_blocks: pageBlocks,
     admin_events: adminEvents,
     social_links: socialLinks,
+    earn_tasks: earnTasks,
+    task_completions: taskCompletions,
+    admin_announcements: adminAnnouncements,
   };
 
   app.get("/api/admin/database", requireAdmin, async (_req, res) => {

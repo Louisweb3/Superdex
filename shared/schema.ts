@@ -121,6 +121,62 @@ export const insertTokenCashbackSchema = createInsertSchema(tokenCashback).omit(
 export type InsertTokenCashback = z.infer<typeof insertTokenCashbackSchema>;
 export type TokenCashback = typeof tokenCashback.$inferSelect;
 
+// ─── Earn Tasks ───────────────────────────────────────────────────────────────
+export const earnTasks = pgTable("earn_tasks", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  type: varchar("type", { length: 16 }).notNull(), // onchain | offchain
+  category: varchar("category", { length: 32 }).notNull(), // swap_volume | social_follow | social_like | social_retweet | social_comment | social_join
+  target_value: numeric("target_value", { precision: 24, scale: 8 }).notNull().default("0"), // USD target for onchain
+  target_count: integer("target_count").notNull().default(1), // number of actions for offchain
+  xp_reward: integer("xp_reward").notNull().default(0),
+  cashback_reward: numeric("cashback_reward", { precision: 24, scale: 8 }).notNull().default("0"),
+  icon: text("icon").notNull().default(""), // lucide icon name
+  verification_url: text("verification_url").notNull().default(""),
+  sort_order: integer("sort_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+export const insertEarnTaskSchema = createInsertSchema(earnTasks).omit({ id: true, created_at: true });
+export type InsertEarnTask = z.infer<typeof insertEarnTaskSchema>;
+export type EarnTask = typeof earnTasks.$inferSelect;
+
+// ─── Task Completions ─────────────────────────────────────────────────────────
+export const taskCompletions = pgTable("task_completions", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  wallet_address: varchar("wallet_address", { length: 42 }).notNull(),
+  task_id: varchar("task_id", { length: 36 }).notNull(),
+  progress: numeric("progress", { precision: 24, scale: 8 }).notNull().default("0"),
+  target_value: numeric("target_value", { precision: 24, scale: 8 }).notNull().default("0"),
+  completed: boolean("completed").notNull().default(false),
+  claimed: boolean("claimed").notNull().default(false),
+  claimed_at: timestamp("claimed_at", { mode: "date" }),
+  created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+export const insertTaskCompletionSchema = createInsertSchema(taskCompletions).omit({ id: true, created_at: true });
+export type InsertTaskCompletion = z.infer<typeof insertTaskCompletionSchema>;
+export type TaskCompletion = typeof taskCompletions.$inferSelect;
+
+// ─── Admin Announcements ────────────────────────────────────────────────────────
+export const adminAnnouncements = pgTable("admin_announcements", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: varchar("type", { length: 16 }).notNull().default("info"), // info | warning | success | promo
+  active: boolean("active").notNull().default(true),
+  start_date: varchar("start_date", { length: 10 }).notNull().default(""),
+  end_date: varchar("end_date", { length: 10 }).notNull().default(""),
+  icon: text("icon").notNull().default(""),
+  created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+export const insertAdminAnnouncementSchema = createInsertSchema(adminAnnouncements).omit({ id: true, created_at: true });
+export type InsertAdminAnnouncement = z.infer<typeof insertAdminAnnouncementSchema>;
+export type AdminAnnouncement = typeof adminAnnouncements.$inferSelect;
+
 // ─── Admin CMS: Social Links ──────────────────────────────────────────────────
 export const socialLinks = pgTable("social_links", {
   id: varchar("id", { length: 36 }).primaryKey(),

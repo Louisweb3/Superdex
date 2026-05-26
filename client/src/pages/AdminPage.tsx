@@ -6,11 +6,15 @@ import {
   useAdminEvents,
   useAdminSocial,
   useAdminDatabase,
+  useAdminEarnTasks,
+  useAdminAnnouncements,
   type PageBlock,
   type CmsEvent,
   type CmsSocialLink,
+  type AdminEarnTask,
+  type AdminAnnouncementItem,
 } from "@/hooks/useAdmin";
-import { Shield, Settings, FileText, Calendar, Link2, Save, Trash2, Plus, ChevronDown, Eye, Lock, CheckCircle, AlertCircle, Database, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { Shield, Settings, FileText, Calendar, Link2, Save, Trash2, Plus, ChevronDown, Eye, Lock, CheckCircle, AlertCircle, Database, Download, ChevronLeft, ChevronRight, Zap, Megaphone } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const PAGES = ["home", "swap", "rewards", "vault", "analytics"];
@@ -553,6 +557,198 @@ function downloadCSV(filename: string, headers: string[], rows: Record<string, u
   URL.revokeObjectURL(url);
 }
 
+function EarnTasksTab() {
+  const { tasks, create, update, remove } = useAdminEarnTasks();
+  const [editing, setEditing] = useState<Partial<AdminEarnTask> | null>(null);
+
+  const emptyTask: Partial<AdminEarnTask> = {
+    title: "", description: "", type: "onchain", category: "swap_volume",
+    target_value: 0, target_count: 1, xp_reward: 0, cashback_reward: 0,
+    icon: "", verification_url: "", sort_order: 0, active: true,
+  };
+
+  const handleSave = () => {
+    if (!editing) return;
+    const payload = {
+      title: editing.title ?? "",
+      description: editing.description ?? "",
+      type: editing.type ?? "onchain",
+      category: editing.category ?? "swap_volume",
+      target_value: Number(editing.target_value ?? 0),
+      target_count: Number(editing.target_count ?? 1),
+      xp_reward: Number(editing.xp_reward ?? 0),
+      cashback_reward: Number(editing.cashback_reward ?? 0),
+      icon: editing.icon ?? "",
+      verification_url: editing.verification_url ?? "",
+      sort_order: Number(editing.sort_order ?? 0),
+      active: editing.active ?? true,
+    };
+    if (editing.id) {
+      update.mutate({ id: editing.id, ...payload });
+    } else {
+      create.mutate(payload as Omit<AdminEarnTask, "id">);
+    }
+    setEditing(null);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-['Inter',sans-serif] text-[16px] font-bold text-[#d0d2d6]">Earn Tasks</h2>
+        <Button onClick={() => setEditing({ ...emptyTask })}><Plus className="h-4 w-4" /> New Task</Button>
+      </div>
+
+      {editing && (
+        <Card className="px-4 py-4 flex flex-col gap-3">
+          <p className="font-['Inter',sans-serif] text-[13px] font-semibold text-[#c8ccd4]">{editing.id ? "Edit Task" : "New Task"}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input placeholder="Title" value={editing.title ?? ""} onChange={(e: any) => setEditing((p) => ({ ...p!, title: e.target.value }))} />
+            <Input placeholder="Category" value={editing.category ?? ""} onChange={(e: any) => setEditing((p) => ({ ...p!, category: e.target.value }))} />
+            <select className="rounded-[10px] border border-[#131b27] bg-[#020b1c] px-3 py-2 font-['Inter',sans-serif] text-[13px] text-[#c8ccd4]" value={editing.type ?? "onchain"} onChange={(e) => setEditing((p) => ({ ...p!, type: e.target.value as "onchain" | "offchain" }))}>
+              <option value="onchain">On-chain</option>
+              <option value="offchain">Off-chain</option>
+            </select>
+            <Input placeholder="Icon (emoji or name)" value={editing.icon ?? ""} onChange={(e: any) => setEditing((p) => ({ ...p!, icon: e.target.value }))} />
+            <Input placeholder="Target Value (USD)" type="number" value={editing.target_value ?? 0} onChange={(e: any) => setEditing((p) => ({ ...p!, target_value: Number(e.target.value) }))} />
+            <Input placeholder="Target Count" type="number" value={editing.target_count ?? 1} onChange={(e: any) => setEditing((p) => ({ ...p!, target_count: Number(e.target.value) }))} />
+            <Input placeholder="XP Reward" type="number" value={editing.xp_reward ?? 0} onChange={(e: any) => setEditing((p) => ({ ...p!, xp_reward: Number(e.target.value) }))} />
+            <Input placeholder="Cashback Reward" type="number" value={editing.cashback_reward ?? 0} onChange={(e: any) => setEditing((p) => ({ ...p!, cashback_reward: Number(e.target.value) }))} />
+            <Input placeholder="Sort Order" type="number" value={editing.sort_order ?? 0} onChange={(e: any) => setEditing((p) => ({ ...p!, sort_order: Number(e.target.value) }))} />
+            <Input placeholder="Verification URL" value={editing.verification_url ?? ""} onChange={(e: any) => setEditing((p) => ({ ...p!, verification_url: e.target.value }))} />
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" checked={editing.active ?? true} onChange={(e) => setEditing((p) => ({ ...p!, active: e.target.checked }))} />
+            <span className="font-['Inter',sans-serif] text-[12px] text-[#c8ccd4]">Active</span>
+          </div>
+          <textarea className="rounded-[10px] border border-[#131b27] bg-[#020b1c] px-3 py-2 font-['Inter',sans-serif] text-[13px] text-[#c8ccd4]" rows={2} placeholder="Description" value={editing.description ?? ""} onChange={(e) => setEditing((p) => ({ ...p!, description: e.target.value }))} />
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={create.isPending || update.isPending}><Save className="h-4 w-4" /> Save</Button>
+            <Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
+          </div>
+        </Card>
+      )}
+
+      {tasks.isLoading ? <p className="text-[#6c778a] font-['Inter',sans-serif] text-[13px]">Loading tasks...</p> : (
+        <div className="flex flex-col gap-3">
+          {(tasks.data ?? []).map((t) => (
+            <Card key={t.id} className="px-4 py-3 flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-['Inter',sans-serif] text-[13px] font-semibold text-[#c8ccd4]">{t.title}</span>
+                  <span className={`rounded-[6px] px-2 py-0.5 font-['Inter',sans-serif] text-[10px] font-bold ${t.active ? "bg-[#0e3a1e] text-[#3acd5b]" : "bg-[#1a0e0e] text-[#d94a4a]"}`}>
+                    {t.active ? "Active" : "Inactive"}
+                  </span>
+                  <span className="rounded-[6px] bg-[#071020] px-2 py-0.5 font-['Inter',sans-serif] text-[10px] text-[#6c778a]">{t.type}</span>
+                </div>
+                <p className="font-['Inter',sans-serif] text-[11px] text-[#6c778a] mt-0.5 truncate">{t.description}</p>
+                <div className="flex gap-3 mt-1">
+                  <span className="font-['Inter',sans-serif] text-[11px] text-[#6c778a]">XP: <span className="text-[#3acd5b]">{t.xp_reward}</span></span>
+                  <span className="font-['Inter',sans-serif] text-[11px] text-[#6c778a]">Cashback: <span className="text-[#3acd5b]">{t.cashback_reward}%</span></span>
+                  <span className="font-['Inter',sans-serif] text-[11px] text-[#6c778a]">Target: <span className="text-[#c8ccd4]">{t.target_value > 0 ? `$${t.target_value}` : t.target_count}</span></span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="ghost" onClick={() => setEditing(t)}><Settings className="h-4 w-4" /></Button>
+                <Button variant="danger" onClick={() => remove.mutate(t.id)} disabled={remove.isPending}><Trash2 className="h-4 w-4" /></Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AnnouncementsTab() {
+  const { announcements, create, update, remove } = useAdminAnnouncements();
+  const [editing, setEditing] = useState<Partial<AdminAnnouncementItem> | null>(null);
+
+  const emptyAnn: Partial<AdminAnnouncementItem> = {
+    title: "", message: "", type: "info", active: true,
+    start_date: new Date().toISOString().slice(0, 10),
+    end_date: "", icon: "",
+  };
+
+  const handleSave = () => {
+    if (!editing) return;
+    const payload = {
+      title: editing.title ?? "",
+      message: editing.message ?? "",
+      type: editing.type ?? "info",
+      active: editing.active ?? true,
+      start_date: editing.start_date ?? new Date().toISOString().slice(0, 10),
+      end_date: editing.end_date ?? "",
+      icon: editing.icon ?? "",
+    };
+    if (editing.id) {
+      update.mutate({ id: editing.id, ...payload });
+    } else {
+      create.mutate(payload as Omit<AdminAnnouncementItem, "id">);
+    }
+    setEditing(null);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-['Inter',sans-serif] text-[16px] font-bold text-[#d0d2d6]">Announcements</h2>
+        <Button onClick={() => setEditing({ ...emptyAnn })}><Plus className="h-4 w-4" /> New Announcement</Button>
+      </div>
+
+      {editing && (
+        <Card className="px-4 py-4 flex flex-col gap-3">
+          <p className="font-['Inter',sans-serif] text-[13px] font-semibold text-[#c8ccd4]">{editing.id ? "Edit Announcement" : "New Announcement"}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input placeholder="Title" value={editing.title ?? ""} onChange={(e: any) => setEditing((p) => ({ ...p!, title: e.target.value }))} />
+            <select className="rounded-[10px] border border-[#131b27] bg-[#020b1c] px-3 py-2 font-['Inter',sans-serif] text-[13px] text-[#c8ccd4]" value={editing.type ?? "info"} onChange={(e) => setEditing((p) => ({ ...p!, type: e.target.value }))}>
+              <option value="info">Info</option>
+              <option value="event">Event</option>
+              <option value="update">Update</option>
+              <option value="alert">Alert</option>
+            </select>
+            <Input placeholder="Start Date" type="date" value={editing.start_date ?? ""} onChange={(e: any) => setEditing((p) => ({ ...p!, start_date: e.target.value }))} />
+            <Input placeholder="End Date (optional)" type="date" value={editing.end_date ?? ""} onChange={(e: any) => setEditing((p) => ({ ...p!, end_date: e.target.value }))} />
+            <Input placeholder="Icon (emoji)" value={editing.icon ?? ""} onChange={(e: any) => setEditing((p) => ({ ...p!, icon: e.target.value }))} />
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" checked={editing.active ?? true} onChange={(e) => setEditing((p) => ({ ...p!, active: e.target.checked }))} />
+            <span className="font-['Inter',sans-serif] text-[12px] text-[#c8ccd4]">Active</span>
+          </div>
+          <textarea className="rounded-[10px] border border-[#131b27] bg-[#020b1c] px-3 py-2 font-['Inter',sans-serif] text-[13px] text-[#c8ccd4]" rows={3} placeholder="Message" value={editing.message ?? ""} onChange={(e) => setEditing((p) => ({ ...p!, message: e.target.value }))} />
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={create.isPending || update.isPending}><Save className="h-4 w-4" /> Save</Button>
+            <Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
+          </div>
+        </Card>
+      )}
+
+      {announcements.isLoading ? <p className="text-[#6c778a] font-['Inter',sans-serif] text-[13px]">Loading announcements...</p> : (
+        <div className="flex flex-col gap-3">
+          {(announcements.data ?? []).map((a) => (
+            <Card key={a.id} className="px-4 py-3 flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-['Inter',sans-serif] text-[13px] font-semibold text-[#c8ccd4]">{a.icon} {a.title}</span>
+                  <span className={`rounded-[6px] px-2 py-0.5 font-['Inter',sans-serif] text-[10px] font-bold ${a.active ? "bg-[#0e3a1e] text-[#3acd5b]" : "bg-[#1a0e0e] text-[#d94a4a]"}`}>
+                    {a.active ? "Active" : "Inactive"}
+                  </span>
+                  <span className="rounded-[6px] bg-[#071020] px-2 py-0.5 font-['Inter',sans-serif] text-[10px] text-[#6c778a]">{a.type}</span>
+                </div>
+                <p className="font-['Inter',sans-serif] text-[11px] text-[#6c778a] mt-0.5 truncate">{a.message}</p>
+                <p className="font-['Inter',sans-serif] text-[11px] text-[#6c778a] mt-0.5">{a.start_date}{a.end_date ? ` → ${a.end_date}` : ""}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="ghost" onClick={() => setEditing(a)}><Settings className="h-4 w-4" /></Button>
+                <Button variant="danger" onClick={() => remove.mutate(a.id)} disabled={remove.isPending}><Trash2 className="h-4 w-4" /></Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DatabaseTab() {
   const { tables, rows } = useAdminDatabase();
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -668,7 +864,7 @@ function DatabaseTab() {
 // ─── Main AdminPage ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 export function AdminPage(): JSX.Element {
   const auth = useAdminAuth();
-  const [tab, setTab] = useState<"settings" | "pages" | "events" | "social" | "database">("settings");
+  const [tab, setTab] = useState<"settings" | "pages" | "events" | "social" | "earn" | "announcements" | "database">("settings");
 
   if (!auth.isLoggedIn) {
     return <LoginScreen onLogin={auth.login} />;
@@ -679,6 +875,8 @@ export function AdminPage(): JSX.Element {
     { key: "pages" as const, label: "Page Editor", icon: <FileText className="h-4 w-4" /> },
     { key: "events" as const, label: "Events", icon: <Calendar className="h-4 w-4" /> },
     { key: "social" as const, label: "Social", icon: <Link2 className="h-4 w-4" /> },
+    { key: "earn" as const, label: "Earn Tasks", icon: <Zap className="h-4 w-4" /> },
+    { key: "announcements" as const, label: "Announcements", icon: <Megaphone className="h-4 w-4" /> },
     { key: "database" as const, label: "Database", icon: <Database className="h-4 w-4" /> },
   ];
 
@@ -726,6 +924,8 @@ export function AdminPage(): JSX.Element {
         {tab === "pages" && <PageEditorTab />}
         {tab === "events" && <EventsTab />}
         {tab === "social" && <SocialTab />}
+        {tab === "earn" && <EarnTasksTab />}
+        {tab === "announcements" && <AnnouncementsTab />}
         {tab === "database" && <DatabaseTab />}
       </main>
     </div>

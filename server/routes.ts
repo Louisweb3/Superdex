@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { rewardsStorage } from "./storage";
+import { rewardsStorage, earnStorage } from "./storage";
 import { verifyTransaction } from "./basescan";
 
 const ZEROX_API_KEY = process.env.ZEROX_API_KEY || "";
@@ -203,6 +203,70 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/rewards/stats", async (_req, res) => {
     return res.json(await rewardsStorage.getTotalStats());
+  });
+
+  // ─── Earn API ─────────────────────────────────────────────────────────
+
+  app.get("/api/earn/tasks", async (req, res) => {
+    const type = req.query.type as string | undefined;
+    return res.json(await earnStorage.getTasks(type));
+  });
+
+  app.get("/api/earn/tasks/:id", async (req, res) => {
+    const task = await earnStorage.getTask(req.params.id);
+    if (!task) return res.status(404).json({ error: "Task not found" });
+    return res.json(task);
+  });
+
+  app.get("/api/earn/completions/:wallet", async (req, res) => {
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    await earnStorage.syncOnchainProgress(wallet);
+    return res.json(await earnStorage.getCompletions(wallet));
+  });
+
+  app.post("/api/earn/claim", async (req, res) => {
+    const { wallet, taskId } = req.body;
+    if (!wallet || !taskId) return res.status(400).json({ error: "Missing wallet or taskId" });
+    const result = await earnStorage.claimTask(wallet, taskId);
+    if (!result) return res.status(400).json({ error: "Task not claimable" });
+    return res.json(result);
+  });
+
+  app.post("/api/earn/tasks", async (req, res) => {
+    const task = await earnStorage.createTask(req.body);
+    return res.json(task);
+  });
+
+  app.patch("/api/earn/tasks/:id", async (req, res) => {
+    const task = await earnStorage.updateTask(req.params.id, req.body);
+    if (!task) return res.status(404).json({ error: "Task not found" });
+    return res.json(task);
+  });
+
+  app.delete("/api/earn/tasks/:id", async (req, res) => {
+    await earnStorage.deleteTask(req.params.id);
+    return res.json({ ok: true });
+  });
+
+  app.get("/api/earn/announcements", async (_req, res) => {
+    return res.json(await earnStorage.getAnnouncements());
+  });
+
+  app.post("/api/earn/announcements", async (req, res) => {
+    const ann = await earnStorage.createAnnouncement(req.body);
+    return res.json(ann);
+  });
+
+  app.patch("/api/earn/announcements/:id", async (req, res) => {
+    const ann = await earnStorage.updateAnnouncement(req.params.id, req.body);
+    if (!ann) return res.status(404).json({ error: "Not found" });
+    return res.json(ann);
+  });
+
+  app.delete("/api/earn/announcements/:id", async (req, res) => {
+    await earnStorage.deleteAnnouncement(req.params.id);
+    return res.json({ ok: true });
   });
 
   // ─── Analytics (0x Trade Analytics API) ─────────────────────────────────────
