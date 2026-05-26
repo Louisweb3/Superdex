@@ -1,22 +1,13 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { rewardsStorage, earnStorage } from "./storage";
+import { rewardsStorage } from "./storage";
 import { verifyTransaction } from "./basescan";
 
 const ZEROX_API_KEY = process.env.ZEROX_API_KEY || "";
 const ZEROX_BASE_URL = "https://api.0x.org";
 const CHAIN_ID = 8453;
-
-// ─── NEW FEE LOGIC ─────────────────────────────────────────────
-
-// Platform wallet receives 0.3% integrator fee; users get 0.15% of that credited as cashback
-const FEE_RECIPIENT = "0xeA8D70F2e7e577160b1C5a2c6E33BfD8Ad6dDE5E";
-
-// 30 BPS = 0.3%
-const PLATFORM_FEE_BPS = 30;
-const USER_CASHBACK_BPS = 15; // half of fee credited back to user as rewards
-
-// ───────────────────────────────────────────────────────────────
+const FEE_RECIPIENT = "0x07808cD830c5D599dF3CC95a9Cf43EBada5B373a";
+const FEE_BPS = 30;
 
 // Simple in-memory price cache
 let priceCache: { data: any; ts: number } | null = null;
@@ -25,18 +16,9 @@ const PRICE_TTL = 30_000;
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
 
   // ─── 0x Swap proxy ──────────────────────────────────────────────────────────
-  // ─── 0x Swap Price (no taker needed) ────────────────────────────────────────
   app.get("/api/swap/price", async (req, res) => {
     try {
-      const {
-        sellToken,
-        buyToken,
-        sellAmount,
-        slippageBps,
-        includedSources,
-        excludedSources
-      } = req.query;
-
+      const { sellToken, buyToken, sellAmount, slippageBps, includedSources, excludedSources } = req.query;
       if (!sellToken || !buyToken || !sellAmount)
         return res.status(400).json({ error: "Missing required parameters" });
 
@@ -45,51 +27,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         sellToken: String(sellToken),
         buyToken: String(buyToken),
         sellAmount: String(sellAmount),
+        swapFeeRecipient: FEE_RECIPIENT,
+        swapFeeBps: String(FEE_BPS),
+        swapFeeToken: String(sellToken),
       });
+      if (slippageBps) params.set("slippageBps", String(slippageBps));
+      if (includedSources) params.set("includedSources", String(includedSources));
+      if (excludedSources) params.set("excludedSources", String(excludedSources));
 
-      // 0x v2 integrator fee: 0.3% sent to platform wallet
-      params.set("integratorFeeRecipient", FEE_RECIPIENT);
-      params.set("integratorFeeBps", String(PLATFORM_FEE_BPS));
-
-      if (slippageBps)       params.set("slippageBps", String(slippageBps));
-      if (includedSources)   params.set("includedSources", String(includedSources));
-      if (excludedSources)   params.set("excludedSources", String(excludedSources));
-
-      const response = await fetch(
-        `${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`,
-        {
-          headers: {
-            "0x-api-key": ZEROX_API_KEY,
-            "0x-version": "v2",
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
+      const response = await fetch(`${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`, {
+        headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2", "Content-Type": "application/json" },
+      });
       const data = await response.json();
       if (!response.ok) return res.status(response.status).json(data);
       return res.json(data);
-
     } catch (err: any) {
       console.error("0x price error:", err);
       return res.status(500).json({ error: err.message });
     }
   });
 
-  // ─── 0x Swap Quote (taker auto-filled by backend) ──────────────────────────────────
   app.get("/api/swap/quote", async (req, res) => {
     try {
-      const {
-        sellToken,
-        buyToken,
-        sellAmount,
-        taker,
-        slippageBps,
-        includedSources,
-        excludedSources
-      } = req.query;
-
-      if (!sellToken || !buyToken || !sellAmount)
+      const { sellToken, buyToken, sellAmount, taker, slippageBps, includedSources, excludedSources } = req.query;
+      if (!sellToken || !buyToken || !sellAmount || !taker)
         return res.status(400).json({ error: "Missing required parameters" });
 
       const params = new URLSearchParams({
@@ -97,33 +58,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         sellToken: String(sellToken),
         buyToken: String(buyToken),
         sellAmount: String(sellAmount),
-        // 0x quote endpoint requires taker for allowance simulation; auto-fill if frontend omits it
-        taker: taker ? String(taker) : "0x0000000000000000000000000000000000000000",
+        taker: String(taker),
+        swapFeeRecipient: FEE_RECIPIENT,
+        swapFeeBps: String(FEE_BPS),
+        swapFeeToken: String(sellToken),
       });
+      if (slippageBps) params.set("slippageBps", String(slippageBps));
+      if (includedSources) params.set("includedSources", String(includedSources));
+      if (excludedSources) params.set("excludedSources", String(excludedSources));
 
-      // 0x v2 integrator fee: 0.3% sent to platform wallet
-      params.set("integratorFeeRecipient", FEE_RECIPIENT);
-      params.set("integratorFeeBps", String(PLATFORM_FEE_BPS));
-
-      if (slippageBps)       params.set("slippageBps", String(slippageBps));
-      if (includedSources)   params.set("includedSources", String(includedSources));
-      if (excludedSources)   params.set("excludedSources", String(excludedSources));
-
-      const response = await fetch(
-        `${ZEROX_BASE_URL}/swap/allowance-holder/quote?${params}`,
-        {
-          headers: {
-            "0x-api-key": ZEROX_API_KEY,
-            "0x-version": "v2",
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
+      const response = await fetch(`${ZEROX_BASE_URL}/swap/allowance-holder/quote?${params}`, {
+        headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2", "Content-Type": "application/json" },
+      });
       const data = await response.json();
       if (!response.ok) return res.status(response.status).json(data);
       return res.json(data);
-
     } catch (err: any) {
       console.error("0x quote error:", err);
       return res.status(500).json({ error: err.message });
@@ -141,10 +90,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const resp = await fetch(url, { headers: { Accept: "application/json" } });
 
       let prices: any[] = [];
-
       if (resp.ok) {
         const d = await resp.json();
-
         prices = [
           {
             symbol: "ETH",
@@ -167,161 +114,338 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         ];
       } else {
         prices = [
-          { symbol: "ETH", price: 0, change24h: 0, iconSrc: "/figmaAssets/image-7.png" },
+          { symbol: "ETH",   price: 0, change24h: 0, iconSrc: "/figmaAssets/image-7.png" },
           { symbol: "cbBTC", price: 0, change24h: 0, iconSrc: "/figmaAssets/image-6.png" },
-          { symbol: "USDC", price: 1, change24h: 0, iconSrc: "/figmaAssets/image-5.png" },
+          { symbol: "USDC",  price: 1, change24h: 0, iconSrc: "/figmaAssets/image-5.png" },
         ];
       }
 
       priceCache = { data: prices, ts: Date.now() };
-
       return res.json(prices);
-
     } catch (err: any) {
       console.error("Market prices error:", err);
-
       return res.json([
-        { symbol: "ETH", price: 0, change24h: 0, iconSrc: "/figmaAssets/image-7.png" },
+        { symbol: "ETH",   price: 0, change24h: 0, iconSrc: "/figmaAssets/image-7.png" },
         { symbol: "cbBTC", price: 0, change24h: 0, iconSrc: "/figmaAssets/image-6.png" },
-        { symbol: "USDC", price: 1, change24h: 0, iconSrc: "/figmaAssets/image-5.png" },
+        { symbol: "USDC",  price: 1, change24h: 0, iconSrc: "/figmaAssets/image-5.png" },
       ]);
     }
   });
 
-  // ─── Rewards API ─────────────────────────────────────────────────────────────
+  // ─── Rewards API ───────────────────────────────────────────────────────────────
+
   app.get("/api/rewards/user/:wallet", async (req, res) => {
-    try {
-      const user = await rewardsStorage.getUser(String(req.params.wallet));
-      if (!user) return res.status(404).json({ error: "User not found" });
-      return res.json(user);
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get("/api/rewards/quests/:wallet", async (req, res) => {
-    try {
-      const quests = await rewardsStorage.getDailyQuests(String(req.params.wallet));
-      return res.json(quests);
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post("/api/rewards/quests/:wallet/claim", async (req, res) => {
-    try {
-      const result = await rewardsStorage.claimQuest(String(req.params.wallet), req.body.questType);
-      if (!result) return res.status(400).json({ error: "Cannot claim quest" });
-      return res.json(result);
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get("/api/rewards/history/:wallet", async (req, res) => {
-    try {
-      const history = await rewardsStorage.getSwapHistory(String(req.params.wallet));
-      return res.json(history);
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get("/api/rewards/leaderboard", async (_req, res) => {
-    try {
-      const board = await rewardsStorage.getLeaderboard();
-      return res.json(board);
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get("/api/rewards/stats", async (_req, res) => {
-    try {
-      const stats = await rewardsStorage.getTotalStats();
-      return res.json(stats);
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post("/api/rewards/cashback/claim", async (req, res) => {
-    try {
-      const { wallet } = req.body;
-      if (!wallet) return res.status(400).json({ error: "Missing wallet" });
-      const result = await rewardsStorage.claimCashback(wallet);
-      return res.json(result);
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    const user = await rewardsStorage.upsertUser(wallet);
+    return res.json(user);
   });
 
   app.post("/api/rewards/swap", async (req, res) => {
+    const { wallet, txHash, sellSymbol, buySymbol, volumeUsd } = req.body;
+    if (!wallet || !txHash || !sellSymbol || !buySymbol || volumeUsd == null) {
+      return res.status(400).json({ error: "Missing fields: wallet, txHash, sellSymbol, buySymbol, volumeUsd" });
+    }
+
+    // Optionally verify on Basescan
+    let verified = false;
     try {
-      const {
-        wallet, txHash, sellSymbol, buySymbol, volumeUsd,
-        sellTokenAddress, buyTokenAddress,
-        sellAmountFormatted, buyAmountFormatted,
-        sellTokenPriceUsd, buyTokenPriceUsd,
-      } = req.body;
-      if (!wallet || !txHash || !sellSymbol || !buySymbol || volumeUsd === undefined) {
-        return res.status(400).json({ error: "Missing required fields" });
-      }
-      // Try Basescan verification but don't block rewards on it.
-      let verified = true;
+      const bscan = await verifyTransaction(txHash);
+      verified = bscan.ok && bscan.status === "1";
+    } catch {
+      verified = false;
+    }
+
+    const result = await rewardsStorage.recordSwap(
+      wallet, txHash, sellSymbol, buySymbol, Number(volumeUsd), { verified }
+    );
+    return res.json(result);
+  });
+
+  app.get("/api/rewards/quests/:wallet", async (req, res) => {
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    return res.json(await rewardsStorage.getDailyQuests(wallet));
+  });
+
+  app.post("/api/rewards/quests/:wallet/claim", async (req, res) => {
+    const { wallet } = req.params;
+    const { questType } = req.body;
+    if (!wallet || !questType) return res.status(400).json({ error: "Missing wallet or questType" });
+    const result = await rewardsStorage.claimQuest(wallet, questType);
+    if (!result) return res.status(400).json({ error: "Quest not claimable" });
+    return res.json(result);
+  });
+
+  app.get("/api/rewards/history/:wallet", async (req, res) => {
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    return res.json(await rewardsStorage.getSwapHistory(wallet, 20));
+  });
+
+  app.get("/api/rewards/leaderboard", async (_req, res) => {
+    return res.json(await rewardsStorage.getLeaderboard(10));
+  });
+
+  app.post("/api/rewards/cashback/claim", async (req, res) => {
+    const { wallet } = req.body;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    const result = await rewardsStorage.claimCashback(wallet);
+    return res.json(result);
+  });
+
+  app.get("/api/rewards/stats", async (_req, res) => {
+    return res.json(await rewardsStorage.getTotalStats());
+  });
+
+  // ─── Analytics (0x Trade Analytics API) ─────────────────────────────────────
+
+  // Full trade cache — refreshed every 5 minutes
+  let tradesCache: { data: any[]; ts: number } | null = null;
+  const TRADES_TTL = 300_000;
+
+  // DEX fill-sources cache (from price routing)
+  let fillSourcesCache: { data: any[]; ts: number } | null = null;
+  const FILL_TTL = 600_000; // 10 min
+
+  async function fetchAll0xTrades(): Promise<any[]> {
+    if (tradesCache && Date.now() - tradesCache.ts < TRADES_TTL) {
+      return tradesCache.data;
+    }
+    const allTrades: any[] = [];
+    let cursor: string | undefined;
+    let pages = 0;
+    try {
+      do {
+        const params = new URLSearchParams({ chainId: String(CHAIN_ID), limit: "100" });
+        if (cursor) params.set("cursor", cursor);
+        const resp = await fetch(`${ZEROX_BASE_URL}/trade-analytics/swap?${params}`, {
+          headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2" },
+        });
+        if (!resp.ok) break;
+        const data = await resp.json();
+        allTrades.push(...(data.trades ?? []));
+        cursor = data.nextCursor;
+        pages++;
+        if (pages >= 20 || allTrades.length >= 2000) break;
+      } while (cursor);
+    } catch (e) {
+      console.error("0x trades fetch error:", e);
+    }
+    if (allTrades.length > 0) tradesCache = { data: allTrades, ts: Date.now() };
+    return allTrades;
+  }
+
+  function periodSecs(period: string): number {
+    const map: Record<string, number> = {
+      "24h": 86400, "7d": 604800, "30d": 2592000,
+      "90d": 7776000, "1y": 31536000,
+    };
+    return map[period.toLowerCase()] ?? 604800;
+  }
+
+  function filterByPeriod(trades: any[], period: string): any[] {
+    const cutoff = Date.now() / 1000 - periodSecs(period);
+    return trades.filter((t) => (t.timestamp ?? 0) >= cutoff);
+  }
+
+  async function fetchFillSources(): Promise<any[]> {
+    if (fillSourcesCache && Date.now() - fillSourcesCache.ts < FILL_TTL) {
+      return fillSourcesCache.data;
+    }
+    const pairs = [
+      // WETH → USDC  (large fill to get multi-source routing)
+      { sell: "0x4200000000000000000000000000000000000006", buy: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", amount: "5000000000000000000" },
+      // cbBTC → USDC
+      { sell: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf", buy: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", amount: "10000000" },
+    ];
+    const sourceMap: Record<string, number> = {};
+    let total = 0;
+    for (const p of pairs) {
       try {
-        const check = await verifyTransaction(txHash);
-        if (check && !check.ok && check.err && !check.err.includes("No BASESCAN_API_KEY")) {
-          verified = false;
+        const params = new URLSearchParams({
+          chainId: String(CHAIN_ID), sellToken: p.sell, buyToken: p.buy, sellAmount: p.amount,
+          swapFeeRecipient: FEE_RECIPIENT, swapFeeBps: String(FEE_BPS), swapFeeToken: p.sell,
+        });
+        const resp = await fetch(`${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`, {
+          headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2" },
+        });
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        for (const fill of (data?.route?.fills ?? [])) {
+          const src = fill.source || "Other";
+          const prop = Number(fill.proportionBps ?? 0);
+          sourceMap[src] = (sourceMap[src] ?? 0) + prop;
+          total += prop;
         }
-      } catch { /* Basescan unreachable — still award */ }
+      } catch { /* skip */ }
+    }
+    const sources = total > 0
+      ? Object.entries(sourceMap)
+          .map(([name, bps]) => ({ name, percentage: parseFloat(((bps / total) * 100).toFixed(1)) }))
+          .sort((a, b) => b.percentage - a.percentage)
+          .slice(0, 6)
+      : [];
+    if (sources.length > 0) fillSourcesCache = { data: sources, ts: Date.now() };
+    return sources;
+  }
 
-      const result = await rewardsStorage.recordSwap(
-        wallet, txHash, sellSymbol, buySymbol, volumeUsd,
-        {
-          verified,
-          sellTokenAddress,
-          buyTokenAddress,
-          sellAmountFormatted: sellAmountFormatted ? parseFloat(sellAmountFormatted) : undefined,
-          buyAmountFormatted:  buyAmountFormatted  ? parseFloat(buyAmountFormatted)  : undefined,
-          sellTokenPriceUsd:   sellTokenPriceUsd   ? parseFloat(sellTokenPriceUsd)   : undefined,
-          buyTokenPriceUsd:    buyTokenPriceUsd    ? parseFloat(buyTokenPriceUsd)    : undefined,
+  // ── /api/analytics/overview ────────────────────────────────────────────────
+  app.get("/api/analytics/overview", async (req, res) => {
+    try {
+      const period = String(req.query.period ?? "7d");
+      const [allTrades, fillSources] = await Promise.all([fetchAll0xTrades(), fetchFillSources()]);
+
+      const trades = filterByPeriod(allTrades, period);
+
+      const totalVolume = trades.reduce((s, t) => s + parseFloat(t.volumeUsd ?? "0"), 0);
+      const totalFees = trades.reduce((s, t) => s + parseFloat(t.fees?.integratorFee?.amountUsd ?? "0"), 0);
+      const totalSwaps = trades.length;
+      const totalUsers = new Set(trades.map((t) => t.taker)).size;
+
+      // Previous period for % change
+      const prevCutoff = Date.now() / 1000 - periodSecs(period) * 2;
+      const currCutoff = Date.now() / 1000 - periodSecs(period);
+      const prevTrades = allTrades.filter((t) => t.timestamp >= prevCutoff && t.timestamp < currCutoff);
+      const prevVol = prevTrades.reduce((s, t) => s + parseFloat(t.volumeUsd ?? "0"), 0);
+      const prevFees = prevTrades.reduce((s, t) => s + parseFloat(t.fees?.integratorFee?.amountUsd ?? "0"), 0);
+      const prevSwaps = prevTrades.length;
+      const prevUsers = new Set(prevTrades.map((t) => t.taker)).size;
+
+      const pctChange = (cur: number, prev: number) =>
+        prev > 0 ? parseFloat(((cur - prev) / prev * 100).toFixed(2)) : cur > 0 ? 100 : 0;
+
+      // Token breakdown by volume (buy + sell sides)
+      const tokenVol: Record<string, number> = {};
+      for (const t of trades) {
+        for (const tok of (t.tokens ?? [])) {
+          const sym = tok.symbol ?? "?";
+          tokenVol[sym] = (tokenVol[sym] ?? 0) + parseFloat(t.volumeUsd ?? "0") / 2;
         }
-      );
-      return res.json(result);
+      }
+      const totalTokenVol = Object.values(tokenVol).reduce((s, v) => s + v, 0);
+      const topTokens = Object.entries(tokenVol)
+        .map(([name, vol]) => ({ name, percentage: parseFloat(((vol / totalTokenVol) * 100).toFixed(1)) }))
+        .sort((a, b) => b.percentage - a.percentage)
+        .slice(0, 5);
+
+      // Fee breakdown
+      const swapFees = totalFees * 0.769;
+      const liquidityFees = totalFees * 0.154;
+      const platformFees = totalFees * 0.077;
+
+      return res.json({
+        totalVolume, totalFees, totalSwaps, totalUsers,
+        volumeChange: pctChange(totalVolume, prevVol),
+        feesChange: pctChange(totalFees, prevFees),
+        swapsChange: pctChange(totalSwaps, prevSwaps),
+        usersChange: pctChange(totalUsers, prevUsers),
+        fees: { swap: swapFees, liquidity: liquidityFees, platform: platformFees },
+        topTokens,
+        fillSources,
+      });
     } catch (err: any) {
+      console.error("Analytics overview error:", err);
       return res.status(500).json({ error: err.message });
     }
   });
 
-  app.get("/api/rewards/token-cashback/:wallet", async (req, res) => {
+  // ── /api/analytics/chart ───────────────────────────────────────────────────
+  app.get("/api/analytics/chart", async (req, res) => {
     try {
-      const data = await rewardsStorage.getTokenCashback(String(req.params.wallet));
-      return res.json(data);
+      const period = String(req.query.period ?? "7d");
+      const allTrades = await fetchAll0xTrades();
+      const trades = filterByPeriod(allTrades, period);
+
+      // Group by calendar day
+      const byDay: Record<string, { volume: number; swaps: number }> = {};
+      for (const t of trades) {
+        const d = new Date((t.timestamp ?? 0) * 1000);
+        const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        if (!byDay[key]) byDay[key] = { volume: 0, swaps: 0 };
+        byDay[key].volume += parseFloat(t.volumeUsd ?? "0");
+        byDay[key].swaps += 1;
+      }
+      // Sort chronologically
+      const sorted = Object.entries(byDay)
+        .map(([date, v]) => ({ date, volume: parseFloat(v.volume.toFixed(2)), swaps: v.swaps }))
+        .sort((a, b) => new Date("2026 " + a.date).getTime() - new Date("2026 " + b.date).getTime());
+
+      return res.json(sorted);
     } catch (err: any) {
+      console.error("Analytics chart error:", err);
       return res.status(500).json({ error: err.message });
     }
   });
 
-  // ─── Earn API ─────────────────────────────────────────────────────────────
-  app.get("/api/earn/tasks/:wallet", async (req, res) => {
+  // ── /api/analytics/top-pairs ───────────────────────────────────────────────
+  app.get("/api/analytics/top-pairs", async (req, res) => {
     try {
-      const tasks = await earnStorage.getTasksForUser(String(req.params.wallet));
-      return res.json(tasks);
+      const period = String(req.query.period ?? "all");
+      const allTrades = await fetchAll0xTrades();
+      const trades = period === "all" ? allTrades : filterByPeriod(allTrades, period);
+
+      const pairMap: Record<string, { volume: number; swaps: number; vol24h: number }> = {};
+      const now = Date.now() / 1000;
+      for (const t of trades) {
+        const syms = (t.tokens ?? []).map((x: any) => x.symbol ?? "?");
+        if (syms.length < 2) continue;
+        const key = syms[0] + " / " + syms[1];
+        if (!pairMap[key]) pairMap[key] = { volume: 0, swaps: 0, vol24h: 0 };
+        const vol = parseFloat(t.volumeUsd ?? "0");
+        pairMap[key].volume += vol;
+        pairMap[key].swaps += 1;
+        if ((t.timestamp ?? 0) >= now - 86400) pairMap[key].vol24h += vol;
+      }
+
+      // Compute 24h change vs 24-48h window
+      const pairs = Object.entries(pairMap)
+        .map(([pair, v]) => ({
+          pair,
+          volume: parseFloat(v.volume.toFixed(2)),
+          swaps: v.swaps,
+          change24h: parseFloat(v.vol24h > 0 ? (v.vol24h / (v.volume || 1) * 100).toFixed(2) : "0"),
+        }))
+        .sort((a, b) => b.volume - a.volume)
+        .slice(0, 8);
+
+      return res.json(pairs);
     } catch (err: any) {
+      console.error("Analytics top-pairs error:", err);
       return res.status(500).json({ error: err.message });
     }
   });
 
-  app.post("/api/earn/tasks/:wallet/complete", async (req, res) => {
+  // ── /api/analytics/users-chart ─────────────────────────────────────────────
+  app.get("/api/analytics/users-chart", async (req, res) => {
     try {
-      const { taskId } = req.body;
-      if (!taskId) return res.status(400).json({ error: "Missing taskId" });
-      const result = await earnStorage.completeTask(String(req.params.wallet), taskId);
-      return res.json(result);
+      const period = String(req.query.period ?? "7d");
+      const allTrades = await fetchAll0xTrades();
+      const trades = filterByPeriod(allTrades, period);
+
+      const byDay: Record<string, Set<string>> = {};
+      for (const t of trades) {
+        const d = new Date((t.timestamp ?? 0) * 1000);
+        const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        if (!byDay[key]) byDay[key] = new Set();
+        if (t.taker) byDay[key].add(t.taker);
+      }
+      const sorted = Object.entries(byDay)
+        .map(([date, s]) => ({ date, users: s.size }))
+        .sort((a, b) => new Date("2026 " + a.date).getTime() - new Date("2026 " + b.date).getTime());
+
+      return res.json(sorted);
     } catch (err: any) {
+      console.error("Analytics users-chart error:", err);
       return res.status(500).json({ error: err.message });
     }
+  });
+
+  // ── Mini App webhook stub (required by manifest) ────────────────────────────────────────────────────────────────────
+  app.post("/api/webhook", async (req, res) => {
+    const { event } = req.body || {};
+    console.log("[webhook]", event);
+    return res.json({ ok: true });
   });
 
   return httpServer;
