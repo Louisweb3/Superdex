@@ -224,7 +224,7 @@ export function RewardsPage(): JSX.Element {
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="text-[13px] font-bold uppercase tracking-[0.28em] text-[#7f8b9d]">Cashback</h2>
-                  <p className="mt-1 text-[13px] text-[#6f7b8e]">0.15% of swap volume (50% of 0.3% fee) \u2014 distributed weekly</p>
+                  <p className="mt-1 text-[13px] text-[#6f7b8e]">0.15% of swap volume distributed weekly</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
