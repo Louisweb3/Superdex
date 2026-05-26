@@ -1,13 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-// ─── Shared types (mirrors server/storage.ts) ──────────────────────────────
+// ─── Shared types (mirrors server/storage.ts) ───────────────────────────────────────────────
 export interface RewardUser {
   wallet_address: string;
   xp: number;
   weekly_xp: number;
-  cashback_usd: number;           // lifetime claimed
-  weekly_cashback_usd: number;  // earned this week (unclaimed until week ends)
-  pending_cashback_usd: number; // past-week pending (ready to claim)
+  cashback_usd: number;
+  weekly_cashback_usd: number;
+  pending_cashback_usd: number;
   total_swaps: number;
   streak: number;
   last_activity_date: string;
@@ -42,14 +42,24 @@ export interface SwapEvent {
   timestamp: number;
 }
 
-// ─── Fetch helpers ────────────────────────────────────────────────────────────
+export interface TokenCashbackEntry {
+  wallet_address: string;
+  token_symbol: string;
+  token_address: string;
+  total_cashback_token: number;
+  total_cashback_usd: number;
+  swap_count: number;
+  last_swap_at: number;
+}
+
+// ─── Fetch helpers ──────────────────────────────────────────────────────────────────────
 async function json(url: string) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 
-// ─── User rewards profile ─────────────────────────────────────────────────────
+// ─── User rewards profile ──────────────────────────────────────────────────────────────────
 export function useRewardUser(wallet: string | null) {
   return useQuery<RewardUser>({
     queryKey: ["/api/rewards/user", wallet],
@@ -60,7 +70,7 @@ export function useRewardUser(wallet: string | null) {
   });
 }
 
-// ─── Daily quests ─────────────────────────────────────────────────────────────
+// ─── Daily quests ───────────────────────────────────────────────────────────────────────
 export function useDailyQuests(wallet: string | null) {
   return useQuery<DailyQuest[]>({
     queryKey: ["/api/rewards/quests", wallet],
@@ -71,7 +81,7 @@ export function useDailyQuests(wallet: string | null) {
   });
 }
 
-// ─── Reward history ────────────────────────────────────────────────────────────
+// ─── Reward history ──────────────────────────────────────────────────────────────────────
 export function useRewardHistory(wallet: string | null) {
   return useQuery<SwapEvent[]>({
     queryKey: ["/api/rewards/history", wallet],
@@ -81,7 +91,7 @@ export function useRewardHistory(wallet: string | null) {
   });
 }
 
-// ─── Leaderboard ───────────────────────────────────────────────────────────────
+// ─── Leaderboard ─────────────────────────────────────────────────────────────────────────
 export function useLeaderboard() {
   return useQuery<RewardUser[]>({
     queryKey: ["/api/rewards/leaderboard"],
@@ -90,7 +100,7 @@ export function useLeaderboard() {
   });
 }
 
-// ─── Market prices ──────────────────────────────────────────────────────────────
+// ─── Market prices ──────────────────────────────────────────────────────────────────────
 export interface MarketPrice {
   symbol: string;
   price: number;
@@ -107,7 +117,17 @@ export function useMarketPrices() {
   });
 }
 
-// ─── Claim quest ────────────────────────────────────────────────────────────────
+// ─── Token cashback list ──────────────────────────────────────────────────────────────────
+export function useTokenCashbacks(wallet: string | null) {
+  return useQuery<TokenCashbackEntry[]>({
+    queryKey: ["/api/rewards/token-cashback", wallet],
+    queryFn: () => json(`/api/rewards/token-cashback/${wallet}`),
+    enabled: !!wallet,
+    refetchInterval: 15_000,
+  });
+}
+
+// ─── Claim quest ───────────────────────────────────────────────────────────────────────
 export function useClaimQuest(wallet: string | null) {
   const qc = useQueryClient();
   return useMutation({
@@ -124,7 +144,7 @@ export function useClaimQuest(wallet: string | null) {
   });
 }
 
-// ─── Claim cashback (moves pending → lifetime) ─────────────────────────────────────────────
+// ─── Claim cashback (moves pending → lifetime) ──────────────────────────────────────────
 export function useClaimCashback(wallet: string | null) {
   const qc = useQueryClient();
   return useMutation<{ claimed: number; user: RewardUser }, Error>({
@@ -144,23 +164,25 @@ export function useClaimCashback(wallet: string | null) {
   });
 }
 
-// ─── Register swap event ────────────────────────────────────────────────────────
+// ─── Register swap event ──────────────────────────────────────────────────────────────────
 export async function recordSwapReward(
   wallet: string,
   txHash: string,
   sellSymbol: string,
   buySymbol: string,
-  volumeUsd: number
+  volumeUsd: number,
+  tokenAddress?: string,
+  tokenPrice?: number
 ) {
   const r = await fetch("/api/rewards/swap", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ wallet, txHash, sellSymbol, buySymbol, volumeUsd }),
+    body: JSON.stringify({ wallet, txHash, sellSymbol, buySymbol, volumeUsd, tokenAddress, tokenPrice }),
   });
   return r.json();
 }
 
-// ─── Tier helpers ──────────────────────────────────────────────────────────────
+// ─── Tier helpers ───────────────────────────────────────────────────────────────────────
 export const TIER_THRESHOLDS = {
   Bronze:  { min: 0,    max: 499,  color: "#cd7f32", next: "Silver"  },
   Silver:  { min: 500,  max: 1999, color: "#9aa0ad", next: "Gold"    },

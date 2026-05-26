@@ -1,19 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  Trophy,
-  Gift,
-  Zap,
-  BarChart3,
-  Sparkles,
-  ChevronRight,
-  Wallet,
-  ArrowUpRight,
-  Crown,
-  ShieldCheck,
-} from "lucide-react";
-
 import { useWalletContext } from "@/context/WalletContext";
-
 import {
   useRewardUser,
   useDailyQuests,
@@ -21,7 +7,11 @@ import {
   useLeaderboard,
   useClaimQuest,
   useClaimCashback,
+  useTokenCashbacks,
   tierProgress,
+  type RewardUser,
+  type DailyQuest,
+  type SwapEvent,
 } from "@/hooks/useRewards";
 
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
@@ -31,7 +21,7 @@ import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 // ─────────────────────────────────────────────────────────────
 
 function shortWallet(addr: string) {
-  return addr.slice(0, 6) + "…" + addr.slice(-4);
+  return addr.slice(0, 6) + "\u2026" + addr.slice(-4);
 }
 
 function fmtUsd(n: number) {
@@ -44,53 +34,38 @@ function fmtXP(n: number) {
   return String(n);
 }
 
+function relTime(ts: number) {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
 function nextMidnightUTC() {
   const now = new Date();
-
-  const next = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate() + 1
-    )
-  );
-
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
   return next.getTime();
 }
 
 // ─────────────────────────────────────────────────────────────
-// TIMER
+// QUEST TIMER
 // ─────────────────────────────────────────────────────────────
 
 function QuestTimer() {
   const [secs, setSecs] = useState(0);
-
   useEffect(() => {
-    const tick = () =>
-      setSecs(
-        Math.max(
-          0,
-          Math.floor((nextMidnightUTC() - Date.now()) / 1000)
-        )
-      );
-
+    const tick = () => setSecs(Math.max(0, Math.floor((nextMidnightUTC() - Date.now()) / 1000)));
     tick();
-
     const id = setInterval(tick, 1000);
-
     return () => clearInterval(id);
   }, []);
-
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
-
   return (
-    <span className="text-[12px] tabular-nums text-[#94A3B8]">
-      Resets in{" "}
-      {String(h).padStart(2, "0")}:
-      {String(m).padStart(2, "0")}:
-      {String(s).padStart(2, "0")}
+    <span className="text-[11px] tabular-nums text-[#7f8b9d]">
+      Resets in {String(h).padStart(2, "0")}:{String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
     </span>
   );
 }
@@ -101,28 +76,17 @@ function QuestTimer() {
 
 function ConnectPrompt({ onConnect }: { onConnect: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-6 py-24">
-
-      <div className="relative flex h-24 w-24 items-center justify-center rounded-[28px] border border-white/[0.08] bg-[#0F1722] shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
-
-        <div className="absolute inset-0 rounded-[28px] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.18),transparent_70%)]" />
-
-        <Wallet className="relative z-10 h-10 w-10 text-cyan-300" />
+    <div className="flex flex-col items-center justify-center gap-5 py-20">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full border border-[#182332] bg-[#08111d]">
+        <img src="/figmaAssets/image-30.png" alt="wallet" className="h-10 w-10 opacity-70" />
       </div>
-
       <div className="text-center">
-        <h2 className="text-[30px] font-black tracking-[-0.04em] text-white">
-          Connect Wallet
-        </h2>
-
-        <p className="mt-3 text-[15px] text-[#94A3B8]">
-          View rewards, cashback and XP progression
-        </p>
+        <h2 className="text-[22px] font-black text-white">Connect Your Wallet</h2>
+        <p className="mt-2 text-[14px] text-[#8b97aa]">Connect to view your rewards and XP progress</p>
       </div>
-
       <button
         onClick={onConnect}
-        className="rounded-[18px] bg-white px-7 py-3 text-[15px] font-bold text-black transition-all hover:scale-[1.02] hover:bg-zinc-200 active:scale-[0.98]"
+        className="rounded-[18px] bg-gradient-to-r from-[#22d3ee] to-[#2dae50] px-7 py-3 text-[15px] font-bold text-white shadow-[0_10px_30px_rgba(45,174,80,0.2)] transition-all hover:scale-[1.02] active:scale-[0.98]"
       >
         Connect Wallet
       </button>
@@ -136,185 +100,105 @@ function ConnectPrompt({ onConnect }: { onConnect: () => void }) {
 
 export function RewardsPage(): JSX.Element {
   const wallet = useWalletContext();
-
   const [walletOpen, setWalletOpen] = useState(false);
-
   const addr = wallet.isConnected ? wallet.address : null;
 
   const { data: user, isLoading: userLoading } = useRewardUser(addr);
-
   const { data: quests } = useDailyQuests(addr);
-
+  const { data: history } = useRewardHistory(addr);
+  const { data: leaderboard } = useLeaderboard();
   const claim = useClaimQuest(addr || "");
-
   const claimCb = useClaimCashback(addr);
+  const { data: tokenCashbacks } = useTokenCashbacks(addr);
 
   const loading = userLoading && addr;
 
   return (
     <>
-      <div className="min-h-screen w-full bg-[#070B11] px-[16px] pb-[40px] pt-[16px] sm:px-[24px]">
-
+      <div className="w-full px-[14px] pb-[20px] pt-[12px] sm:px-[18px]">
         {/* HEADER */}
-        <div className="mb-8 flex items-center justify-between">
-
+        <div className="mb-5 flex items-center justify-between">
           <div>
-            <h1 className="text-[32px] font-black tracking-[-0.04em] text-white">
-              Rewards
-            </h1>
-
-            <p className="mt-2 text-[14px] text-[#94A3B8]">
-              Earn XP and cashback on every swap
-            </p>
+            <h1 className="text-[22px] font-black text-white">Rewards</h1>
+            <p className="mt-1 text-[13px] text-[#6f7b8e]">Earn XP and cashback on every swap</p>
           </div>
-
           {wallet.isConnected && addr && (
-            <div className="rounded-[18px] border border-white/[0.06] bg-[#0F1722] px-4 py-3">
-
-              <p className="text-[13px] font-semibold text-cyan-300">
-                {shortWallet(addr)}
-              </p>
-
-              <p className="mt-1 text-[11px] text-[#64748B]">
-                Base Mainnet
-              </p>
+            <div className="text-right">
+              <p className="text-[13px] font-semibold text-[#3acd5b]">{shortWallet(addr)}</p>
+              <p className="mt-1 text-[11px] text-[#7f8b9d]">Base Mainnet</p>
             </div>
           )}
         </div>
 
         {/* NOT CONNECTED */}
-        {!wallet.isConnected && (
-          <ConnectPrompt onConnect={() => setWalletOpen(true)} />
-        )}
+        {!wallet.isConnected && <ConnectPrompt onConnect={() => setWalletOpen(true)} />}
 
         {/* LOADING */}
         {loading && (
-          <div className="flex flex-col gap-5 animate-pulse">
-
-            <div className="h-[240px] rounded-[32px] bg-[#111827]" />
-
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="h-[180px] rounded-[28px] bg-[#111827]" />
-              <div className="h-[180px] rounded-[28px] bg-[#111827]" />
+          <div className="flex flex-col gap-4 animate-pulse">
+            <div className="h-[200px] rounded-[28px] bg-[#101827]" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="h-[140px] rounded-[24px] bg-[#101827]" />
+              <div className="h-[140px] rounded-[24px] bg-[#101827]" />
             </div>
-
-            <div className="h-[160px] rounded-[28px] bg-[#111827]" />
+            <div className="h-[120px] rounded-[24px] bg-[#101827]" />
+            <div className="h-[120px] rounded-[24px] bg-[#101827]" />
           </div>
         )}
 
         {/* CONTENT */}
         {wallet.isConnected && user && (
-          <div className="flex flex-col gap-6">
-
+          <div className="flex flex-col gap-4 sm:gap-5">
             {/* HERO */}
-            <div className="relative overflow-hidden rounded-[34px] border border-white/[0.06] bg-[linear-gradient(180deg,#0B1118_0%,#070B11_100%)] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
-
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_35%)]" />
-
-              <div className="absolute right-[-100px] top-[-100px] h-[240px] w-[240px] rounded-full bg-cyan-400/10 blur-[120px]" />
-
-              <div className="relative z-10">
-
+            <div className="relative overflow-hidden rounded-[30px] border border-[#1b2432] bg-gradient-to-br from-[#071321] via-[#08111d] to-[#02050b] p-5 sm:p-6 backdrop-blur-xl">
+              <div className="absolute left-[-40px] top-[-40px] h-[140px] w-[140px] rounded-full bg-cyan-400/10 blur-[80px]" />
+              <div className="absolute right-[-50px] bottom-[-60px] h-[180px] w-[180px] rounded-full bg-emerald-500/10 blur-[90px]" />
+              <div className="relative z-10 flex flex-col gap-4">
                 {/* TOP */}
-                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-
-                  {/* LEFT */}
-                  <div className="flex items-center gap-5">
-
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
                     {/* XP RING */}
-                    <div className="relative flex h-[96px] w-[96px] items-center justify-center rounded-full border border-cyan-400/20 bg-[#0B121C]">
-
+                    <div className="relative flex h-[78px] w-[78px] shrink-0 items-center justify-center rounded-full border border-cyan-400/20 bg-[#09111d] shadow-[0_0_50px_rgba(34,211,238,0.12)]">
                       <div
                         className="absolute inset-[6px] rounded-full"
                         style={{
-                          background:
-                            "conic-gradient(#22d3ee 0%, #3b82f6 " +
-                            tierProgress(user.xp).pct +
-                            "%, #111827 " +
-                            tierProgress(user.xp).pct +
-                            "%)",
+                          background: "conic-gradient(#22d3ee 0%, #2dae50 " + tierProgress(user.xp).pct + "%, #111827 " + tierProgress(user.xp).pct + "%)",
                         }}
                       />
-
-                      <div className="absolute inset-[12px] rounded-full bg-[#070B11]" />
-
-                      <div className="relative z-10 flex h-10 w-10 items-center justify-center rounded-full bg-cyan-400/10">
-                        <Trophy className="h-5 w-5 text-cyan-300" />
-                      </div>
+                      <div className="absolute inset-[10px] rounded-full bg-[#07111d]" />
+                      <div className="relative z-10 text-[24px]">🏆</div>
                     </div>
-
                     {/* TEXT */}
-                    <div>
-
-                      <div className="flex items-center gap-2">
-
-                        <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-300">
-                          {user.tier} Tier
-                        </div>
-
-                        <div className="rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-[#94A3B8]">
-                          Level {user.level}
-                        </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-[#7b8898]">{user.tier} Tier</p>
+                      <div className="mt-1 flex items-end gap-2">
+                        <h2 className="truncate text-[34px] sm:text-[42px] font-black leading-none text-white">{fmtXP(user.xp)}</h2>
+                        <span className="mb-[4px] text-[18px] font-bold text-[#8794aa]">XP</span>
                       </div>
-
-                      <div className="mt-4 flex items-end gap-3">
-
-                        <h2 className="text-[54px] font-black tracking-[-0.06em] leading-none text-white">
-                          {fmtXP(user.xp)}
-                        </h2>
-
-                        <span className="mb-[8px] text-[18px] font-bold text-[#64748B]">
-                          XP
-                        </span>
-                      </div>
-
-                      <p className="mt-3 text-[14px] text-[#94A3B8]">
-                        {tierProgress(user.xp).xpToNext.toLocaleString()} XP until next tier
+                      <p className="mt-2 text-[13px] text-[#8d98aa]">
+                        Level {user.level} \u2022 {tierProgress(user.xp).xpToNext.toLocaleString()} XP until next tier
                       </p>
                     </div>
                   </div>
-
                   {/* WEEKLY */}
-                  <div className="rounded-[24px] border border-white/[0.06] bg-white/[0.03] p-5 backdrop-blur-xl">
-
-                    <div className="flex items-center gap-2">
-
-                      <Sparkles className="h-4 w-4 text-cyan-300" />
-
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-[#64748B]">
-                        Weekly XP
-                      </p>
-                    </div>
-
-                    <p className="mt-3 text-[32px] font-black tracking-[-0.04em] text-[#4ADE80]">
-                      +{fmtXP(user.weekly_xp)}
-                    </p>
+                  <div className="rounded-[20px] border border-[#182231] bg-[#0b1420]/80 px-4 py-3 backdrop-blur-xl">
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-[#6f7b8e]">Weekly XP</p>
+                    <p className="mt-1 text-[22px] font-black text-[#3acd5b]">+{fmtXP(user.weekly_xp)}</p>
                   </div>
                 </div>
-
                 {/* PROGRESS */}
-                <div className="mt-8">
-
-                  <div className="mb-3 flex items-center justify-between">
-
-                    <span className="text-[13px] text-[#94A3B8]">
-                      Tier Progress
-                    </span>
-
-                    <span className="text-[13px] font-semibold text-cyan-300">
-                      {Math.floor(tierProgress(user.xp).pct)}%
-                    </span>
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[12px] text-[#7f8da1]">Tier Progress</span>
+                    <span className="text-[12px] font-semibold text-[#3acd5b]">{Math.floor(tierProgress(user.xp).pct)}%</span>
                   </div>
-
                   <div className="h-[12px] overflow-hidden rounded-full bg-[#111827]">
-
                     <div
                       className="h-full rounded-full transition-all duration-700"
                       style={{
                         width: `${Math.min(tierProgress(user.xp).pct, 100)}%`,
-                        background:
-                          "linear-gradient(90deg,#22d3ee 0%,#3b82f6 100%)",
-                        boxShadow: "0 0 30px rgba(34,211,238,0.3)",
+                        background: "linear-gradient(90deg,#22d3ee 0%,#2dae50 100%)",
+                        boxShadow: "0 0 30px rgba(45,174,80,0.35)",
                       }}
                     />
                   </div>
@@ -324,244 +208,125 @@ export function RewardsPage(): JSX.Element {
 
             {/* CASHBACK */}
             <section>
-
-              <div className="mb-5">
-                <h2 className="text-[13px] font-bold uppercase tracking-[0.28em] text-[#64748B]">
-                  Cashback
-                </h2>
-
-                <p className="mt-2 text-[14px] text-[#94A3B8]">
-                  Earn 0.15% cashback from every swap
-                </p>
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-[13px] font-bold uppercase tracking-[0.28em] text-[#7f8b9d]">Cashback</h2>
+                  <p className="mt-1 text-[13px] text-[#6f7b8e]">0.15% of swap volume (50% of 0.3% fee) \u2014 distributed weekly</p>
+                </div>
               </div>
-
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-
-                {/* WEEKLY */}
-                <div className="relative overflow-hidden rounded-[28px] border border-white/[0.06] bg-[#0E1621] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.3)]">
-
-                  <div className="absolute right-[-40px] top-[-40px] h-[140px] w-[140px] rounded-full bg-emerald-400/10 blur-[80px]" />
-
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {/* Weekly earned */}
+                <div className="relative overflow-hidden rounded-[22px] border border-[#182332] bg-[#060d17] p-5 backdrop-blur-xl">
+                  <div className="absolute right-[-20px] top-[-20px] h-[90px] w-[90px] rounded-full bg-emerald-500/10 blur-[60px]" />
                   <div className="relative z-10">
-
-                    <div className="flex items-center gap-3">
-
-                      <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-emerald-400/10">
-                        <ArrowUpRight className="h-5 w-5 text-emerald-300" />
-                      </div>
-
-                      <div>
-                        <p className="text-[12px] uppercase tracking-[0.2em] text-[#64748B]">
-                          This Week
-                        </p>
-
-                        <p className="mt-1 text-[34px] font-black tracking-[-0.04em] text-white">
-                          {fmtUsd(user.weekly_cashback_usd ?? 0)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <p className="mt-4 text-[13px] text-[#94A3B8]">
-                      Unclaimed until weekly distribution
-                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-[#6f7b8e]">This Week Earned</p>
+                    <p className="mt-1 text-[28px] font-black text-[#3acd5b]">{fmtUsd(user.weekly_cashback_usd ?? 0)}</p>
+                    <p className="mt-1 text-[12px] text-[#7f8b9d]">Unclaimed until Sunday midnight UTC</p>
                   </div>
                 </div>
-
-                {/* CLAIM */}
-                <div className="relative overflow-hidden rounded-[28px] border border-white/[0.06] bg-[#0E1621] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.3)]">
-
-                  <div className="absolute left-[-40px] bottom-[-40px] h-[140px] w-[140px] rounded-full bg-cyan-400/10 blur-[80px]" />
-
+                {/* Pending + claim */}
+                <div className="relative overflow-hidden rounded-[22px] border border-[#182332] bg-[#060d17] p-5 backdrop-blur-xl">
+                  <div className="absolute left-[-20px] bottom-[-20px] h-[90px] w-[90px] rounded-full bg-cyan-400/10 blur-[60px]" />
                   <div className="relative z-10">
-
                     <div className="flex items-start justify-between">
-
                       <div>
-
-                        <p className="text-[12px] uppercase tracking-[0.2em] text-[#64748B]">
-                          Ready To Claim
-                        </p>
-
-                        <p className="mt-2 text-[34px] font-black tracking-[-0.04em] text-white">
-                          {fmtUsd(user.pending_cashback_usd ?? 0)}
-                        </p>
+                        <p className="text-[10px] uppercase tracking-[0.22em] text-[#6f7b8e]">Ready to Claim</p>
+                        <p className="mt-1 text-[28px] font-black text-white">{fmtUsd(user.pending_cashback_usd ?? 0)}</p>
                       </div>
-
-                      <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-bold text-emerald-300">
+                      <div className="shrink-0 rounded-full border border-[#1d3428] bg-[#0b1811] px-3 py-1 text-[11px] font-bold text-[#3acd5b]">
                         {fmtUsd(user.cashback_usd ?? 0)} lifetime
                       </div>
                     </div>
-
                     <button
                       onClick={() => claimCb.mutate()}
                       disabled={claimCb.isPending || (user.pending_cashback_usd ?? 0) <= 0}
-                      className="mt-6 flex w-full items-center justify-center gap-2 rounded-[18px] bg-white px-5 py-3 text-[15px] font-bold text-black transition-all hover:bg-zinc-200 disabled:opacity-40"
+                      data-testid="button-claim-cashback"
+                      className="mt-4 w-full rounded-[15px] bg-gradient-to-r from-[#22d3ee] to-[#2dae50] px-4 py-3 text-[14px] font-bold text-white shadow-[0_10px_30px_rgba(45,174,80,0.2)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      <Gift className="h-4 w-4" />
-                      {claimCb.isPending ? "Claiming..." : "Claim Cashback"}
+                      {claimCb.isPending ? "Claiming\u2026" : "Claim Cashback"}
                     </button>
                   </div>
                 </div>
               </div>
             </section>
 
+            {/* Per-Token Cashback */}
+            {tokenCashbacks && tokenCashbacks.length > 0 && (
+              <section>
+                <h2 className="mb-4 text-[13px] font-bold uppercase tracking-[0.28em] text-[#7f8b9d]">Token Rewards</h2>
+                <div className="grid grid-cols-1 gap-2">
+                  {tokenCashbacks.map((tc) => (
+                    <div key={tc.token_symbol} className="flex items-center justify-between rounded-[16px] border border-[#182332] bg-[#060d17] px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[14px] font-bold text-[#c8ccd2]">{tc.token_symbol}</span>
+                        <span className="text-[11px] text-[#5b6577]">{tc.swap_count} swaps</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[14px] font-bold text-[#3acd5b]">{Number(tc.total_cashback_token).toFixed(6)} {tc.token_symbol}</p>
+                        <p className="text-[11px] text-[#5b6577]">{fmtUsd(Number(tc.total_cashback_usd))}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* QUESTS */}
             <section>
-
-              <div className="mb-5 flex items-center justify-between">
-
+              <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h2 className="text-[13px] font-bold uppercase tracking-[0.28em] text-[#64748B]">
-                    Daily Quests
-                  </h2>
-
-                  <p className="mt-2 text-[14px] text-[#94A3B8]">
-                    Complete quests and earn bonus XP
-                  </p>
+                  <h2 className="text-[13px] font-bold uppercase tracking-[0.28em] text-[#7f8b9d]">Daily Quests</h2>
+                  <p className="mt-1 text-[13px] text-[#6f7b8e]">Complete quests to earn bonus XP</p>
                 </div>
-
                 <QuestTimer />
               </div>
-
-              <div className="grid gap-4">
-
+              <div className="grid gap-3">
                 {quests?.map((quest) => {
-
-                  const pct =
-                    quest.target > 0
-                      ? Math.min((quest.progress / quest.target) * 100, 100)
-                      : 100;
-
-                  const labels: Record<
-                    string,
-                    {
-                      title: string;
-                      desc: string;
-                      icon: any;
-                      glow: string;
-                    }
-                  > = {
-                    swaps: {
-                      title: "Swap Master",
-                      desc: "Complete 3 swaps today",
-                      icon: Zap,
-                      glow: "#22d3ee",
-                    },
-                    volume: {
-                      title: "Volume Hunter",
-                      desc: "Trade $100 volume",
-                      icon: BarChart3,
-                      glow: "#8b5cf6",
-                    },
-                    login: {
-                      title: "Daily Check-in",
-                      desc: "Visit SuperSwap today",
-                      icon: Crown,
-                      glow: "#4ADE80",
-                    },
+                  const pct = quest.target > 0 ? Math.min((quest.progress / quest.target) * 100, 100) : 100;
+                  const labels: Record<string, { title: string; desc: string; icon: string; glow: string }> = {
+                    swaps: { title: "Swap Master", desc: "Complete 3 swaps today", icon: "\u26a1", glow: "#22d3ee" },
+                    volume: { title: "Volume Hunter", desc: "Trade $100 volume", icon: "\ud83d\udcc8", glow: "#8b5cf6" },
+                    login: { title: "Daily Check-in", desc: "Visit SuperSwap today", icon: "\ud83c\udf81", glow: "#2dae50" },
                   };
-
                   const info = labels[quest.quest_type];
-
-                  const Icon = info.icon;
-
                   return (
-                    <div
-                      key={quest.id}
-                      className="group relative overflow-hidden rounded-[28px] border border-white/[0.06] bg-[#0E1621] p-5 transition-all duration-300 hover:-translate-y-[2px] hover:border-cyan-400/20 hover:bg-[#111B27]"
-                    >
-
-                      <div
-                        className="absolute right-[-30px] top-[-30px] h-[120px] w-[120px] rounded-full blur-[80px]"
-                        style={{
-                          background: `${info.glow}18`,
-                        }}
-                      />
-
+                    <div key={quest.id} className="relative overflow-hidden rounded-[22px] border border-[#182332] bg-[#060d17] p-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-[2px]">
+                      <div className="absolute right-[-20px] top-[-20px] h-[90px] w-[90px] rounded-full blur-[60px]" style={{ background: `${info.glow}22` }} />
                       <div className="relative z-10">
-
-                        <div className="flex items-start justify-between gap-4">
-
-                          {/* LEFT */}
-                          <div className="flex gap-4">
-
-                            <div
-                              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] border"
-                              style={{
-                                background: `${info.glow}10`,
-                                borderColor: `${info.glow}25`,
-                              }}
-                            >
-                              <Icon
-                                className="h-6 w-6"
-                                style={{
-                                  color: info.glow,
-                                }}
-                              />
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border text-[20px]" style={{ background: `${info.glow}15`, borderColor: `${info.glow}55` }}>
+                              {info.icon}
                             </div>
-
                             <div>
-
-                              <h3 className="text-[18px] font-bold text-white">
-                                {info.title}
-                              </h3>
-
-                              <p className="mt-1 text-[14px] text-[#94A3B8]">
-                                {info.desc}
-                              </p>
+                              <h3 className="text-[16px] font-bold text-white">{info.title}</h3>
+                              <p className="mt-1 text-[13px] text-[#8c98aa]">{info.desc}</p>
                             </div>
                           </div>
-
-                          {/* XP */}
-                          <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-[12px] font-bold text-emerald-300">
-                            +{quest.xp_reward} XP
+                          <div className="shrink-0 rounded-full border border-[#1d3428] bg-[#0b1811] px-3 py-1 text-[11px] font-bold text-[#3acd5b]">+{quest.xp_reward} XP</div>
+                        </div>
+                        {/* progress */}
+                        <div className="mt-4">
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="text-[11px] text-[#7e8b9d]">Progress</span>
+                            <span className="text-[11px] font-semibold text-white">{Math.floor(pct)}%</span>
+                          </div>
+                          <div className="h-[9px] overflow-hidden rounded-full bg-[#111827]">
+                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${info.glow}, #2dae50)` }} />
                           </div>
                         </div>
-
-                        {/* PROGRESS */}
-                        <div className="mt-6">
-
-                          <div className="mb-3 flex items-center justify-between">
-
-                            <span className="text-[12px] text-[#64748B]">
-                              Progress
-                            </span>
-
-                            <span className="text-[12px] font-semibold text-white">
-                              {Math.floor(pct)}%
-                            </span>
-                          </div>
-
-                          <div className="h-[10px] overflow-hidden rounded-full bg-[#111827]">
-
-                            <div
-                              className="h-full rounded-full transition-all duration-700"
-                              style={{
-                                width: `${pct}%`,
-                                background: `linear-gradient(90deg, ${info.glow}, #3b82f6)`,
-                              }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* CTA */}
                         {quest.completed && !quest.claimed && (
                           <button
                             onClick={() => claim.mutate(quest.quest_type)}
                             disabled={claim.isPending}
-                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-[18px] bg-white px-5 py-3 text-[15px] font-bold text-black transition-all hover:bg-zinc-200"
+                            className="mt-4 w-full rounded-[15px] bg-gradient-to-r from-[#22d3ee] to-[#2dae50] px-4 py-3 text-[14px] font-bold text-white shadow-[0_10px_30px_rgba(45,174,80,0.2)] transition-all hover:scale-[1.02] active:scale-[0.98]"
                           >
-                            <ShieldCheck className="h-4 w-4" />
                             Claim Reward
                           </button>
                         )}
-
                         {quest.claimed && (
-                          <div className="mt-6 flex items-center justify-center gap-2 rounded-[18px] border border-emerald-400/20 bg-emerald-400/10 py-3 text-[14px] font-bold text-emerald-300">
-
-                            <ShieldCheck className="h-4 w-4" />
-
-                            Reward Claimed
+                          <div className="mt-4 flex items-center justify-center rounded-[15px] border border-[#1a3522] bg-[#0b1810] py-3 text-[13px] font-bold text-[#3acd5b]">
+                            \u2713 Reward Claimed
                           </div>
                         )}
                       </div>
@@ -570,6 +335,27 @@ export function RewardsPage(): JSX.Element {
                 })}
               </div>
             </section>
+
+            {/* HISTORY */}
+            {history && history.length > 0 && (
+              <section>
+                <h2 className="mb-4 text-[13px] font-bold uppercase tracking-[0.28em] text-[#7f8b9d]">Recent Swaps</h2>
+                <div className="flex flex-col gap-2">
+                  {history.slice(0, 10).map((h) => (
+                    <div key={h.id} className="flex items-center justify-between rounded-[14px] border border-[#182332] bg-[#060d17] px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[12px] font-medium text-[#c8ccd2]">{h.sell_symbol} \u2192 {h.buy_symbol}</span>
+                        {h.verified && <span className="rounded bg-[#0a2418] px-1.5 py-0.5 text-[9px] font-bold text-[#2dae50]">VERIFIED</span>}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[12px] font-bold text-[#3acd5b]">+{h.cashback_usd.toFixed(4)} USD</p>
+                        <p className="text-[10px] text-[#5b6577]">{relTime(h.timestamp)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </div>

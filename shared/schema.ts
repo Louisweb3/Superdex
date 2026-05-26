@@ -105,6 +105,22 @@ export const adminEvents = pgTable("admin_events", {
   created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 
+// ─── Per-token cashback tracking ──────────────────────────────────────────────
+export const tokenCashback = pgTable("token_cashback", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  wallet_address: varchar("wallet_address", { length: 42 }).notNull(),
+  token_symbol: varchar("token_symbol", { length: 16 }).notNull(),
+  token_address: varchar("token_address", { length: 42 }).notNull(),
+  total_cashback_token: numeric("total_cashback_token", { precision: 24, scale: 8 }).notNull().default("0"),
+  total_cashback_usd: numeric("total_cashback_usd", { precision: 24, scale: 8 }).notNull().default("0"),
+  swap_count: integer("swap_count").notNull().default(0),
+  last_swap_at: timestamp("last_swap_at", { mode: "date" }).defaultNow(),
+});
+
+export const insertTokenCashbackSchema = createInsertSchema(tokenCashback).omit({ id: true, last_swap_at: true });
+export type InsertTokenCashback = z.infer<typeof insertTokenCashbackSchema>;
+export type TokenCashback = typeof tokenCashback.$inferSelect;
+
 // ─── Admin CMS: Social Links ──────────────────────────────────────────────────
 export const socialLinks = pgTable("social_links", {
   id: varchar("id", { length: 36 }).primaryKey(),

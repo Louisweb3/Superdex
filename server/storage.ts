@@ -6,8 +6,10 @@ import {
   rewardUsers,
   swapEvents,
   dailyQuests,
+  tokenCashback,
   type User,
   type InsertUser,
+  type TokenCashback,
 } from "@shared/schema";
 
 // ─── Base user storage (keep for auth compat) ────────────────────────────────────────────────
@@ -63,6 +65,16 @@ export interface SwapEvent {
   cashback_usd: number;
   timestamp: number;
   verified?: boolean;
+}
+
+export interface TokenCashbackEntry {
+  wallet_address: string;
+  token_symbol: string;
+  token_address: string;
+  total_cashback_token: number;
+  total_cashback_usd: number;
+  swap_count: number;
+  last_swap_at: number;
 }
 
 export interface DailyQuest {
@@ -206,13 +218,75 @@ export class RewardsStorage {
     return this.maybeResetWeeklyCashback(user);
   }
 
+  async recordTokenCashback(
+    wallet: string,
+    tokenSymbol: string,
+    tokenAddress: string,
+    cashbackToken: number,
+    cashbackUsd: number
+  ): Promise<void> {
+    const key = wallet.toLowerCase();
+    const [existing] = await db
+      .select()
+      .from(tokenCashback)
+      .where(
+        and(
+          eq(tokenCashback.wallet_address, key),
+          eq(tokenCashback.token_symbol, tokenSymbol),
+          eq(tokenCashback.token_address, tokenAddress.toLowerCase())
+        )
+      )
+      .limit(1);
+
+    if (existing) {
+      await db
+        .update(tokenCashback)
+        .set({
+          total_cashback_token: String(Number(existing.total_cashback_token) + cashbackToken),
+          total_cashback_usd: String(Number(existing.total_cashback_usd) + cashbackUsd),
+          swap_count: existing.swap_count + 1,
+          last_swap_at: new Date(),
+        })
+        .where(eq(tokenCashback.id, existing.id));
+    } else {
+      await db.insert(tokenCashback).values({
+        wallet_address: key,
+        token_symbol: tokenSymbol,
+        token_address: tokenAddress.toLowerCase(),
+        total_cashback_token: String(cashbackToken),
+        total_cashback_usd: String(cashbackUsd),
+        swap_count: 1,
+        last_swap_at: new Date(),
+      });
+    }
+  }
+
+  async getTokenCashbacks(wallet: string): Promise<TokenCashbackEntry[]> {
+    const key = wallet.toLowerCase();
+    const rows = await db
+      .select()
+      .from(tokenCashback)
+      .where(eq(tokenCashback.wallet_address, key))
+      .orderBy(desc(tokenCashback.total_cashback_usd));
+
+    return rows.map((r) => ({
+      wallet_address: r.wallet_address,
+      token_symbol: r.token_symbol,
+      token_address: r.token_address,
+      total_cashback_token: Number(r.total_cashback_token),
+      total_cashback_usd: Number(r.total_cashback_usd),
+      swap_count: r.swap_count,
+      last_swap_at: new Date(r.last_swap_at ?? Date.now()).getTime(),
+    }));
+  }
+
   async recordSwap(
     wallet: string,
     txHash: string,
     sellSymbol: string,
     buySymbol: string,
     volumeUsd: number,
-    opts?: { verified?: boolean }
+    opts?: { verified?: boolean; tokenAddress?: string; tokenPrice?: number }
   ): Promise<{ user: RewardUser; xpEarned: number; cashbackUsd: number }> {
     const key = wallet.toLowerCase();
     let user = await this.ensureUser(key);
@@ -273,6 +347,16 @@ export class RewardsStorage {
       cashback_usd: String(cashbackUsd),
       verified: isVerified,
     });
+
+    // Update per-token cashback
+    const tokenAddr = opts?.tokenAddress ?? "";
+    const tokenPrice = opts?.tokenPrice ?? 0;
+    if (tokenAddr && cashbackUsd > 0) {
+      const cashbackToken = tokenPrice > 0 ? cashbackUsd / tokenPrice : 0;
+      await this.recordTokenCashback(
+        key, sellSymbol, tokenAddr, cashbackToken, cashbackUsd
+      );
+    }
 
     // Update quest progress
     await this.updateQuestProgressDB(key, today, "swaps", 1);

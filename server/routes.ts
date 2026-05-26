@@ -142,7 +142,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/rewards/swap", async (req, res) => {
-    const { wallet, txHash, sellSymbol, buySymbol, volumeUsd } = req.body;
+    const { wallet, txHash, sellSymbol, buySymbol, volumeUsd, tokenAddress, tokenPrice } = req.body;
     if (!wallet || !txHash || !sellSymbol || !buySymbol || volumeUsd == null) {
       return res.status(400).json({ error: "Missing fields: wallet, txHash, sellSymbol, buySymbol, volumeUsd" });
     }
@@ -157,9 +157,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
 
     const result = await rewardsStorage.recordSwap(
-      wallet, txHash, sellSymbol, buySymbol, Number(volumeUsd), { verified }
+      wallet, txHash, sellSymbol, buySymbol, Number(volumeUsd),
+      { verified, tokenAddress, tokenPrice: Number(tokenPrice ?? 0) }
     );
     return res.json(result);
+  });
+
+  app.get("/api/rewards/token-cashback/:wallet", async (req, res) => {
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    return res.json(await rewardsStorage.getTokenCashbacks(wallet));
   });
 
   app.get("/api/rewards/quests/:wallet", async (req, res) => {

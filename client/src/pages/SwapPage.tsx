@@ -273,10 +273,26 @@ function TokenBox({
     (t) => t.address.toLowerCase() !== disabledToken.address.toLowerCase()
   );
 
+  // Find this token's balance from allTokens enrichment
+  const tokenWithBalance = allTokens.find(
+    (t) => t.address.toLowerCase() === token.address.toLowerCase()
+  );
+  const bal = tokenWithBalance?.balance;
+  const hasBalance = bal !== undefined && bal > 0;
+
   return (
     <div className="relative rounded-[18px] border border-[#0d1e2e] bg-[#040e1e] px-4 pt-3 pb-4">
       <div className="mb-2 flex items-center justify-between">
         <span className="font-['Inter',sans-serif] text-[13px] font-medium text-[#4d5a6e]">{label}</span>
+        {hasBalance && onAmountChange && (
+          <button
+            onClick={() => onAmountChange(String(bal))}
+            className="font-['Inter',sans-serif] text-[11px] font-semibold text-[#2dae50] hover:underline"
+            data-testid="button-balance-max"
+          >
+            Balance: {bal!.toLocaleString("en-US", { maximumFractionDigits: 6 })} {token.symbol}
+          </button>
+        )}
       </div>
       <div className="flex items-center gap-3">
         <div className="relative shrink-0">
@@ -609,7 +625,8 @@ export function SwapPage() {
         });
         setTxHash(hash);
         const volUsd = parseFloat(sellAmount) * parseFloat(refreshedQuote.price ?? "0");
-        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd).catch(() => {});
+        const tokenPrice = parseFloat(refreshedQuote.price ?? "0");
+        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd, sellToken.address, tokenPrice).catch(() => {});
       } else {
         if (!fullQuote.transaction) throw new Error("No transaction data in quote");
         const hash = await wallet.sendTransaction({
@@ -620,7 +637,8 @@ export function SwapPage() {
         });
         setTxHash(hash);
         const volUsd = parseFloat(sellAmount) * parseFloat(fullQuote.price ?? "0");
-        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd).catch(() => {});
+        const tokenPrice = parseFloat(fullQuote.price ?? "0");
+        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd, sellToken.address, tokenPrice).catch(() => {});
       }
     } catch (err: any) {
       setSwapError(err.message ?? "Swap failed");
