@@ -6,7 +6,7 @@ import { verifyTransaction } from "./basescan";
 const ZEROX_API_KEY = process.env.ZEROX_API_KEY || "";
 const ZEROX_BASE_URL = "https://api.0x.org";
 const CHAIN_ID = 8453;
-const FEE_RECIPIENT = "0x07808cD830c5D599dF3CC95a9Cf43EBada5B373a";
+const FEE_RECIPIENT = "0xea8d70f2e7e577160b1c5a2c6e33bfd8ad6dde5e";
 const FEE_BPS = 30;
 
 // Simple in-memory price cache
@@ -18,7 +18,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── 0x Swap proxy ──────────────────────────────────────────────────────────
   app.get("/api/swap/price", async (req, res) => {
     try {
-      const { sellToken, buyToken, sellAmount, slippageBps, includedSources, excludedSources } = req.query;
+      const { sellToken, buyToken, sellAmount, taker, slippageBps, includedSources, excludedSources } = req.query;
       if (!sellToken || !buyToken || !sellAmount)
         return res.status(400).json({ error: "Missing required parameters" });
 
@@ -31,6 +31,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         swapFeeBps: String(FEE_BPS),
         swapFeeToken: String(sellToken),
       });
+      if (taker) params.set("taker", String(taker));
       if (slippageBps) params.set("slippageBps", String(slippageBps));
       if (includedSources) params.set("includedSources", String(includedSources));
       if (excludedSources) params.set("excludedSources", String(excludedSources));

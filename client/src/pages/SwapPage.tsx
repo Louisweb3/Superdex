@@ -542,7 +542,8 @@ export function SwapPage() {
   const slippageBps = Math.round(parseFloat(slippage || "0.5") * 100);
 
   const { quote, isLoading, error: quoteError } = useSwapPrice(
-    sellToken, buyToken, sellAmount, slippageBps, selectedSources
+    sellToken, buyToken, sellAmount, slippageBps, selectedSources,
+    wallet.isConnected ? wallet.address : null
   );
 
   const toggleSource = useCallback((id: string) => {
