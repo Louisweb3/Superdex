@@ -7,6 +7,7 @@ import {
   integer,
   numeric,
   boolean,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -147,3 +148,20 @@ export const userEarnCompletions = pgTable("user_earn_completions", {
 });
 
 export type UserEarnCompletion = typeof userEarnCompletions.$inferSelect;
+
+// ─── Per-token Cashback Rewards ─────────────────────────────────────────────
+// One row per (wallet × token). Tracks native-token and USD cashback earned
+// from swapping that specific token.
+export const tokenCashbackRewards = pgTable("token_cashback_rewards", {
+  wallet_address: varchar("wallet_address", { length: 42 }).notNull(),
+  token_symbol:  varchar("token_symbol",  { length: 24 }).notNull(),
+  token_address: varchar("token_address", { length: 42 }).notNull(),
+  cashback_native: numeric("cashback_native", { precision: 36, scale: 18 }).notNull().default("0"),
+  cashback_usd:    numeric("cashback_usd",    { precision: 24, scale: 8  }).notNull().default("0"),
+  swap_count:  integer("swap_count").notNull().default(0),
+  last_updated: timestamp("last_updated", { mode: "date" }).defaultNow(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.wallet_address, t.token_address] }),
+}));
+
+export type TokenCashbackReward = typeof tokenCashbackRewards.$inferSelect;

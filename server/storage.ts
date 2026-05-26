@@ -8,11 +8,21 @@ import {
   dailyQuests,
   earnTasks,
   userEarnCompletions,
+  tokenCashbackRewards,
   type User,
   type InsertUser,
   type EarnTask,
   type InsertEarnTask,
 } from "@shared/schema";
+
+export interface TokenCashback {
+  wallet_address: string;
+  token_symbol: string;
+  token_address: string;
+  cashback_native: number;
+  cashback_usd: number;
+  swap_count: number;
+}
 
 // ─── Base user storage (keep for auth compat) ────────────────────────────────────────────────
 export interface IStorage {
@@ -210,13 +220,38 @@ export class RewardsStorage {
     return this.maybeResetWeeklyCashback(user);
   }
 
+  async getTokenCashback(wallet: string): Promise<TokenCashback[]> {
+    const key = wallet.toLowerCase();
+    const rows = await db
+      .select()
+      .from(tokenCashbackRewards)
+      .where(eq(tokenCashbackRewards.wallet_address, key))
+      .orderBy(tokenCashbackRewards.cashback_usd);
+    return rows.map((r) => ({
+      wallet_address: r.wallet_address,
+      token_symbol: r.token_symbol,
+      token_address: r.token_address,
+      cashback_native: Number(r.cashback_native),
+      cashback_usd: Number(r.cashback_usd),
+      swap_count: r.swap_count,
+    }));
+  }
+
   async recordSwap(
     wallet: string,
     txHash: string,
     sellSymbol: string,
     buySymbol: string,
     volumeUsd: number,
-    opts?: { verified?: boolean }
+    opts?: {
+      verified?: boolean;
+      sellTokenAddress?: string;
+      buyTokenAddress?: string;
+      sellAmountFormatted?: number;
+      buyAmountFormatted?: number;
+      sellTokenPriceUsd?: number;
+      buyTokenPriceUsd?: number;
+    }
   ): Promise<{ user: RewardUser; xpEarned: number; cashbackUsd: number }> {
     const key = wallet.toLowerCase();
     let user = await this.ensureUser(key);
@@ -277,6 +312,45 @@ export class RewardsStorage {
       cashback_usd: String(cashbackUsd),
       verified: isVerified,
     });
+
+    // ── Per-token cashback upsert ──────────────────────────────────────────────
+    // Track 0.15% cashback per token the user sells.
+    // cashback_native = sellAmount × 0.0015 (in sell token units)
+    // cashback_usd    = volumeUsd × 0.0015
+    const tokenUpserts: Array<{
+      wallet_address: string;
+      token_symbol: string;
+      token_address: string;
+      cashback_native: string;
+      cashback_usd: string;
+    }> = [];
+
+    if (opts?.sellTokenAddress && opts.sellAmountFormatted !== undefined) {
+      const nativeCb = parseFloat((opts.sellAmountFormatted * 0.0015).toFixed(18));
+      const usdCb    = parseFloat((cashbackUsd).toFixed(8));
+      tokenUpserts.push({
+        wallet_address: key,
+        token_symbol:  sellSymbol,
+        token_address: opts.sellTokenAddress.toLowerCase(),
+        cashback_native: String(nativeCb),
+        cashback_usd:    String(usdCb),
+      });
+    }
+
+    for (const row of tokenUpserts) {
+      await db.insert(tokenCashbackRewards).values({
+        ...row,
+        swap_count: 1,
+      }).onConflictDoUpdate({
+        target: [tokenCashbackRewards.wallet_address, tokenCashbackRewards.token_address],
+        set: {
+          cashback_native: sql`token_cashback_rewards.cashback_native + ${row.cashback_native}::numeric`,
+          cashback_usd:    sql`token_cashback_rewards.cashback_usd    + ${row.cashback_usd}::numeric`,
+          swap_count:      sql`token_cashback_rewards.swap_count + 1`,
+          last_updated:    new Date(),
+        },
+      });
+    }
 
     // Update quest progress
     await this.updateQuestProgressDB(key, today, "swaps", 1);

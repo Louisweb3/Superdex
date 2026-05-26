@@ -270,7 +270,7 @@ function TokenPickerModal({
 // ─── Token Input Box ────────────────────────────────────────────────────────────
 function TokenBox({
   label, token, amount, onAmountChange, readonly, usdValue,
-  allTokens, onTokenChange, disabledToken,
+  allTokens, onTokenChange, disabledToken, onMax,
 }: {
   label: string;
   token: Token;
@@ -281,16 +281,41 @@ function TokenBox({
   allTokens: Token[];
   onTokenChange: (t: Token) => void;
   disabledToken: Token;
+  onMax?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const available = allTokens.filter(
     (t) => t.address.toLowerCase() !== disabledToken.address.toLowerCase()
   );
 
+  const hasBalance = token.balance !== undefined && token.balance > 0;
+
   return (
     <div className="relative rounded-[18px] border border-[#0d1e2e] bg-[#040e1e] px-4 pt-3 pb-4">
       <div className="mb-2 flex items-center justify-between">
         <span className="font-['Inter',sans-serif] text-[13px] font-medium text-[#4d5a6e]">{label}</span>
+        <div className="flex items-center gap-2">
+          {hasBalance && (
+            <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c]">
+              Balance:{" "}
+              <span className="text-[#5a7a9c]">
+                {token.balance! < 0.00001
+                  ? token.balance!.toExponential(2)
+                  : token.balance!.toLocaleString("en-US", { maximumFractionDigits: 5 })}
+              </span>{" "}
+              {token.symbol}
+            </span>
+          )}
+          {hasBalance && !readonly && onMax && (
+            <button
+              onClick={onMax}
+              className="rounded-md bg-[#0a2030] px-2 py-0.5 font-['Inter',sans-serif] text-[11px] font-bold text-[#2dae50] hover:bg-[#0e2a40] transition-colors"
+              data-testid="btn-max-sell"
+            >
+              MAX
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <div className="relative shrink-0">
@@ -623,7 +648,14 @@ export function SwapPage() {
         });
         setTxHash(hash);
         const volUsd = calcVolumeUsd(parseFloat(sellAmount), sellToken, refreshedQuote);
-        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, volUsd).catch(() => {});
+        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, volUsd, {
+          sellTokenAddress: sellToken.address,
+          buyTokenAddress: buyToken.address,
+          sellAmountFormatted: sellAmount,
+          buyAmountFormatted: refreshedQuote.buyAmountFormatted,
+          sellTokenPriceUsd: sellToken.price,
+          buyTokenPriceUsd: buyToken.price,
+        }).catch(() => {});
       } else {
         if (!fullQuote.transaction) throw new Error("No transaction data in quote");
         const hash = await wallet.sendTransaction({
@@ -634,7 +666,14 @@ export function SwapPage() {
         });
         setTxHash(hash);
         const volUsd = calcVolumeUsd(parseFloat(sellAmount), sellToken, fullQuote);
-        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, volUsd).catch(() => {});
+        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, volUsd, {
+          sellTokenAddress: sellToken.address,
+          buyTokenAddress: buyToken.address,
+          sellAmountFormatted: sellAmount,
+          buyAmountFormatted: fullQuote.buyAmountFormatted,
+          sellTokenPriceUsd: sellToken.price,
+          buyTokenPriceUsd: buyToken.price,
+        }).catch(() => {});
       }
     } catch (err: any) {
       setSwapError(err.message ?? "Swap failed");
@@ -752,6 +791,16 @@ export function SwapPage() {
                   token={sellToken}
                   amount={sellAmount}
                   onAmountChange={setSellAmount}
+                  onMax={() => {
+                    if (sellToken.balance && sellToken.balance > 0) {
+                      // Leave a tiny buffer for gas when paying native ETH
+                      const isNative = sellToken.address.toLowerCase() === NATIVE_ETH_ADDR_LOWER;
+                      const maxAmt = isNative
+                        ? Math.max(0, sellToken.balance - 0.001)
+                        : sellToken.balance;
+                      setSellAmount(maxAmt.toLocaleString("en-US", { maximumFractionDigits: 8, useGrouping: false }));
+                    }
+                  }}
                   usdValue={(() => {
                     const amt = parseFloat(sellAmount || "0");
                     if (!amt || !quote) return "";

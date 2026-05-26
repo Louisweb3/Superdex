@@ -150,14 +150,40 @@ export async function recordSwapReward(
   txHash: string,
   sellSymbol: string,
   buySymbol: string,
-  volumeUsd: number
+  volumeUsd: number,
+  extra?: {
+    sellTokenAddress?: string;
+    buyTokenAddress?: string;
+    sellAmountFormatted?: string;
+    buyAmountFormatted?: string;
+    sellTokenPriceUsd?: number;
+    buyTokenPriceUsd?: number;
+  }
 ) {
   const r = await fetch("/api/rewards/swap", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ wallet, txHash, sellSymbol, buySymbol, volumeUsd }),
+    body: JSON.stringify({ wallet, txHash, sellSymbol, buySymbol, volumeUsd, ...extra }),
   });
   return r.json();
+}
+
+// ─── Per-token cashback ────────────────────────────────────────────────────────
+export interface TokenCashbackEntry {
+  token_symbol: string;
+  token_address: string;
+  cashback_native: number;
+  cashback_usd: number;
+  swap_count: number;
+}
+
+export function useTokenCashback(wallet: string | null) {
+  return useQuery<TokenCashbackEntry[]>({
+    queryKey: ["/api/rewards/token-cashback", wallet],
+    queryFn: () => fetch(`/api/rewards/token-cashback/${wallet}`).then((r) => r.json()),
+    enabled: !!wallet,
+    staleTime: 30_000,
+  });
 }
 
 // ─── Earn Tasks ──────────────────────────────────────────────────────────────

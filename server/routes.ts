@@ -9,12 +9,12 @@ const CHAIN_ID = 8453;
 
 // ─── NEW FEE LOGIC ─────────────────────────────────────────────
 
-// Platform wallet receives 0.15%
-const FEE_RECIPIENT = "0xea8d70f2e7e577160b1c5a2c6e33bfd8ad6dde5e";
+// Platform wallet receives 0.3% integrator fee; users get 0.15% of that credited as cashback
+const FEE_RECIPIENT = "0xeA8D70F2e7e577160b1C5a2c6E33BfD8Ad6dDE5E";
 
-// 15 BPS = 0.15%
-const PLATFORM_FEE_BPS = 15;
-const USER_CASHBACK_BPS = 15;
+// 30 BPS = 0.3%
+const PLATFORM_FEE_BPS = 30;
+const USER_CASHBACK_BPS = 15; // half of fee credited back to user as rewards
 
 // ───────────────────────────────────────────────────────────────
 
@@ -271,24 +271,46 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/rewards/swap", async (req, res) => {
     try {
-      const { wallet, txHash, sellSymbol, buySymbol, volumeUsd } = req.body;
+      const {
+        wallet, txHash, sellSymbol, buySymbol, volumeUsd,
+        sellTokenAddress, buyTokenAddress,
+        sellAmountFormatted, buyAmountFormatted,
+        sellTokenPriceUsd, buyTokenPriceUsd,
+      } = req.body;
       if (!wallet || !txHash || !sellSymbol || !buySymbol || volumeUsd === undefined) {
         return res.status(400).json({ error: "Missing required fields" });
       }
       // Try Basescan verification but don't block rewards on it.
-      // The 0x integrator fee already handles on-chain cashback transfer.
-      let verified = true; // award XP and cashback regardless
+      let verified = true;
       try {
         const check = await verifyTransaction(txHash);
-        // If Basescan explicitly says the tx failed, mark unverified
         if (check && !check.ok && check.err && !check.err.includes("No BASESCAN_API_KEY")) {
           verified = false;
         }
-      } catch {
-        // Basescan unreachable — still award rewards
-      }
-      const result = await rewardsStorage.recordSwap(wallet, txHash, sellSymbol, buySymbol, volumeUsd, { verified });
+      } catch { /* Basescan unreachable — still award */ }
+
+      const result = await rewardsStorage.recordSwap(
+        wallet, txHash, sellSymbol, buySymbol, volumeUsd,
+        {
+          verified,
+          sellTokenAddress,
+          buyTokenAddress,
+          sellAmountFormatted: sellAmountFormatted ? parseFloat(sellAmountFormatted) : undefined,
+          buyAmountFormatted:  buyAmountFormatted  ? parseFloat(buyAmountFormatted)  : undefined,
+          sellTokenPriceUsd:   sellTokenPriceUsd   ? parseFloat(sellTokenPriceUsd)   : undefined,
+          buyTokenPriceUsd:    buyTokenPriceUsd    ? parseFloat(buyTokenPriceUsd)    : undefined,
+        }
+      );
       return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/rewards/token-cashback/:wallet", async (req, res) => {
+    try {
+      const data = await rewardsStorage.getTokenCashback(String(req.params.wallet));
+      return res.json(data);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }
