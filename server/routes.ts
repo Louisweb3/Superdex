@@ -25,7 +25,59 @@ const PRICE_TTL = 30_000;
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
 
   // ─── 0x Swap proxy ──────────────────────────────────────────────────────────
+  // ─── 0x Swap Price (no taker needed) ────────────────────────────────────────
   app.get("/api/swap/price", async (req, res) => {
+    try {
+      const {
+        sellToken,
+        buyToken,
+        sellAmount,
+        slippageBps,
+        includedSources,
+        excludedSources
+      } = req.query;
+
+      if (!sellToken || !buyToken || !sellAmount)
+        return res.status(400).json({ error: "Missing required parameters" });
+
+      const params = new URLSearchParams({
+        chainId: String(CHAIN_ID),
+        sellToken: String(sellToken),
+        buyToken: String(buyToken),
+        sellAmount: String(sellAmount),
+      });
+
+      // 0x v2 integrator fee: 0.3% sent to platform wallet
+      params.set("integratorFeeRecipient", FEE_RECIPIENT);
+      params.set("integratorFeeBps", String(PLATFORM_FEE_BPS));
+
+      if (slippageBps)       params.set("slippageBps", String(slippageBps));
+      if (includedSources)   params.set("includedSources", String(includedSources));
+      if (excludedSources)   params.set("excludedSources", String(excludedSources));
+
+      const response = await fetch(
+        `${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`,
+        {
+          headers: {
+            "0x-api-key": ZEROX_API_KEY,
+            "0x-version": "v2",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) return res.status(response.status).json(data);
+      return res.json(data);
+
+    } catch (err: any) {
+      console.error("0x price error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ─── 0x Swap Quote (taker auto-filled by backend) ──────────────────────────────────
+  app.get("/api/swap/quote", async (req, res) => {
     try {
       const {
         sellToken,
@@ -45,79 +97,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         sellToken: String(sellToken),
         buyToken: String(buyToken),
         sellAmount: String(sellAmount),
+        // 0x quote endpoint requires taker for allowance simulation; auto-fill if frontend omits it
+        taker: taker ? String(taker) : "0x0000000000000000000000000000000000000000",
       });
 
-      // Add integrator fee — platform takes 0.15% of sell token
+      // 0x v2 integrator fee: 0.3% sent to platform wallet
       params.set("integratorFeeRecipient", FEE_RECIPIENT);
       params.set("integratorFeeBps", String(PLATFORM_FEE_BPS));
 
-      if (slippageBps)
-        params.set("slippageBps", String(slippageBps));
-
-      if (includedSources)
-        params.set("includedSources", String(includedSources));
-
-      if (excludedSources)
-        params.set("excludedSources", String(excludedSources));
-
-      const response = await fetch(
-        `${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`,
-        {
-          headers: {
-            "0x-api-key": ZEROX_API_KEY,
-            "0x-version": "v2",
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok)
-        return res.status(response.status).json(data);
-
-      return res.json(data);
-
-    } catch (err: any) {
-      console.error("0x price error:", err);
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get("/api/swap/quote", async (req, res) => {
-    try {
-      const {
-        sellToken,
-        buyToken,
-        sellAmount,
-        taker,
-        slippageBps,
-        includedSources,
-        excludedSources
-      } = req.query;
-
-      if (!sellToken || !buyToken || !sellAmount || !taker)
-        return res.status(400).json({ error: "Missing required parameters" });
-
-      const params = new URLSearchParams({
-        chainId: String(CHAIN_ID),
-        sellToken: String(sellToken),
-        buyToken: String(buyToken),
-        sellAmount: String(sellAmount),
-        taker: String(taker),
-        // Platform integrator fee: 0.15%
-        integratorFeeRecipient: FEE_RECIPIENT,
-        integratorFeeBps: String(PLATFORM_FEE_BPS),
-      });
-
-      if (slippageBps)
-        params.set("slippageBps", String(slippageBps));
-
-      if (includedSources)
-        params.set("includedSources", String(includedSources));
-
-      if (excludedSources)
-        params.set("excludedSources", String(excludedSources));
+      if (slippageBps)       params.set("slippageBps", String(slippageBps));
+      if (includedSources)   params.set("includedSources", String(includedSources));
+      if (excludedSources)   params.set("excludedSources", String(excludedSources));
 
       const response = await fetch(
         `${ZEROX_BASE_URL}/swap/allowance-holder/quote?${params}`,
@@ -131,10 +121,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       );
 
       const data = await response.json();
-
-      if (!response.ok)
-        return res.status(response.status).json(data);
-
+      if (!response.ok) return res.status(response.status).json(data);
       return res.json(data);
 
     } catch (err: any) {

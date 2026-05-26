@@ -279,10 +279,7 @@ export async function fetchSwapQuote(
   slippageBps: number,
   selectedSources: string[]
 ): Promise<SwapQuote> {
-  const sellAmountWei = parseAmount(
-    sellAmountStr,
-    sellToken.decimals
-  );
+  const sellAmountWei = parseAmount(sellAmountStr, sellToken.decimals);
 
   const params = new URLSearchParams({
     sellToken: sellToken.address,
