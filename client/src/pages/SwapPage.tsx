@@ -625,8 +625,7 @@ export function SwapPage() {
         });
         setTxHash(hash);
         const volUsd = parseFloat(sellAmount) * parseFloat(refreshedQuote.price ?? "0");
-        const tokenPrice = parseFloat(refreshedQuote.price ?? "0");
-        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd, sellToken.address, tokenPrice).catch(() => {});
+        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd).catch(() => {});
       } else {
         if (!fullQuote.transaction) throw new Error("No transaction data in quote");
         const hash = await wallet.sendTransaction({
@@ -637,8 +636,7 @@ export function SwapPage() {
         });
         setTxHash(hash);
         const volUsd = parseFloat(sellAmount) * parseFloat(fullQuote.price ?? "0");
-        const tokenPrice = parseFloat(fullQuote.price ?? "0");
-        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd, sellToken.address, tokenPrice).catch(() => {});
+        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd).catch(() => {});
       }
     } catch (err: any) {
       setSwapError(err.message ?? "Swap failed");
