@@ -10,7 +10,8 @@ import {
   type CmsEvent,
   type CmsSocialLink,
 } from "@/hooks/useAdmin";
-import { Shield, Settings, FileText, Calendar, Link2, Save, Trash2, Plus, ChevronDown, Eye, Lock, CheckCircle, AlertCircle, Database, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { Shield, Settings, FileText, Calendar, Link2, Save, Trash2, Plus, ChevronDown, Eye, Lock, CheckCircle, AlertCircle, Database, Download, ChevronLeft, ChevronRight, Coins } from "lucide-react";
+import { useAdminEarnTasks } from "@/hooks/useAdmin";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const PAGES = ["home", "swap", "rewards", "vault", "analytics"];
@@ -665,10 +666,182 @@ function DatabaseTab() {
   );
 }
 
+// ─── Earn Tasks Tab ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+function EarnTasksTab() {
+  const { tasks, create, update, remove } = useAdminEarnTasks();
+  const [editing, setEditing] = useState<Partial<AdminEarnTask> & { id?: string } | null>(null);
+  const [isNew, setIsNew] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<"all" | "onchain" | "offchain">("all");
+
+  const list = tasks.data ?? [];
+  const filtered = categoryFilter === "all" ? list : list.filter((t) => t.category === categoryFilter);
+
+  const empty: Partial<AdminEarnTask> = {
+    title: "",
+    description: "",
+    category: "onchain",
+    task_type: "swap",
+    xp_reward: 0,
+    cashback_reward: "0",
+    action_url: "",
+    action_label: "Go",
+    active: true,
+    sort_order: 0,
+  };
+
+  const save = () => {
+    if (!editing?.title || !editing?.category || !editing?.task_type) return;
+    if (isNew || !editing.id) {
+      create.mutate(editing);
+    } else {
+      update.mutate(editing as any);
+    }
+    setEditing(null);
+    setIsNew(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h2 className="font-['Inter',sans-serif] text-[16px] font-bold text-[#d0d2d6]">Earn Tasks</h2>
+        <div className="flex items-center gap-2">
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value as any)}
+            className="rounded-[10px] border border-[#131b27] bg-[#020816] px-3 py-2 font-['Inter',sans-serif] text-[13px] text-[#c8ccd4] outline-none"
+          >
+            <option value="all">All</option>
+            <option value="onchain">Onchain</option>
+            <option value="offchain">Offchain</option>
+          </select>
+          <Button
+            variant="secondary"
+            onClick={() => { setEditing({ ...empty }); setIsNew(true); }}
+          >
+            <Plus className="h-4 w-4" /> New Task
+          </Button>
+        </div>
+      </div>
+
+      {filtered.map((task) => (
+        <Card key={task.id} className="px-4 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-['Inter',sans-serif] text-[14px] font-bold text-[#c8ccd4]">{task.title}</p>
+                <span className="rounded-full border border-[#1d3428] bg-[#0b1811] px-2 py-0.5 text-[10px] font-bold text-[#3acd5b]">
+                  +{task.xp_reward} XP
+                </span>
+                <span className="rounded-full border border-[#1a2e35] bg-[#0b1418] px-2 py-0.5 text-[10px] font-bold text-[#22d3ee]">
+                  +${task.cashback_reward} CB
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${task.active ? "bg-[#0e3a1e] text-[#3acd5b] border border-[#1a5c2a]" : "bg-[#3a0e0e] text-[#c9543a] border border-[#5c1a1a]"}`}>
+                  {task.active ? "Active" : "Inactive"}
+                </span>
+                <span className="rounded-full bg-[#071020] border border-[#131b27] px-2 py-0.5 text-[10px] font-semibold text-[#6c778a]">
+                  {task.category}
+                </span>
+              </div>
+              <p className="mt-1 font-['Inter',sans-serif] text-[12px] text-[#6c778a]">{task.description}</p>
+              <p className="mt-0.5 font-['Inter',sans-serif] text-[11px] text-[#4a5568]">Type: {task.task_type} · Order: {task.sort_order} · Action: {task.action_label}</p>
+            </div>
+            <div className="flex gap-1.5 shrink-0">
+              <Button
+                variant="secondary"
+                onClick={() => { setEditing({ ...task }); setIsNew(false); }}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => remove.mutate(task.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ))}
+
+      {filtered.length === 0 && (
+        <Card className="px-4 py-8 text-center">
+          <p className="font-['Inter',sans-serif] text-[13px] text-[#6c778a]">No tasks found.</p>
+        </Card>
+      )}
+
+      {editing && (
+        <Card className="px-4 py-4 border-[#1a5c2a]">
+          <h3 className="mb-3 font-['Inter',sans-serif] text-[14px] font-bold text-[#d0d2d6]">{isNew ? "New Task" : "Edit Task"}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className="font-['Inter',sans-serif] text-[11px] text-[#6c778a] mb-1 block">Title</label>
+              <Input value={editing.title} onChange={(e: any) => setEditing({ ...editing, title: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="font-['Inter',sans-serif] text-[11px] text-[#6c778a] mb-1 block">Description</label>
+              <TextArea value={editing.description} onChange={(e: any) => setEditing({ ...editing, description: e.target.value })} />
+            </div>
+            <div>
+              <label className="font-['Inter',sans-serif] text-[11px] text-[#6c778a] mb-1 block">Category</label>
+              <select
+                value={editing.category}
+                onChange={(e) => setEditing({ ...editing, category: e.target.value })}
+                className="w-full rounded-[10px] border border-[#1a2535] bg-[#020816] px-3 py-2 font-['Inter',sans-serif] text-[13px] text-[#c8ccd4] outline-none"
+              >
+                <option value="onchain">Onchain</option>
+                <option value="offchain">Offchain</option>
+              </select>
+            </div>
+            <div>
+              <label className="font-['Inter',sans-serif] text-[11px] text-[#6c778a] mb-1 block">Task Type</label>
+              <Input value={editing.task_type} onChange={(e: any) => setEditing({ ...editing, task_type: e.target.value })} />
+            </div>
+            <div>
+              <label className="font-['Inter',sans-serif] text-[11px] text-[#6c778a] mb-1 block">XP Reward</label>
+              <Input type="number" value={editing.xp_reward} onChange={(e: any) => setEditing({ ...editing, xp_reward: Number(e.target.value) })} />
+            </div>
+            <div>
+              <label className="font-['Inter',sans-serif] text-[11px] text-[#6c778a] mb-1 block">Cashback ($)</label>
+              <Input type="number" step="0.01" value={editing.cashback_reward} onChange={(e: any) => setEditing({ ...editing, cashback_reward: e.target.value })} />
+            </div>
+            <div>
+              <label className="font-['Inter',sans-serif] text-[11px] text-[#6c778a] mb-1 block">Action URL</label>
+              <Input value={editing.action_url} onChange={(e: any) => setEditing({ ...editing, action_url: e.target.value })} />
+            </div>
+            <div>
+              <label className="font-['Inter',sans-serif] text-[11px] text-[#6c778a] mb-1 block">Action Label</label>
+              <Input value={editing.action_label} onChange={(e: any) => setEditing({ ...editing, action_label: e.target.value })} />
+            </div>
+            <div>
+              <label className="font-['Inter',sans-serif] text-[11px] text-[#6c778a] mb-1 block">Sort Order</label>
+              <Input type="number" value={editing.sort_order} onChange={(e: any) => setEditing({ ...editing, sort_order: Number(e.target.value) })} />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={editing.active}
+                onChange={(e) => setEditing({ ...editing, active: e.target.checked })}
+                className="h-4 w-4 accent-[#2dae50]"
+              />
+              <span className="font-['Inter',sans-serif] text-[13px] text-[#c8ccd4]">Active</span>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <Button onClick={save} disabled={!editing.title || !editing.category || !editing.task_type}>
+              <Save className="h-4 w-4" /> Save Task
+            </Button>
+            <Button variant="secondary" onClick={() => { setEditing(null); setIsNew(false); }}>Cancel</Button>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── Main AdminPage ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 export function AdminPage(): JSX.Element {
   const auth = useAdminAuth();
-  const [tab, setTab] = useState<"settings" | "pages" | "events" | "social" | "database">("settings");
+  const [tab, setTab] = useState<"settings" | "pages" | "events" | "social" | "earn" | "database">("settings");
 
   if (!auth.isLoggedIn) {
     return <LoginScreen onLogin={auth.login} />;
@@ -679,6 +852,7 @@ export function AdminPage(): JSX.Element {
     { key: "pages" as const, label: "Page Editor", icon: <FileText className="h-4 w-4" /> },
     { key: "events" as const, label: "Events", icon: <Calendar className="h-4 w-4" /> },
     { key: "social" as const, label: "Social", icon: <Link2 className="h-4 w-4" /> },
+    { key: "earn" as const, label: "Earn Tasks", icon: <Coins className="h-4 w-4" /> },
     { key: "database" as const, label: "Database", icon: <Database className="h-4 w-4" /> },
   ];
 
@@ -726,6 +900,7 @@ export function AdminPage(): JSX.Element {
         {tab === "pages" && <PageEditorTab />}
         {tab === "events" && <EventsTab />}
         {tab === "social" && <SocialTab />}
+        {tab === "earn" && <EarnTasksTab />}
         {tab === "database" && <DatabaseTab />}
       </main>
     </div>

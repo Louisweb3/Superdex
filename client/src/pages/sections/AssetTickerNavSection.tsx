@@ -36,6 +36,13 @@ const navItems = [
     activeUnderline: "/figmaAssets/background-2.png",
   },
   {
+    value: "earn",
+    label: "Earn",
+    iconSrc: "/figmaAssets/image-14.png",
+    activeBg: "/figmaAssets/background-1.png",
+    activeUnderline: "/figmaAssets/background-2.png",
+  },
+  {
     value: "vault",
     label: "Vault",
     iconSrc: "/figmaAssets/image-1.png",
@@ -55,6 +62,7 @@ const inactiveColors: Record<string, string> = {
   home: "text-[#4d5462]",
   swap: "text-[#616c7e]",
   rewards: "text-[#5f687a]",
+  earn: "text-[#5a6375]",
   vault: "text-[#565f70]",
   analytics: "text-[#5b6577]",
 };
@@ -63,6 +71,7 @@ const iconSizes: Record<string, string> = {
   home: "h-7 w-[27px]",
   swap: "h-7 w-[25px]",
   rewards: "h-[27px] w-7",
+  earn: "h-[26px] w-[26px]",
   vault: "h-[26px] w-[26px]",
   analytics: "h-7 w-7",
 };
@@ -115,7 +124,7 @@ export const AssetTickerNavSection = ({
         className="w-full border-y-[3px] border-[#060c18] bg-[#020816]/95 backdrop-blur-xl"
         style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
       >
-        <div className="grid w-full grid-cols-5 gap-0">
+        <div className="grid w-full grid-cols-6 gap-0">
           {navItems.map((item) => {
             const isActive = activeTab === item.value;
             return (

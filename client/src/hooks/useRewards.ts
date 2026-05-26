@@ -160,6 +160,52 @@ export async function recordSwapReward(
   return r.json();
 }
 
+// ─── Earn Tasks ──────────────────────────────────────────────────────────────
+export interface EarnTaskItem {
+  id: string;
+  title: string;
+  description: string;
+  category: "onchain" | "offchain";
+  task_type: string;
+  xp_reward: number;
+  cashback_reward: string;
+  action_url: string;
+  action_label: string;
+  active: boolean;
+  sort_order: number;
+  completed: boolean;
+  completed_at?: string;
+}
+
+export function useEarnTasks(wallet: string | null) {
+  return useQuery<EarnTaskItem[]>({
+    queryKey: ["/api/earn/tasks", wallet],
+    queryFn: () => json(`/api/earn/tasks/${wallet}`),
+    enabled: !!wallet,
+    refetchInterval: 10_000,
+    staleTime: 5_000,
+  });
+}
+
+export function useCompleteEarnTask(wallet: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (taskId: string) => {
+      const r = await fetch(`/api/earn/tasks/${wallet}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId }),
+      });
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/earn/tasks", wallet] });
+      qc.invalidateQueries({ queryKey: ["/api/rewards/user", wallet] });
+    },
+  });
+}
+
 // ─── Tier helpers ──────────────────────────────────────────────────────────────
 export const TIER_THRESHOLDS = {
   Bronze:  { min: 0,    max: 499,  color: "#cd7f32", next: "Silver"  },

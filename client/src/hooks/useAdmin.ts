@@ -228,6 +228,50 @@ export interface DbTableCount {
   count: number;
 }
 
+export interface AdminEarnTask {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  task_type: string;
+  xp_reward: number;
+  cashback_reward: string;
+  action_url: string;
+  action_label: string;
+  active: boolean;
+  sort_order: number;
+}
+
+export function useAdminEarnTasks() {
+  const qc = useQueryClient();
+
+  const tasks = useQuery<AdminEarnTask[]>({
+    queryKey: ["/api/admin/earn/tasks"],
+    queryFn: () => adminFetch("/api/admin/earn/tasks"),
+    enabled: !!getToken(),
+  });
+
+  const create = useMutation({
+    mutationFn: (data: Partial<AdminEarnTask>) =>
+      adminFetch("/api/admin/earn/tasks", { method: "POST", body: JSON.stringify(data) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/earn/tasks"] }),
+  });
+
+  const update = useMutation({
+    mutationFn: (data: Partial<AdminEarnTask> & { id: string }) =>
+      adminFetch(`/api/admin/earn/tasks/${data.id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/earn/tasks"] }),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) =>
+      adminFetch(`/api/admin/earn/tasks/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/earn/tasks"] }),
+  });
+
+  return { tasks, create, update, remove };
+}
+
 export function useAdminDatabase() {
   const qc = useQueryClient();
 

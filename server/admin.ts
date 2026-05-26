@@ -1,8 +1,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { db } from "./db";
-import { adminStorage } from "./storage";
+import { adminStorage, earnStorage } from "./storage";
 import { sql } from "drizzle-orm";
-import { users, rewardUsers, swapEvents, dailyQuests, siteSettings, pageBlocks, adminEvents, socialLinks } from "@shared/schema";
+import { users, rewardUsers, swapEvents, dailyQuests, earnTasks, userEarnCompletions, siteSettings, pageBlocks, adminEvents, socialLinks } from "@shared/schema";
 
 const ADMIN_PASSWORD = "MKM2026";
 const SESSION_TTL = 1000 * 60 * 60 * 4; // 4 hours
@@ -155,14 +155,41 @@ export function registerAdminRoutes(app: Express) {
     return res.json(links.filter((l) => l.active));
   });
 
+  // ── Earn Tasks Admin ───────────────────────────────────────────────────────────────────────
+  app.get("/api/admin/earn/tasks", requireAdmin, async (_req, res) => {
+    return res.json(await earnStorage.getAllTasks());
+  });
+
+  app.post("/api/admin/earn/tasks", requireAdmin, async (req, res) => {
+    const data = req.body;
+    if (!data.title || !data.description || !data.category || !data.task_type) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    const created = await earnStorage.createTask(data);
+    return res.json(created);
+  });
+
+  app.patch("/api/admin/earn/tasks/:id", requireAdmin, async (req, res) => {
+    const updated = await earnStorage.updateTask(String(req.params.id), req.body);
+    if (!updated) return res.status(404).json({ error: "Task not found" });
+    return res.json(updated);
+  });
+
+  app.delete("/api/admin/earn/tasks/:id", requireAdmin, async (req, res) => {
+    await earnStorage.deleteTask(String(req.params.id));
+    return res.json({ ok: true });
+  });
+
   // ── Database Explorer ───────────────────────────────────────────────────────────────────────
-  type DbTableKey = "users" | "reward_users" | "swap_events" | "daily_quests" | "site_settings" | "page_blocks" | "admin_events" | "social_links";
+  type DbTableKey = "users" | "reward_users" | "swap_events" | "daily_quests" | "earn_tasks" | "user_earn_completions" | "site_settings" | "page_blocks" | "admin_events" | "social_links";
 
   const TABLE_MAP: Record<DbTableKey, any> = {
     users,
     reward_users: rewardUsers,
     swap_events: swapEvents,
     daily_quests: dailyQuests,
+    earn_tasks: earnTasks,
+    user_earn_completions: userEarnCompletions,
     site_settings: siteSettings,
     page_blocks: pageBlocks,
     admin_events: adminEvents,

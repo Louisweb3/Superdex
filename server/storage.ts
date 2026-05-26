@@ -6,8 +6,12 @@ import {
   rewardUsers,
   swapEvents,
   dailyQuests,
+  earnTasks,
+  userEarnCompletions,
   type User,
   type InsertUser,
+  type EarnTask,
+  type InsertEarnTask,
 } from "@shared/schema";
 
 // ─── Base user storage (keep for auth compat) ────────────────────────────────────────────────
@@ -653,6 +657,123 @@ export class RewardsStorage {
 }
 
 export const rewardsStorage = new RewardsStorage();
+
+// ─── Earn Tasks Storage ───────────────────────────────────────────────────────────────
+export interface EarnTaskWithStatus extends EarnTask {
+  completed: boolean;
+  completed_at?: string;
+}
+
+export class EarnStorage {
+  // ── Admin CRUD ───────────────────────────────────────────────────────────
+  async getAllTasks(): Promise<EarnTask[]> {
+    return db.select().from(earnTasks).orderBy(asc(earnTasks.sort_order));
+  }
+
+  async createTask(data: InsertEarnTask): Promise<EarnTask> {
+    const id = randomUUID();
+    await db.insert(earnTasks).values({ ...data, id });
+    const [row] = await db.select().from(earnTasks).where(eq(earnTasks.id, id)).limit(1);
+    return row as EarnTask;
+  }
+
+  async updateTask(id: string, patch: Partial<InsertEarnTask>): Promise<EarnTask | null> {
+    const [existing] = await db.select().from(earnTasks).where(eq(earnTasks.id, id)).limit(1);
+    if (!existing) return null;
+    const setObj: any = {};
+    if (patch.title !== undefined) setObj.title = patch.title;
+    if (patch.description !== undefined) setObj.description = patch.description;
+    if (patch.category !== undefined) setObj.category = patch.category;
+    if (patch.task_type !== undefined) setObj.task_type = patch.task_type;
+    if (patch.xp_reward !== undefined) setObj.xp_reward = patch.xp_reward;
+    if (patch.cashback_reward !== undefined) setObj.cashback_reward = String(patch.cashback_reward);
+    if (patch.action_url !== undefined) setObj.action_url = patch.action_url;
+    if (patch.action_label !== undefined) setObj.action_label = patch.action_label;
+    if (patch.active !== undefined) setObj.active = patch.active;
+    if (patch.sort_order !== undefined) setObj.sort_order = patch.sort_order;
+    await db.update(earnTasks).set(setObj).where(eq(earnTasks.id, id));
+    const [row] = await db.select().from(earnTasks).where(eq(earnTasks.id, id)).limit(1);
+    return row as EarnTask;
+  }
+
+  async deleteTask(id: string): Promise<void> {
+    await db.delete(earnTasks).where(eq(earnTasks.id, id));
+    await db.delete(userEarnCompletions).where(eq(userEarnCompletions.task_id, id));
+  }
+
+  // ── Public tasks with completion status ────────────────────────────────────────
+  async getTasksForUser(wallet: string): Promise<EarnTaskWithStatus[]> {
+    const key = wallet.toLowerCase();
+    const tasks = await db.select().from(earnTasks).where(eq(earnTasks.active, true)).orderBy(asc(earnTasks.sort_order));
+    const completions = await db
+      .select()
+      .from(userEarnCompletions)
+      .where(eq(userEarnCompletions.wallet_address, key));
+    const completedMap = new Map(completions.map((c) => [c.task_id, c]));
+
+    return tasks.map((t) => {
+      const c = completedMap.get(t.id);
+      return {
+        ...t,
+        completed: !!c,
+        completed_at: c?.completed_at ? new Date(c.completed_at).toISOString() : undefined,
+      };
+    });
+  }
+
+  async completeTask(wallet: string, taskId: string): Promise<{ success: boolean; xpAwarded: number; cashbackAwarded: number; user?: any }> {
+    const key = wallet.toLowerCase();
+    const [task] = await db.select().from(earnTasks).where(eq(earnTasks.id, taskId)).limit(1);
+    if (!task || !task.active) return { success: false, xpAwarded: 0, cashbackAwarded: 0 };
+
+    const [existing] = await db
+      .select()
+      .from(userEarnCompletions)
+      .where(and(eq(userEarnCompletions.wallet_address, key), eq(userEarnCompletions.task_id, taskId)))
+      .limit(1);
+    if (existing) return { success: false, xpAwarded: 0, cashbackAwarded: 0 };
+
+    const xpAwarded = task.xp_reward;
+    const cashbackAwarded = Number(task.cashback_reward);
+
+    // Record completion
+    await db.insert(userEarnCompletions).values({
+      id: randomUUID(),
+      wallet_address: key,
+      task_id: taskId,
+      xp_awarded: xpAwarded,
+      cashback_awarded: String(cashbackAwarded),
+      completed_at: new Date(),
+    });
+
+    // Update user's XP, tier, level
+    if (xpAwarded > 0) {
+      await db
+        .update(rewardUsers)
+        .set({
+          xp: sql`${rewardUsers.xp} + ${xpAwarded}`,
+          tier: sql`CASE WHEN ${rewardUsers.xp} + ${xpAwarded} >= 5000 THEN 'Diamond' WHEN ${rewardUsers.xp} + ${xpAwarded} >= 2000 THEN 'Gold' WHEN ${rewardUsers.xp} + ${xpAwarded} >= 500 THEN 'Silver' ELSE 'Bronze' END`,
+          level: sql`GREATEST(1, FLOOR((${rewardUsers.xp} + ${xpAwarded}) / 100) + 1)`,
+        })
+        .where(eq(rewardUsers.wallet_address, key));
+    }
+
+    // Update cashback if applicable
+    if (cashbackAwarded > 0) {
+      await db
+        .update(rewardUsers)
+        .set({
+          weekly_cashback_usd: sql`${rewardUsers.weekly_cashback_usd} + ${String(cashbackAwarded)}`,
+        })
+        .where(eq(rewardUsers.wallet_address, key));
+    }
+
+    const [user] = await db.select().from(rewardUsers).where(eq(rewardUsers.wallet_address, key)).limit(1);
+    return { success: true, xpAwarded, cashbackAwarded, user };
+  }
+}
+
+export const earnStorage = new EarnStorage();
 
 // ─── Admin CMS Storage ───────────────────────────────────────────────────────────────────
 import { asc } from "drizzle-orm";
