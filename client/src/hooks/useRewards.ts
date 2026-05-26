@@ -40,6 +40,7 @@ export interface SwapEvent {
   xp_earned: number;
   cashback_usd: number;
   timestamp: number;
+  verified?: boolean;
 }
 
 export interface TokenCashbackEntry {

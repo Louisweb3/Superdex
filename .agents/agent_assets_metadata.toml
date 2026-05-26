@@ -1,0 +1,26 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "bt29I1pyxgbee-dPXSgLo"
+uri = "file://attached_assets/icon_trophy.png"
+type = "image"
+title = "gold trophy icon"
+
+[[generated]]
+id = "dTVg1PCxZyJjRL2QmWQqt"
+uri = "file://attached_assets/icon_lightning.png"
+type = "image"
+title = "lightning bolt icon"
+
+[[generated]]
+id = "dee1G-KqagtzkO9E-0ZqU"
+uri = "file://attached_assets/icon_chart.png"
+type = "image"
+title = "rising chart icon"
+
+[[generated]]
+id = "4cTSxLxexT5zn-nkGfWyX"
+uri = "file://attached_assets/icon_gift.png"
+type = "image"
+title = "gift box icon"

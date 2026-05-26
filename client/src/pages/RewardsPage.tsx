@@ -13,8 +13,16 @@ import {
   type DailyQuest,
   type SwapEvent,
 } from "@/hooks/useRewards";
+import { useEarnTasks, useTaskCompletions } from "@/hooks/useEarn";
 
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
+
+import iconTrophy from "@assets/icon_trophy.png";
+import iconLightning from "@assets/icon_lightning.png";
+import iconChart from "@assets/icon_chart.png";
+import iconGift from "@assets/icon_gift.png";
+
+import { TOKENS } from "@/lib/tokens";
 
 // ─────────────────────────────────────────────────────────────
 // HELPERS
@@ -32,6 +40,11 @@ function fmtUsd(n: number) {
 function fmtXP(n: number) {
   if (n >= 1000) return (n / 1000).toFixed(1) + "k";
   return String(n);
+}
+
+function tokenIcon(symbol: string): string {
+  const t = TOKENS.find((tok) => tok.symbol === symbol);
+  return t?.icon ?? "";
 }
 
 function relTime(ts: number) {
@@ -166,7 +179,7 @@ export function RewardsPage(): JSX.Element {
                         }}
                       />
                       <div className="absolute inset-[10px] rounded-full bg-[#07111d]" />
-                      <div className="relative z-10 text-[24px]">🏆</div>
+                      <img src={iconTrophy} alt="trophy" className="relative z-10 h-8 w-8" />
                     </div>
                     {/* TEXT */}
                     <div className="min-w-0">
@@ -219,7 +232,10 @@ export function RewardsPage(): JSX.Element {
                 <div className="relative overflow-hidden rounded-[22px] border border-[#182332] bg-[#060d17] p-5 backdrop-blur-xl">
                   <div className="absolute right-[-20px] top-[-20px] h-[90px] w-[90px] rounded-full bg-emerald-500/10 blur-[60px]" />
                   <div className="relative z-10">
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-[#6f7b8e]">This Week Earned</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[10px] uppercase tracking-[0.22em] text-[#6f7b8e]">This Week Earned</p>
+                      <span className="flex h-1.5 w-1.5 rounded-full bg-[#3acd5b] animate-pulse" />
+                    </div>
                     <p className="mt-1 text-[28px] font-black text-[#3acd5b]">{fmtUsd(user.weekly_cashback_usd ?? 0)}</p>
                     <p className="mt-1 text-[12px] text-[#7f8b9d]">Unclaimed until Sunday midnight UTC</p>
                   </div>
@@ -284,9 +300,9 @@ export function RewardsPage(): JSX.Element {
                 {quests?.map((quest) => {
                   const pct = quest.target > 0 ? Math.min((quest.progress / quest.target) * 100, 100) : 100;
                   const labels: Record<string, { title: string; desc: string; icon: string; glow: string }> = {
-                    swaps: { title: "Swap Master", desc: "Complete 3 swaps today", icon: "\u26a1", glow: "#22d3ee" },
-                    volume: { title: "Volume Hunter", desc: "Trade $100 volume", icon: "\ud83d\udcc8", glow: "#8b5cf6" },
-                    login: { title: "Daily Check-in", desc: "Visit SuperSwap today", icon: "\ud83c\udf81", glow: "#2dae50" },
+                    swaps: { title: "Swap Master", desc: "Complete 3 swaps today", icon: iconLightning, glow: "#22d3ee" },
+                    volume: { title: "Volume Hunter", desc: "Trade $100 volume", icon: iconChart, glow: "#8b5cf6" },
+                    login: { title: "Daily Check-in", desc: "Visit SuperSwap today", icon: iconGift, glow: "#2dae50" },
                   };
                   const info = labels[quest.quest_type];
                   return (
@@ -295,8 +311,8 @@ export function RewardsPage(): JSX.Element {
                       <div className="relative z-10">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border text-[20px]" style={{ background: `${info.glow}15`, borderColor: `${info.glow}55` }}>
-                              {info.icon}
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border" style={{ background: `${info.glow}15`, borderColor: `${info.glow}55` }}>
+                              <img src={info.icon} alt="" className="h-6 w-6" />
                             </div>
                             <div>
                               <h3 className="text-[16px] font-bold text-white">{info.title}</h3>
@@ -325,8 +341,9 @@ export function RewardsPage(): JSX.Element {
                           </button>
                         )}
                         {quest.claimed && (
-                          <div className="mt-4 flex items-center justify-center rounded-[15px] border border-[#1a3522] bg-[#0b1810] py-3 text-[13px] font-bold text-[#3acd5b]">
-                            \u2713 Reward Claimed
+                          <div className="mt-4 flex items-center justify-center gap-1.5 rounded-[15px] border border-[#1a3522] bg-[#0b1810] py-3 text-[13px] font-bold text-[#3acd5b]">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Reward Claimed
                           </div>
                         )}
                       </div>
@@ -344,7 +361,13 @@ export function RewardsPage(): JSX.Element {
                   {history.slice(0, 10).map((h) => (
                     <div key={h.id} className="flex items-center justify-between rounded-[14px] border border-[#182332] bg-[#060d17] px-4 py-2.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-[12px] font-medium text-[#c8ccd2]">{h.sell_symbol} \u2192 {h.buy_symbol}</span>
+                        <div className="flex items-center gap-1.5">
+                          {tokenIcon(h.sell_symbol) && <img src={tokenIcon(h.sell_symbol)} alt={h.sell_symbol} className="h-5 w-5 rounded-full object-cover bg-[#0a1825]" />}
+                          <span className="text-[12px] font-medium text-[#c8ccd2]">{h.sell_symbol}</span>
+                          <span className="text-[10px] text-[#5b6577]">→</span>
+                          {tokenIcon(h.buy_symbol) && <img src={tokenIcon(h.buy_symbol)} alt={h.buy_symbol} className="h-5 w-5 rounded-full object-cover bg-[#0a1825]" />}
+                          <span className="text-[12px] font-medium text-[#c8ccd2]">{h.buy_symbol}</span>
+                        </div>
                         {h.verified && <span className="rounded bg-[#0a2418] px-1.5 py-0.5 text-[9px] font-bold text-[#2dae50]">VERIFIED</span>}
                       </div>
                       <div className="text-right">
