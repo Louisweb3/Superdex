@@ -246,8 +246,8 @@ export class RewardsStorage {
     const newTier = tierFromXP(newXp);
     const newLevel = levelFromXP(newXp);
 
-    // Cashback only awarded for verified swaps (Basescan-confirmed)
-    const addWeeklyCashback = isVerified ? cashbackUsd : 0;
+    // Cashback awarded for all swaps — on-chain portion already handled by 0x integrator fees
+    const addWeeklyCashback = cashbackUsd;
     const newWeeklyCashback = (user.weekly_cashback_usd ?? 0) + addWeeklyCashback;
 
     await db

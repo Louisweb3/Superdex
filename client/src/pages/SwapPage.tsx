@@ -22,6 +22,20 @@ function fmtUsd(n: number) {
   return "$" + n.toFixed(4);
 }
 
+// Calculate swap volume in USD using token price when available,
+// falling back to quote price (works when buy token is a stablecoin).
+function calcVolumeUsd(sellAmountNum: number, sellToken: Token, quote: SwapQuote): number {
+  if (!sellAmountNum || isNaN(sellAmountNum)) return 0;
+  // Prefer live USD price from DexScreener
+  if (sellToken.price && sellToken.price > 0) {
+    return sellAmountNum * sellToken.price;
+  }
+  // Fallback: use quote.price * buyAmountFormatted (works for stablecoin outputs)
+  const buyAmt = parseFloat(quote.buyAmountFormatted || "0");
+  if (buyAmt > 0) return buyAmt;
+  return 0;
+}
+
 // ─── Token Picker Modal (fixed position — bypasses all overflow clipping) ─────
 function TokenPickerModal({
   tokens,
@@ -608,8 +622,8 @@ export function SwapPage() {
           gas: toHexWei(refreshedQuote.transaction.gas),
         });
         setTxHash(hash);
-        const volUsd = parseFloat(sellAmount) * parseFloat(refreshedQuote.price ?? "0");
-        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd).catch(() => {});
+        const volUsd = calcVolumeUsd(parseFloat(sellAmount), sellToken, refreshedQuote);
+        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, volUsd).catch(() => {});
       } else {
         if (!fullQuote.transaction) throw new Error("No transaction data in quote");
         const hash = await wallet.sendTransaction({
@@ -619,8 +633,8 @@ export function SwapPage() {
           gas: toHexWei(fullQuote.transaction.gas),
         });
         setTxHash(hash);
-        const volUsd = parseFloat(sellAmount) * parseFloat(fullQuote.price ?? "0");
-        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd).catch(() => {});
+        const volUsd = calcVolumeUsd(parseFloat(sellAmount), sellToken, fullQuote);
+        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, volUsd).catch(() => {});
       }
     } catch (err: any) {
       setSwapError(err.message ?? "Swap failed");
@@ -738,7 +752,12 @@ export function SwapPage() {
                   token={sellToken}
                   amount={sellAmount}
                   onAmountChange={setSellAmount}
-                  usdValue={quote && parseFloat(quote.price) > 0 ? `≈ $${(parseFloat(sellAmount || "0") * parseFloat(quote.price)).toLocaleString("en-US", { maximumFractionDigits: 2 })}` : ""}
+                  usdValue={(() => {
+                    const amt = parseFloat(sellAmount || "0");
+                    if (!amt || !quote) return "";
+                    const usd = calcVolumeUsd(amt, sellToken, quote);
+                    return usd > 0 ? `≈ $${usd.toLocaleString("en-US", { maximumFractionDigits: 2 })}` : "";
+                  })()}
                   allTokens={allTokens}
                   onTokenChange={setSellToken}
                   disabledToken={buyToken}
@@ -760,11 +779,14 @@ export function SwapPage() {
                   token={buyToken}
                   amount={isLoading ? "…" : (quote?.buyAmountFormatted ?? "")}
                   readonly
-                  usdValue={
-                    quote && parseFloat(quote.buyAmountFormatted) > 0
-                      ? `≈ $${(parseFloat(quote.buyAmountFormatted) * 1).toLocaleString("en-US", { maximumFractionDigits: 2 })}`
-                      : ""
-                  }
+                  usdValue={(() => {
+                    if (!quote || !sellAmount) return "";
+                    const sellAmt = parseFloat(sellAmount || "0");
+                    if (!sellAmt) return "";
+                    // USD of buy = USD of sell (minus tiny fee) — use sell-side USD calc
+                    const usd = calcVolumeUsd(sellAmt, sellToken, quote);
+                    return usd > 0 ? `≈ $${usd.toLocaleString("en-US", { maximumFractionDigits: 2 })}` : "";
+                  })()}
                   allTokens={allTokens}
                   onTokenChange={setBuyToken}
                   disabledToken={sellToken}
@@ -805,7 +827,7 @@ export function SwapPage() {
                   <div className="flex items-center justify-between">
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">Est. Cashback</span>
                     <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#2dae50]">
-                      {quote && sellAmount ? fmtUsd(parseFloat(sellAmount) * parseFloat(quote.price ?? "0") * 0.0015) : "—"}
+                      {quote && sellAmount ? fmtUsd(calcVolumeUsd(parseFloat(sellAmount), sellToken, quote) * 0.0015) : "—"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
