@@ -38,7 +38,7 @@ const navItems = [
   {
     value: "earn",
     label: "Earn",
-    iconSrc: "/figmaAssets/image-14.png",
+    iconSrc: "/figmaAssets/image-earn.png",
     activeBg: "/figmaAssets/background-1.png",
     activeUnderline: "/figmaAssets/background-2.png",
   },
