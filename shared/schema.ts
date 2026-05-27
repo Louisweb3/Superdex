@@ -8,6 +8,7 @@ import {
   numeric,
   boolean,
 } from "drizzle-orm/pg-core";
+
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -42,6 +43,9 @@ export const rewardUsers = pgTable("reward_users", {
   total_volume_usd: numeric("total_volume_usd", { precision: 24, scale: 8 }).notNull().default("0"),
   level: integer("level").notNull().default(1),
   x_username: varchar("x_username", { length: 64 }).default(""),
+  twitter_user_id: varchar("twitter_user_id", { length: 32 }).default(""),
+  twitter_access_token: text("twitter_access_token").default(""),
+  twitter_refresh_token: text("twitter_refresh_token").default(""),
   referral_code: varchar("referral_code", { length: 16 }).default(""),
   referred_by: varchar("referred_by", { length: 42 }).default(""),
   referral_bonus_xp: integer("referral_bonus_xp").notNull().default(0),

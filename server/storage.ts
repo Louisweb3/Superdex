@@ -60,6 +60,9 @@ export interface RewardUser {
   total_volume_usd: number;
   level: number;
   x_username?: string;
+  twitter_user_id?: string;
+  twitter_access_token?: string;
+  twitter_refresh_token?: string;
   referral_code?: string;
   referred_by?: string;
   referral_bonus_xp?: number;
@@ -919,21 +922,110 @@ export class EarnStorage {
     await rewardsStorage.ensureUser(key);
     await db.update(rewardUsers).set({ x_username: xUsername.replace(/^@/, "").toLowerCase() }).where(eq(rewardUsers.wallet_address, key));
   }
+  async storeTwitterAuth(wallet: string, twitterUserId: string, username: string, accessToken: string, refreshToken: string): Promise<void> {
+    const key = wallet.toLowerCase();
+    await rewardsStorage.ensureUser(key);
+    await db.update(rewardUsers).set({
+      twitter_user_id: twitterUserId,
+      twitter_access_token: accessToken,
+      twitter_refresh_token: refreshToken,
+      x_username: username.toLowerCase(),
+    }).where(eq(rewardUsers.wallet_address, key));
+  }
+  async getTwitterAuth(wallet: string): Promise<{ twitter_user_id: string; twitter_access_token: string; twitter_refresh_token: string; x_username: string } | null> {
+    const key = wallet.toLowerCase();
+    const user = await rewardsStorage.getUser(key);
+    if (!user) return null;
+    return {
+      twitter_user_id: user.twitter_user_id ?? "",
+      twitter_access_token: user.twitter_access_token ?? "",
+      twitter_refresh_token: user.twitter_refresh_token ?? "",
+      x_username: user.x_username ?? "",
+    };
+  }
   async getXUsername(wallet: string): Promise<string | null> {
     const key = wallet.toLowerCase();
     const user = await rewardsStorage.getUser(key);
     return user?.x_username ?? null;
   }
-  async verifySocialTask(wallet: string, taskId: string): Promise<{ success: boolean; error?: string }> {
+  async getXStatus(wallet: string): Promise<{ x_username: string; twitter_connected: boolean }> {
     const key = wallet.toLowerCase();
     const user = await rewardsStorage.getUser(key);
-    if (!user?.x_username) return { success: false, error: "X account not connected" };
+    const twitter_connected = !!(user?.twitter_user_id && user.twitter_access_token);
+    return { x_username: user?.x_username ?? "", twitter_connected };
+  }
+  async verifySocialTask(wallet: string, taskId: string): Promise<{ success: boolean; error?: string }> {
+    const { checkFollow, checkLike, checkRetweet, parseTarget, refreshAccessToken, getMe, isConfigured } = await import("./twitter.js");
+    const key = wallet.toLowerCase();
+    const auth = await this.getTwitterAuth(key);
+    if (!auth?.twitter_user_id) return { success: false, error: "X account not connected via OAuth" };
     const task = await this.getTask(taskId);
     if (!task || task.type !== "offchain") return { success: false, error: "Invalid task" };
     const comp = await this.getOrCreateCompletion(key, taskId);
     if (comp.completed) return { success: true };
-    const target = task.target_count ?? 1;
-    await db.update(taskCompletions).set({ progress: String(target), completed: true }).where(eq(taskCompletions.id, comp.id));
+
+    // If Twitter OAuth is configured, do real verification
+    if (isConfigured()) {
+      let token = auth.twitter_access_token;
+      let userId = auth.twitter_user_id;
+
+      // Try to refresh token if we have a refresh token
+      const tryRefresh = async () => {
+        if (!auth.twitter_refresh_token) return false;
+        const refreshed = await refreshAccessToken(auth.twitter_refresh_token);
+        if (!refreshed) return false;
+        token = refreshed.accessToken;
+        await db.update(rewardUsers).set({
+          twitter_access_token: refreshed.accessToken,
+          twitter_refresh_token: refreshed.refreshToken,
+        }).where(eq(rewardUsers.wallet_address, key));
+        return true;
+      };
+
+      // Verify the action took place
+      const target = parseTarget(task.verification_url ?? "", task.category ?? "");
+      if (!target) return { success: false, error: "Task has no verification URL configured" };
+
+      let verified = false;
+      try {
+        if (task.category === "social_follow") {
+          verified = await checkFollow(token, userId, target);
+        } else if (task.category === "social_like") {
+          verified = await checkLike(token, userId, target);
+        } else if (task.category === "social_retweet") {
+          verified = await checkRetweet(token, userId, target);
+        } else {
+          // Other social tasks (comment, join) — mark complete directly
+          verified = true;
+        }
+      } catch (e: any) {
+        // 401 = expired token, try refresh
+        if (e?.status === 401 || String(e).includes("401")) {
+          const ok = await tryRefresh();
+          if (!ok) return { success: false, error: "X session expired. Please reconnect your account." };
+          // Re-attempt with fresh token
+          if (task.category === "social_follow") verified = await checkFollow(token, userId, target);
+          else if (task.category === "social_like") verified = await checkLike(token, userId, target);
+          else if (task.category === "social_retweet") verified = await checkRetweet(token, userId, target);
+          else verified = true;
+        } else {
+          return { success: false, error: "Verification failed. Please try again." };
+        }
+      }
+
+      if (!verified) {
+        const actionMap: Record<string, string> = {
+          social_follow: "follow the account",
+          social_like: "like the tweet",
+          social_retweet: "retweet the tweet",
+        };
+        return { success: false, error: `Please ${actionMap[task.category ?? ""] ?? "complete the task"} on X first, then verify.` };
+      }
+    }
+
+    // Mark completed
+    const targetCount = task.target_count ?? 1;
+    await db.update(taskCompletions).set({ progress: String(targetCount), completed: true }).where(eq(taskCompletions.id, comp.id));
     return { success: true };
   }
   async getAnnouncements(activeOnly = true): Promise<AdminAnnouncement[]> {

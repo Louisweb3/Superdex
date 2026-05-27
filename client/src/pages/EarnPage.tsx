@@ -6,10 +6,10 @@ import {
   useAnnouncements,
   useClaimTask,
   useXAccount,
-  useConnectX,
   useVerifySocialTask,
 } from "@/hooks/useEarn";
 import { useRewardUser } from "@/hooks/useRewards";
+import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -28,11 +28,11 @@ import {
   Bell,
   ExternalLink,
   X,
-  AtSign,
   Loader2,
   ShieldCheck,
   Wallet,
   ChevronRight,
+  BadgeCheck,
 } from "lucide-react";
 
 const SOCIAL_CATEGORIES = new Set([
@@ -83,101 +83,12 @@ function CircularProgress({
   );
 }
 
-function ConnectXModal({
-  onClose,
-  onConnected,
-  wallet,
-}: {
-  onClose: () => void;
-  onConnected: (username: string) => void;
-  wallet: string;
-}) {
-  const [username, setUsername] = useState("");
-  const connectX = useConnectX();
-  const { toast } = useToast();
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }, []);
-
-  const handleSubmit = async () => {
-    const cleaned = username.replace(/^@/, "").trim();
-    if (!cleaned) return;
-    try {
-      await connectX.mutateAsync({ wallet, xUsername: cleaned });
-      onConnected(cleaned);
-      toast({ title: "X account connected!", description: `@${cleaned} linked to your wallet.` });
-      onClose();
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-[400px] mx-4 mb-4 sm:mb-0 rounded-[24px] border border-[#1a2535] bg-[#060e18] shadow-2xl overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#1d9bf0]/40 to-transparent" />
-
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0d1b2a] border border-[#1a2535]">
-                <Twitter size={18} className="text-[#1d9bf0]" />
-              </div>
-              <div>
-                <p className="text-[15px] font-semibold text-[#e8ecf0]">Connect X Account</p>
-                <p className="text-[12px] text-[#5f6a7c]">Required for social tasks</p>
-              </div>
-            </div>
-            <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full border border-[#1a2535] text-[#5f6a7c] hover:text-[#cfd8e3]">
-              <X size={14} />
-            </button>
-          </div>
-
-          <div className="rounded-[14px] border border-[#0d2233] bg-[#040c14] p-3 mb-4">
-            <p className="text-[12px] text-[#4d8ab8] leading-[1.5]">
-              Enter your X (Twitter) username. You'll need to complete the action on X before verifying each task.
-            </p>
-          </div>
-
-          <div className="relative mb-4">
-            <AtSign size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#4d8ab8]" />
-            <input
-              ref={inputRef}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-              placeholder="yourhandle"
-              className="w-full rounded-[12px] border border-[#1a2535] bg-[#0d1520] pl-9 pr-4 py-3 text-[14px] text-[#e8ecf0] placeholder:text-[#3d4f5f] outline-none focus:border-[#1d9bf0]/50"
-              data-testid="input-x-username"
-            />
-          </div>
-
-          <Button
-            onClick={handleSubmit}
-            disabled={!username.trim() || connectX.isPending}
-            className="w-full h-11 rounded-[12px] bg-[#1d9bf0] text-white font-semibold hover:bg-[#1a8cd8] disabled:opacity-40"
-            data-testid="button-connect-x"
-          >
-            {connectX.isPending ? (
-              <Loader2 size={16} className="animate-spin mr-2" />
-            ) : (
-              <ShieldCheck size={16} className="mr-2" />
-            )}
-            Connect Account
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function TaskCard({
   task,
   completion,
   xUsername,
+  twitterConnected,
   walletAddress,
   onClaim,
   onVerify,
@@ -186,6 +97,7 @@ function TaskCard({
   task: any;
   completion: any;
   xUsername: string;
+  twitterConnected: boolean;
   walletAddress: string | null;
   onClaim: (taskId: string) => void;
   onVerify: (taskId: string) => void;
@@ -194,7 +106,7 @@ function TaskCard({
   const isCompleted = completion?.completed ?? false;
   const isClaimed = completion?.claimed ?? false;
   const isSocial = SOCIAL_CATEGORIES.has(task.category);
-  const xConnected = !!xUsername;
+  const xConnected = twitterConnected;
 
   const [pendingVerify, setPendingVerify] = useState(false);
   const [openedLink, setOpenedLink] = useState(false);
@@ -402,17 +314,43 @@ export function EarnPage() {
   const { toast } = useToast();
 
   const [activeFilter, setActiveFilter] = useState<"all" | "onchain" | "offchain">("all");
-  const [showConnectX, setShowConnectX] = useState(false);
 
   const { data: user } = useRewardUser(walletAddress);
   const { data: tasks = [] } = useEarnTasks();
   const { data: completions = [] } = useTaskCompletions(walletAddress ?? undefined);
   const { data: announcements = [] } = useAnnouncements();
-  const { data: xAccountData } = useXAccount(walletAddress ?? undefined);
+  const { data: xAccountData, refetch: refetchXAccount } = useXAccount(walletAddress ?? undefined);
   const xUsername = xAccountData?.x_username ?? "";
+  const twitterConnected = xAccountData?.twitter_connected ?? false;
 
   const claimMutation = useClaimTask();
   const verifyMutation = useVerifySocialTask();
+
+  // Handle return from Twitter OAuth
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get("twitter_connected");
+    const xUser = params.get("x_username");
+    const error = params.get("twitter_error");
+    if (connected) {
+      toast({
+        title: "X Account Connected!",
+        description: xUser ? `@${xUser} verified and linked to your wallet.` : "X account linked successfully.",
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+      refetchXAccount();
+      queryClient.invalidateQueries({ queryKey: ["/api/earn/x-account"] });
+    }
+    if (error) {
+      toast({ title: "Connection failed", description: "Could not connect X account. Please try again.", variant: "destructive" });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  const handleConnectX = () => {
+    if (!walletAddress) return;
+    window.location.href = `/api/auth/twitter/connect?wallet=${walletAddress}`;
+  };
 
   const handleClaim = (taskId: string) => {
     if (!walletAddress) return;
@@ -477,14 +415,6 @@ export function EarnPage() {
 
   return (
     <div className="flex flex-col gap-5 px-4 pt-4 pb-8">
-      {showConnectX && walletAddress && (
-        <ConnectXModal
-          wallet={walletAddress}
-          onClose={() => setShowConnectX(false)}
-          onConnected={() => {}}
-        />
-      )}
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -494,16 +424,16 @@ export function EarnPage() {
         <div className="flex items-center gap-2">
           {walletAddress && (
             <button
-              onClick={() => setShowConnectX(true)}
+              onClick={twitterConnected ? undefined : handleConnectX}
               className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-medium transition-colors ${
-                xUsername
-                  ? "border-[#1d9bf0]/30 bg-[#040c14] text-[#1d9bf0]"
+                twitterConnected
+                  ? "border-[#1d9bf0]/30 bg-[#040c14] text-[#1d9bf0] cursor-default"
                   : "border-[#1a2535] bg-[#0d1520] text-[#5f6a7c] hover:text-[#1d9bf0] hover:border-[#1d9bf0]/30"
               }`}
               data-testid="button-connect-x-header"
             >
-              <Twitter size={13} />
-              {xUsername ? `@${xUsername}` : "Link X"}
+              {twitterConnected ? <BadgeCheck size={13} /> : <Twitter size={13} />}
+              {twitterConnected && xUsername ? `@${xUsername}` : "Link X"}
             </button>
           )}
           <div className="flex items-center gap-2 rounded-xl border border-[#0d1b2a] bg-[#060e18] px-3 py-2">
@@ -564,10 +494,10 @@ export function EarnPage() {
         </div>
       </div>
 
-      {/* X Account Banner (if wallet connected but X not linked) */}
-      {walletAddress && !xUsername && (
+      {/* X Account Banner (if wallet connected but X not linked via OAuth) */}
+      {walletAddress && !twitterConnected && (
         <button
-          onClick={() => setShowConnectX(true)}
+          onClick={handleConnectX}
           className="flex items-center gap-3 rounded-[16px] border border-[#1d9bf0]/20 bg-[#040c14] p-4 text-left w-full hover:border-[#1d9bf0]/40 transition-colors"
           data-testid="banner-connect-x"
         >
@@ -576,7 +506,7 @@ export function EarnPage() {
           </div>
           <div className="flex-1">
             <p className="text-[13px] font-semibold text-[#e8ecf0]">Connect X to unlock social tasks</p>
-            <p className="text-[11px] text-[#4d8ab8]">Follow, RT, and Like to earn XP rewards</p>
+            <p className="text-[11px] text-[#4d8ab8]">Authenticate with Twitter to verify Follow, RT & Like tasks</p>
           </div>
           <ChevronRight size={16} className="text-[#3d4f5f]" />
         </button>
@@ -626,10 +556,11 @@ export function EarnPage() {
               task={task}
               completion={getCompletion(task.id)}
               xUsername={xUsername}
+              twitterConnected={twitterConnected}
               walletAddress={walletAddress}
               onClaim={handleClaim}
               onVerify={handleVerify}
-              onConnectX={() => setShowConnectX(true)}
+              onConnectX={handleConnectX}
             />
           ))}
         </div>
@@ -649,10 +580,11 @@ export function EarnPage() {
               task={task}
               completion={getCompletion(task.id)}
               xUsername={xUsername}
+              twitterConnected={twitterConnected}
               walletAddress={walletAddress}
               onClaim={handleClaim}
               onVerify={handleVerify}
-              onConnectX={() => setShowConnectX(true)}
+              onConnectX={handleConnectX}
             />
           ))}
         </div>
