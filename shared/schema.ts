@@ -41,6 +41,7 @@ export const rewardUsers = pgTable("reward_users", {
   tier: varchar("tier", { length: 16 }).notNull().default("Bronze"),
   total_volume_usd: numeric("total_volume_usd", { precision: 24, scale: 8 }).notNull().default("0"),
   level: integer("level").notNull().default(1),
+  x_username: varchar("x_username", { length: 64 }).default(""),
   created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 

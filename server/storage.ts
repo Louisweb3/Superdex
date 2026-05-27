@@ -817,6 +817,18 @@ export class EarnStorage {
     }
     return { success: true, xpReward: task.xp_reward, cashbackReward: Number(task.cashback_reward ?? 0), task };
   }
+  async setCompletionProgress(wallet: string, taskId: string, value: number): Promise<TaskCompletion> {
+    const key = wallet.toLowerCase();
+    const comp = await this.getOrCreateCompletion(key, taskId);
+    const task = await this.getTask(taskId);
+    if (!task || comp.completed) return comp;
+    const target = Number(comp.target_value || (task.type === "onchain" ? task.target_value : task.target_count));
+    const newProgress = Math.min(value, target);
+    const completed = newProgress >= target;
+    await db.update(taskCompletions).set({ progress: String(newProgress), completed }).where(eq(taskCompletions.id, comp.id));
+    const [updated] = await db.select().from(taskCompletions).where(eq(taskCompletions.id, comp.id)).limit(1);
+    return updated;
+  }
   async syncOnchainProgress(wallet: string): Promise<void> {
     const key = wallet.toLowerCase();
     const onchainTasks = await this.getTasks("onchain");
@@ -825,8 +837,30 @@ export class EarnStorage {
     for (const task of onchainTasks) {
       const comp = await this.getOrCreateCompletion(key, task.id);
       if (comp.completed) continue;
-      await this.updateCompletionProgress(key, task.id, totalVolume);
+      await this.setCompletionProgress(key, task.id, totalVolume);
     }
+  }
+  async connectXAccount(wallet: string, xUsername: string): Promise<void> {
+    const key = wallet.toLowerCase();
+    await rewardsStorage.ensureUser(key);
+    await db.update(rewardUsers).set({ x_username: xUsername.replace(/^@/, "").toLowerCase() }).where(eq(rewardUsers.wallet_address, key));
+  }
+  async getXUsername(wallet: string): Promise<string | null> {
+    const key = wallet.toLowerCase();
+    const user = await rewardsStorage.getUser(key);
+    return user?.x_username ?? null;
+  }
+  async verifySocialTask(wallet: string, taskId: string): Promise<{ success: boolean; error?: string }> {
+    const key = wallet.toLowerCase();
+    const user = await rewardsStorage.getUser(key);
+    if (!user?.x_username) return { success: false, error: "X account not connected" };
+    const task = await this.getTask(taskId);
+    if (!task || task.type !== "offchain") return { success: false, error: "Invalid task" };
+    const comp = await this.getOrCreateCompletion(key, taskId);
+    if (comp.completed) return { success: true };
+    const target = task.target_count ?? 1;
+    await db.update(taskCompletions).set({ progress: String(target), completed: true }).where(eq(taskCompletions.id, comp.id));
+    return { success: true };
   }
   async getAnnouncements(activeOnly = true): Promise<AdminAnnouncement[]> {
     const today = new Date().toISOString().slice(0, 10);

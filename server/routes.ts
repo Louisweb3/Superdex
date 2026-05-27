@@ -233,6 +233,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     return res.json(result);
   });
 
+  app.get("/api/earn/x-account/:wallet", async (req, res) => {
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    const xUsername = await earnStorage.getXUsername(wallet);
+    return res.json({ x_username: xUsername ?? "" });
+  });
+
+  app.post("/api/earn/connect-x", async (req, res) => {
+    const { wallet, xUsername } = req.body;
+    if (!wallet || !xUsername) return res.status(400).json({ error: "Missing wallet or xUsername" });
+    const cleaned = xUsername.replace(/^@/, "").trim();
+    if (!cleaned || cleaned.length < 1 || cleaned.length > 50) return res.status(400).json({ error: "Invalid X username" });
+    await earnStorage.connectXAccount(wallet, cleaned);
+    return res.json({ ok: true, x_username: cleaned.toLowerCase() });
+  });
+
+  app.post("/api/earn/verify-social", async (req, res) => {
+    const { wallet, taskId } = req.body;
+    if (!wallet || !taskId) return res.status(400).json({ error: "Missing wallet or taskId" });
+    const result = await earnStorage.verifySocialTask(wallet, taskId);
+    if (!result.success) return res.status(400).json({ error: result.error ?? "Verification failed" });
+    return res.json({ ok: true });
+  });
+
   app.post("/api/earn/tasks", async (req, res) => {
     const task = await earnStorage.createTask(req.body);
     return res.json(task);

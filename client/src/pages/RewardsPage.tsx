@@ -189,7 +189,7 @@ export function RewardsPage(): JSX.Element {
                         <span className="mb-[4px] text-[18px] font-bold text-[#8794aa]">XP</span>
                       </div>
                       <p className="mt-2 text-[13px] text-[#8d98aa]">
-                        Level {user.level} \u2022 {tierProgress(user.xp).xpToNext.toLocaleString()} XP until next tier
+                        Level {user.level} {tierProgress(user.xp).xpToNext.toLocaleString()} XP until next tier
                       </p>
                     </div>
                   </div>
