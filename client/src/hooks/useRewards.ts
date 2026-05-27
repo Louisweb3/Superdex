@@ -15,6 +15,10 @@ export interface RewardUser {
   tier: "Bronze" | "Silver" | "Gold" | "Diamond";
   total_volume_usd: number;
   level: number;
+  x_username?: string;
+  referral_code?: string;
+  referred_by?: string;
+  referral_bonus_xp?: number;
   created_at: number;
 }
 

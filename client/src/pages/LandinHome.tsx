@@ -12,6 +12,7 @@ import { RewardsPage } from "./RewardsPage";
 import { VaultPage } from "./VaultPage";
 import { EarnPage } from "./EarnPage";
 import { AnalyticsPage } from "./AnalyticsPage";
+import { ProfilePage } from "./ProfilePage";
 
 // Map URL paths → tab names, and vice-versa
 const PATH_TO_TAB: Record<string, string> = {
@@ -21,6 +22,7 @@ const PATH_TO_TAB: Record<string, string> = {
   "/earn": "earn",
   "/vault": "vault",
   "/analytics": "analytics",
+  "/profile": "profile",
 };
 
 const TAB_TO_PATH: Record<string, string> = {
@@ -30,6 +32,7 @@ const TAB_TO_PATH: Record<string, string> = {
   earn: "/earn",
   vault: "/vault",
   analytics: "/analytics",
+  profile: "/profile",
 };
 
 const backgroundLayers = [
@@ -82,6 +85,7 @@ export const LandinHome = (): JSX.Element => {
   const isEarn = activeTab === "earn";
   const isVault = activeTab === "vault";
   const isAnalytics = activeTab === "analytics";
+  const isProfile = activeTab === "profile";
 
   return (
     <main className="w-full bg-[#020b1c] min-h-screen">
@@ -219,12 +223,19 @@ export const LandinHome = (): JSX.Element => {
               </section>
             )}
 
+            {isProfile && (
+              <section className="w-full flex-1">
+                <ProfilePage />
+              </section>
+            )}
+
             {!isHome &&
               !isSwap &&
               !isRewards &&
               !isEarn &&
               !isVault &&
-              !isAnalytics && (
+              !isAnalytics &&
+              !isProfile && (
                 <section className="w-full flex-1 px-4">
                   <PlaceholderPage
                     title={tabPages[activeTab]?.title ?? activeTab}

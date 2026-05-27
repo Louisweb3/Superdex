@@ -49,9 +49,9 @@ export interface RewardUser {
   wallet_address: string;
   xp: number;
   weekly_xp: number;
-  cashback_usd: number;           // lifetime claimed
-  weekly_cashback_usd?: number;   // earned this week (unclaimed until week ends)
-  pending_cashback_usd?: number; // past-week pending (ready to claim)
+  cashback_usd: number;
+  weekly_cashback_usd?: number;
+  pending_cashback_usd?: number;
   total_swaps: number;
   streak: number;
   last_activity_date: string;
@@ -59,6 +59,11 @@ export interface RewardUser {
   tier: "Bronze" | "Silver" | "Gold" | "Diamond";
   total_volume_usd: number;
   level: number;
+  x_username?: string;
+  referral_code?: string;
+  referred_by?: string;
+  referral_bonus_xp?: number;
+  referral_milestone_paid?: boolean;
   created_at: number;
 }
 
@@ -95,6 +100,13 @@ export interface DailyQuest {
   completed: boolean;
   xp_reward: number;
   claimed: boolean;
+}
+
+function generateReferralCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "SUP";
+  for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
 }
 
 // ─── Helpers ─────────────────────────0───────────────────────────────────────
@@ -144,6 +156,11 @@ export class RewardsStorage {
       .where(eq(rewardUsers.wallet_address, key))
       .limit(1);
     if (existing) {
+      if (!existing.referral_code) {
+        const code = generateReferralCode();
+        await db.update(rewardUsers).set({ referral_code: code }).where(eq(rewardUsers.wallet_address, key));
+        existing.referral_code = code;
+      }
       return {
         wallet_address: existing.wallet_address,
         xp: existing.xp,
@@ -158,32 +175,30 @@ export class RewardsStorage {
         tier: existing.tier as RewardUser["tier"],
         total_volume_usd: Number(existing.total_volume_usd),
         level: existing.level,
+        x_username: existing.x_username ?? "",
+        referral_code: existing.referral_code ?? "",
+        referred_by: existing.referred_by ?? "",
+        referral_bonus_xp: existing.referral_bonus_xp ?? 0,
+        referral_milestone_paid: existing.referral_milestone_paid ?? false,
         created_at: new Date(existing.created_at ?? Date.now()).getTime(),
       };
     }
     const now = new Date();
+    const newCode = generateReferralCode();
     await db.insert(rewardUsers).values({
       wallet_address: key,
-      xp: 0,
-      weekly_xp: 0,
-      cashback_usd: "0",
-      weekly_cashback_usd: "0",
-      pending_cashback_usd: "0",
-      total_swaps: 0,
-      streak: 0,
-      last_activity_date: "",
-      last_weekly_reset: "",
-      tier: "Bronze",
-      total_volume_usd: "0",
-      level: 1,
-      created_at: now,
+      xp: 0, weekly_xp: 0, cashback_usd: "0",
+      weekly_cashback_usd: "0", pending_cashback_usd: "0",
+      total_swaps: 0, streak: 0, last_activity_date: "",
+      last_weekly_reset: "", tier: "Bronze", total_volume_usd: "0",
+      level: 1, referral_code: newCode, created_at: now,
     });
     return {
       wallet_address: key, xp: 0, weekly_xp: 0, cashback_usd: 0,
       weekly_cashback_usd: 0, pending_cashback_usd: 0,
       total_swaps: 0, streak: 0, last_activity_date: "",
-      last_weekly_reset: "",
-      tier: "Bronze", total_volume_usd: 0, level: 1,
+      last_weekly_reset: "", tier: "Bronze", total_volume_usd: 0, level: 1,
+      referral_code: newCode, referred_by: "", referral_bonus_xp: 0, referral_milestone_paid: false,
       created_at: now.getTime(),
     };
   }
@@ -369,6 +384,33 @@ export class RewardsStorage {
     // Update quest progress
     await this.updateQuestProgressDB(key, today, "swaps", 1);
     await this.updateQuestProgressDB(key, today, "volume", volumeUsd);
+
+    // ── Referral XP: award 35% of xpEarned to referrer, + 500 XP milestone ──
+    const [userRow] = await db.select().from(rewardUsers).where(eq(rewardUsers.wallet_address, key)).limit(1);
+    const referredBy = userRow?.referred_by ?? "";
+    const milestonePaid = userRow?.referral_milestone_paid ?? false;
+    if (referredBy) {
+      const [refRow] = await db.select().from(rewardUsers).where(eq(rewardUsers.wallet_address, referredBy)).limit(1);
+      if (refRow) {
+        let refBonus = Math.floor(xpEarned * 0.35);
+        let milestoneBonus = 0;
+        if (!milestonePaid && user.total_volume_usd < 100 && newVolume >= 100) {
+          milestoneBonus = 500;
+          await db.update(rewardUsers).set({ referral_milestone_paid: true }).where(eq(rewardUsers.wallet_address, key));
+        }
+        const totalBonus = refBonus + milestoneBonus;
+        if (totalBonus > 0) {
+          const refNewXp = refRow.xp + totalBonus;
+          await db.update(rewardUsers).set({
+            xp: refNewXp,
+            weekly_xp: refRow.weekly_xp + totalBonus,
+            level: levelFromXP(refNewXp),
+            tier: tierFromXP(refNewXp),
+            referral_bonus_xp: (refRow.referral_bonus_xp ?? 0) + totalBonus,
+          }).where(eq(rewardUsers.wallet_address, referredBy));
+        }
+      }
+    }
 
     const updated: RewardUser = {
       ...user,
@@ -740,6 +782,38 @@ export class RewardsStorage {
       activeUsers24h: Number(users24hRow?.count ?? 0),
       volumeChange24h: parseFloat(volumeChange.toFixed(2)),
       fees: { swap: swapFees, liquidity: liquidityFees, platform: platformFees },
+    };
+  }
+
+  async applyReferralCode(wallet: string, code: string): Promise<{ ok: boolean; error?: string }> {
+    const key = wallet.toLowerCase();
+    const user = await this.ensureUser(key);
+    if (user.referred_by) return { ok: false, error: "Already referred" };
+    const upperCode = code.trim().toUpperCase();
+    const [codeOwner] = await db.select().from(rewardUsers).where(eq(rewardUsers.referral_code, upperCode)).limit(1);
+    if (!codeOwner) return { ok: false, error: "Invalid referral code" };
+    if (codeOwner.wallet_address === key) return { ok: false, error: "Cannot use your own referral code" };
+    await db.update(rewardUsers).set({ referred_by: codeOwner.wallet_address }).where(eq(rewardUsers.wallet_address, key));
+    return { ok: true };
+  }
+
+  async getReferralStats(wallet: string): Promise<{
+    referral_code: string;
+    referral_count: number;
+    referral_bonus_xp: number;
+    milestone_count: number;
+    referred_by: string;
+  }> {
+    const key = wallet.toLowerCase();
+    const user = await this.ensureUser(key);
+    const referrals = await db.select().from(rewardUsers).where(eq(rewardUsers.referred_by, key));
+    const milestone_count = referrals.filter((r) => r.referral_milestone_paid).length;
+    return {
+      referral_code: user.referral_code ?? "",
+      referral_count: referrals.length,
+      referral_bonus_xp: user.referral_bonus_xp ?? 0,
+      milestone_count,
+      referred_by: user.referred_by ?? "",
     };
   }
 }

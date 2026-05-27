@@ -293,6 +293,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     return res.json({ ok: true });
   });
 
+  // ─── Referral API ──────────────────────────────────────────────────────────
+  app.get("/api/referral/stats/:wallet", async (req, res) => {
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    const stats = await rewardsStorage.getReferralStats(wallet);
+    return res.json(stats);
+  });
+
+  app.post("/api/referral/apply", async (req, res) => {
+    const { wallet, code } = req.body;
+    if (!wallet || !code) return res.status(400).json({ error: "Missing wallet or code" });
+    const result = await rewardsStorage.applyReferralCode(wallet, code);
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    return res.json({ ok: true });
+  });
+
   // ─── Analytics (0x Trade Analytics API) ─────────────────────────────────────
 
   // Full trade cache — refreshed every 5 minutes

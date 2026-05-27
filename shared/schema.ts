@@ -42,6 +42,10 @@ export const rewardUsers = pgTable("reward_users", {
   total_volume_usd: numeric("total_volume_usd", { precision: 24, scale: 8 }).notNull().default("0"),
   level: integer("level").notNull().default(1),
   x_username: varchar("x_username", { length: 64 }).default(""),
+  referral_code: varchar("referral_code", { length: 16 }).default(""),
+  referred_by: varchar("referred_by", { length: 42 }).default(""),
+  referral_bonus_xp: integer("referral_bonus_xp").notNull().default(0),
+  referral_milestone_paid: boolean("referral_milestone_paid").notNull().default(false),
   created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 
