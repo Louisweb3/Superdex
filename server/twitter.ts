@@ -2,9 +2,7 @@ import { randomBytes, createHash } from "crypto";
 
 const CLIENT_ID = process.env.TWITTER_CLIENT_ID ?? "";
 const CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET ?? "";
-const CALLBACK_URL =
-  process.env.TWITTER_CALLBACK_URL ||
-  `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/twitter/callback`;
+const CALLBACK_URL = "https://superswapfi.xyz/api/auth/twitter/callback";
 
 export function isConfigured(): boolean {
   return !!(CLIENT_ID && CLIENT_SECRET);
@@ -29,11 +27,16 @@ function b64url(buf: Buffer): string {
 
 // ─── OAuth URL ───────────────────────────────────────────────────────────────
 export function buildAuthUrl(wallet: string): string {
-  if (!isConfigured()) throw new Error("TWITTER_CLIENT_ID / TWITTER_CLIENT_SECRET not set");
+  if (!isConfigured())
+    throw new Error("TWITTER_CLIENT_ID / TWITTER_CLIENT_SECRET not set");
   const verifier = b64url(randomBytes(32));
   const challenge = b64url(createHash("sha256").update(verifier).digest());
   const state = randomBytes(16).toString("hex");
-  stateMap.set(state, { wallet: wallet.toLowerCase(), codeVerifier: verifier, ts: Date.now() });
+  stateMap.set(state, {
+    wallet: wallet.toLowerCase(),
+    codeVerifier: verifier,
+    ts: Date.now(),
+  });
   const p = new URLSearchParams({
     response_type: "code",
     client_id: CLIENT_ID,
@@ -55,7 +58,7 @@ export function consumeState(state: string): StateEntry | null {
 // ─── Token exchange ──────────────────────────────────────────────────────────
 export async function exchangeCode(
   code: string,
-  verifier: string
+  verifier: string,
 ): Promise<{ accessToken: string; refreshToken: string } | null> {
   const creds = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64");
   const r = await fetch("https://api.twitter.com/2/oauth2/token", {
@@ -72,16 +75,25 @@ export async function exchangeCode(
     }).toString(),
   });
   if (!r.ok) {
-    console.error("[twitter] token exchange failed:", await r.text());
+    const text = await r.text();
+
+    console.error("[twitter] token exchange failed");
+    console.error("status:", r.status);
+    console.error("response:", text);
+    console.error("callback:", CALLBACK_URL);
+
     return null;
   }
   const d = await r.json();
-  return { accessToken: d.access_token ?? "", refreshToken: d.refresh_token ?? "" };
+  return {
+    accessToken: d.access_token ?? "",
+    refreshToken: d.refresh_token ?? "",
+  };
 }
 
 // ─── Token refresh ───────────────────────────────────────────────────────────
 export async function refreshAccessToken(
-  refreshToken: string
+  refreshToken: string,
 ): Promise<{ accessToken: string; refreshToken: string } | null> {
   const creds = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64");
   const r = await fetch("https://api.twitter.com/2/oauth2/token", {
@@ -97,16 +109,22 @@ export async function refreshAccessToken(
   });
   if (!r.ok) return null;
   const d = await r.json();
-  return { accessToken: d.access_token ?? "", refreshToken: d.refresh_token ?? refreshToken };
+  return {
+    accessToken: d.access_token ?? "",
+    refreshToken: d.refresh_token ?? refreshToken,
+  };
 }
 
 // ─── Get authenticated user ──────────────────────────────────────────────────
 export async function getMe(
-  accessToken: string
+  accessToken: string,
 ): Promise<{ id: string; username: string } | null> {
-  const r = await fetch("https://api.twitter.com/2/users/me?user.fields=id,username", {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const r = await fetch(
+    "https://api.twitter.com/2/users/me?user.fields=id,username",
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
   if (!r.ok) return null;
   const d = await r.json();
   return { id: d.data?.id ?? "", username: d.data?.username ?? "" };
@@ -117,12 +135,12 @@ export async function getMe(
 export async function checkFollow(
   accessToken: string,
   myUserId: string,
-  targetUsername: string
+  targetUsername: string,
 ): Promise<boolean> {
   // Look up target user ID by username
   const lr = await fetch(
     `https://api.twitter.com/2/users/by/username/${encodeURIComponent(targetUsername)}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
+    { headers: { Authorization: `Bearer ${accessToken}` } },
   );
   if (!lr.ok) return false;
   const ld = await lr.json();
@@ -136,7 +154,7 @@ export async function checkFollow(
     if (paginationToken) params.set("pagination_token", paginationToken);
     const fr = await fetch(
       `https://api.twitter.com/2/users/${myUserId}/following?${params}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${accessToken}` } },
     );
     if (!fr.ok) return false;
     const fd = await fr.json();
@@ -151,7 +169,7 @@ export async function checkFollow(
 export async function checkLike(
   accessToken: string,
   myUserId: string,
-  tweetId: string
+  tweetId: string,
 ): Promise<boolean> {
   let paginationToken: string | undefined;
   for (let page = 0; page < 5; page++) {
@@ -159,7 +177,7 @@ export async function checkLike(
     if (paginationToken) params.set("pagination_token", paginationToken);
     const r = await fetch(
       `https://api.twitter.com/2/users/${myUserId}/liked_tweets?${params}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${accessToken}` } },
     );
     if (!r.ok) return false;
     const d = await r.json();
@@ -174,7 +192,7 @@ export async function checkLike(
 export async function checkRetweet(
   accessToken: string,
   myUserId: string,
-  tweetId: string
+  tweetId: string,
 ): Promise<boolean> {
   let paginationToken: string | undefined;
   for (let page = 0; page < 3; page++) {
@@ -182,7 +200,7 @@ export async function checkRetweet(
     if (paginationToken) params.set("pagination_token", paginationToken);
     const r = await fetch(
       `https://api.twitter.com/2/tweets/${tweetId}/retweeted_by?${params}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${accessToken}` } },
     );
     if (!r.ok) return false;
     const d = await r.json();
@@ -197,7 +215,10 @@ export async function checkRetweet(
 // ─── Parse verification_url → target identifier ──────────────────────────────
 // For social_follow: returns the Twitter username (e.g. "superswapfi_")
 // For social_like / social_retweet: returns the tweet ID (e.g. "1234567890")
-export function parseTarget(verificationUrl: string, category: string): string | null {
+export function parseTarget(
+  verificationUrl: string,
+  category: string,
+): string | null {
   if (!verificationUrl) return null;
   try {
     if (!verificationUrl.startsWith("http")) {

@@ -20,8 +20,8 @@ function formatPrice(p: number, symbol: string) {
 const navItems = [
   { value: "home",    label: "Home",    iconSrc: "/figmaAssets/image-4.png" },
   { value: "swap",    label: "Swap",    iconSrc: "/figmaAssets/image-3.png" },
-  { value: "rewards", label: "Rewards", iconSrc: "/figmaAssets/image-2.png" },
-  { value: "earn",    label: "Earn",    iconSrc: earnIcon },
+  { value: "rewards", label: "Cashback", iconSrc: "/figmaAssets/image-2.png" },
+  { value: "earn",    label: "Rewards", iconSrc: earnIcon },
   { value: "vault",   label: "Vault",   iconSrc: "/figmaAssets/image-1.png" },
 ] as const;
 

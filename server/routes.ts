@@ -252,21 +252,86 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/auth/twitter/callback", async (req, res) => {
     const { code, state, error } = req.query as Record<string, string>;
+
+    console.log("[twitter callback] incoming", {
+      codeExists: !!code,
+      stateExists: !!state,
+      error,
+    });
+
     if (error || !code || !state) {
-      return res.redirect("/earn?twitter_error=1");
+      console.error("[twitter] missing code/state or twitter returned error", {
+        error,
+        codeExists: !!code,
+        stateExists: !!state,
+      });
+
+      return res.redirect("/earn?twitter_error=1&reason=missing_params");
     }
+
     const entry = consumeState(state);
-    if (!entry) return res.redirect("/earn?twitter_error=1");
+
+    console.log("[twitter callback] state lookup", {
+      state,
+      foundState: !!entry,
+    });
+
+    if (!entry) {
+      console.error("[twitter] state not found or expired", state);
+
+      return res.redirect("/earn?twitter_error=1&reason=state");
+    }
+
     try {
+      console.log("[twitter] exchanging authorization code");
+
       const tokens = await exchangeCode(code, entry.codeVerifier);
-      if (!tokens) return res.redirect("/earn?twitter_error=1");
+
+      if (!tokens?.accessToken) {
+        console.error("[twitter] token exchange failed");
+
+        return res.redirect("/earn?twitter_error=1&reason=token");
+      }
+
+      console.log("[twitter] token exchange successful");
+
       const me = await getMe(tokens.accessToken);
-      if (!me?.id) return res.redirect("/earn?twitter_error=1");
-      await earnStorage.storeTwitterAuth(entry.wallet, me.id, me.username, tokens.accessToken, tokens.refreshToken);
-      return res.redirect(`/earn?twitter_connected=1&x_username=${encodeURIComponent(me.username)}`);
+
+      console.log("[twitter] user lookup result", {
+        id: me?.id,
+        username: me?.username,
+      });
+
+      if (!me?.id) {
+        console.error("[twitter] failed to fetch authenticated user");
+
+        return res.redirect("/earn?twitter_error=1&reason=user");
+      }
+
+      await earnStorage.storeTwitterAuth(
+        entry.wallet,
+        me.id,
+        me.username,
+        tokens.accessToken,
+        tokens.refreshToken
+      );
+
+      console.log("[twitter] account linked successfully", {
+        wallet: entry.wallet,
+        username: me.username,
+        twitterId: me.id,
+      });
+
+      return res.redirect(
+        `/earn?twitter_connected=1&x_username=${encodeURIComponent(
+          me.username
+        )}`
+      );
     } catch (e: any) {
-      console.error("[twitter/callback]", e);
-      return res.redirect("/earn?twitter_error=1");
+      console.error("[twitter/callback] unexpected error");
+      console.error(e);
+
+      return res.redirect("/earn?twitter_error=1&reason=exception");
     }
   });
 
