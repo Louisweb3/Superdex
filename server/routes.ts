@@ -190,6 +190,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     return res.json(await rewardsStorage.getSwapHistory(wallet, 20));
   });
 
+  app.get("/api/rewards/xp-history/:wallet", async (req, res) => {
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    return res.json(await rewardsStorage.getXpHistory(wallet, 50));
+  });
+
   app.get("/api/rewards/leaderboard", async (req, res) => {
     const limit = Math.min(Math.max(Number(req.query.limit ?? 50), 1), 100);
     return res.json(await rewardsStorage.getLeaderboard(limit));

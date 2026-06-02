@@ -9,6 +9,7 @@ import {
   useCampaignVerify,
   useCampaignOpen,
   useChestHistory,
+  useXpHistory,
   useGlobalStats,
   useLeaderboard,
   useUserRank,
@@ -425,41 +426,49 @@ function MilestonesSection({ userXp }: { userXp: number }) {
 
 // ─── History Section ──────────────────────────────────────────────────────────
 
+const XP_TYPE_CONFIG = {
+  swap:      { color: "#5aa9ff", bg: "#5aa9ff18", label: "Swap",      Icon: Repeat2  },
+  earn_task: { color: "#ffd25a", bg: "#ffd25a18", label: "Task",      Icon: Zap       },
+  chest:     { color: "#a855f7", bg: "#a855f718", label: "Chest",     Icon: Gift      },
+} as const;
+
 function HistorySection({ wallet }: { wallet: string | null }) {
-  const { data: history, isLoading } = useChestHistory(wallet);
-  const TC: Record<string, string> = { common: "#9fb1c4", rare: "#5aa9ff", epic: "#c98bff", legendary: "#ffd25a", Common: "#9fb1c4", Rare: "#5aa9ff", Epic: "#c98bff", Legendary: "#ffd25a" };
+  const { data: history, isLoading } = useXpHistory(wallet);
   return (
     <div className="rounded-[18px] border border-white/6 overflow-hidden" style={{ background: "rgba(6,13,26,0.6)" }}>
       <div className="px-4 py-3.5 border-b border-white/6 flex items-center gap-2">
         <Clock size={15} className="text-white/40" />
-        <h3 className="text-[14px] font-bold text-white">Reward History</h3>
+        <h3 className="text-[14px] font-bold text-white">XP History</h3>
+        <span className="ml-auto text-[11px] text-white/25">All sources</span>
       </div>
       {isLoading ? (
         <div className="py-10 text-center text-[13px] text-white/30 animate-pulse">Loading…</div>
       ) : !wallet ? (
-        <div className="py-12 text-center text-[13px] text-white/30">Connect wallet to see your history.</div>
+        <div className="py-12 text-center text-[13px] text-white/30">Connect wallet to see your XP history.</div>
       ) : !history?.length ? (
-        <div className="py-12 text-center text-[13px] text-white/30">No chest opens yet — open your first!</div>
+        <div className="py-12 text-center text-[13px] text-white/30">No XP earned yet — start swapping or completing tasks!</div>
       ) : (
-        <div className="divide-y divide-white/4">
+        <div className="divide-y divide-white/4 max-h-[420px] overflow-y-auto">
           {history.map((item, i) => {
-            const tierKey = item.tier.toLowerCase();
-            const def = CHEST_DEFS.find((d) => d.id === tierKey);
-            const tc = TC[tierKey] ?? "#9fb1c4";
-            const date = item.created_at
-              ? new Date(item.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-              : "—";
+            const cfg = XP_TYPE_CONFIG[item.type] ?? XP_TYPE_CONFIG.swap;
+            const date = new Date(item.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" });
             return (
               <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-white/2" data-testid={`row-history-${i}`}>
-                {def && <ChestIcon def={def} size={36} glowing={false} />}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-bold text-white/90">
-                    {item.chest_id === "campaign" ? "Community Campaign" : (def?.name ?? item.chest_id)}
-                  </p>
-                  <p className="text-[11px] text-white/30">{date}</p>
+                <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full" style={{ background: cfg.bg }}>
+                  <cfg.Icon size={14} style={{ color: cfg.color }} />
                 </div>
-                <span className="text-[13px] font-bold tabular-nums" style={{ color: tc }}>
-                  +{item.xp_awarded.toLocaleString()} XP
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-white/90 truncate">{item.label}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: cfg.color, background: cfg.bg }}>
+                      {cfg.label}
+                    </span>
+                    {item.detail && <span className="text-[11px] text-white/30">{item.detail}</span>}
+                    <span className="text-[11px] text-white/25 ml-auto">{date}</span>
+                  </div>
+                </div>
+                <span className="text-[13px] font-bold tabular-nums ml-2" style={{ color: cfg.color }}>
+                  +{item.xp.toLocaleString()} XP
                 </span>
               </div>
             );
@@ -550,6 +559,69 @@ function ReferralSection({ wallet }: { wallet: string | null }) {
   );
 }
 
+function CampaignPostModal({
+  onClose,
+  onComplete,
+}: {
+  onClose: () => void;
+  onComplete: () => void;
+}) {
+  const campaignUrl =
+    "https://x.com/SuperSwap_fi/status/2061417297227698408?s=20";
+
+  const openCampaign = () => {
+    window.open(campaignUrl, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      <div className="relative w-full max-w-[420px] mx-4 rounded-[24px] border border-white/10 bg-[#060d1a] p-6">
+        <h3 className="text-[20px] font-bold text-white mb-2">
+          Complete X Tasks
+        </h3>
+
+        <p className="text-[13px] text-white/45 mb-5">
+          Please like and repost the campaign post before continuing.
+        </p>
+
+        <div className="space-y-3">
+          <button
+            onClick={openCampaign}
+            className="w-full h-11 rounded-xl bg-[#1d9bf0] text-white font-semibold"
+          >
+            ❤️ Like Campaign Post
+          </button>
+
+          <button
+            onClick={openCampaign}
+            className="w-full h-11 rounded-xl bg-[#1d9bf0] text-white font-semibold"
+          >
+            🔁 Repost Campaign Post
+          </button>
+        </div>
+
+        <button
+          onClick={onComplete}
+          className="w-full mt-5 h-11 rounded-xl bg-[#22c55e] text-white font-semibold"
+        >
+          I've Completed Both Tasks
+        </button>
+
+        <button
+          onClick={onClose}
+          className="w-full mt-2 h-10 rounded-xl border border-white/10 text-white/50"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function EarnPage() {
@@ -569,6 +641,7 @@ export function EarnPage() {
   const countdown = useCountdown(TGE_DATE);
 
   const [showConnectX, setShowConnectX] = useState(false);
+  const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [opening, setOpening] = useState<{ tier: string; xp: number } | null>(null);
   const [shared, setShared] = useState(false);
   const [shareCd, setShareCd] = useState(0);
@@ -581,13 +654,7 @@ export function EarnPage() {
   const userXp = user?.xp ?? 0;
 
   const handleShare = () => {
-    window.open("https://twitter.com/intent/tweet?text=" + encodeURIComponent(
-      "I'm joining the @SuperSwapDEX Community Chest Campaign! 🎁 Opening chests and stacking XP for the TGE airdrop ⚡ #SuperSwap #Base #Airdrop"
-    ), "_blank");
-    setShared(true);
-    setShareCd(5);
-    shareTimer.current = setInterval(() =>
-      setShareCd((c) => { if (c <= 1) { clearInterval(shareTimer.current!); return 0; } return c - 1; }), 1000);
+    setShowCampaignModal(true);
   };
 
   const handleConfirmSocial = async () => {
@@ -664,32 +731,26 @@ export function EarnPage() {
         ))}
 
         <div className="relative mx-auto max-w-[960px] px-4 py-12 sm:py-16">
+          {/* Hero Banner */}
           {/* Live badge */}
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/4 px-3.5 py-1 mb-5">
-            <div className="h-1.5 w-1.5 rounded-full bg-[#22c55e] animate-pulse" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/65">Campaign Live</span>
+            ...
           </div>
 
-          <h1 className="text-[32px] sm:text-[46px] font-extrabold leading-[1.1] text-white mb-3"
-            style={{ textShadow: "0 2px 50px rgba(168,85,247,0.25)" }}>
-            Community Chest{" "}
-            <span style={{ background: "linear-gradient(90deg,#ffd25a,#c98bff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Campaign
-            </span>
-          </h1>
-          <p className="max-w-[520px] text-[14px] sm:text-[15px] leading-relaxed text-white/45 mb-8">
-            Complete community tasks, unlock chests, earn XP, and strengthen your position before TGE.
-          </p>
+          <div className="mb-8 overflow-hidden rounded-[24px] border border-white/10">
+            <img
+              src="https://i.ibb.co/tpt3W6zK/Chat-GPT-Image-Jun-2-2026-08-40-39-PM.png"
+              alt="Community Chest Campaign"
+              className="w-full h-auto object-cover"
+            />
+          </div>
 
           {/* Countdown */}
+          {/* TGE Status */}
           <div className="flex flex-wrap items-center gap-2 mb-7">
-            <span className="text-[11px] text-white/35 uppercase tracking-wide">TGE in</span>
-            {[{ v: countdown.d, l: "Days" }, { v: countdown.h, l: "Hrs" }, { v: countdown.m, l: "Min" }, { v: countdown.s, l: "Sec" }].map(({ v, l }) => (
-              <div key={l} className="flex flex-col items-center justify-center rounded-[10px] border border-white/10 bg-white/5 w-[52px] py-1.5" data-testid={`countdown-${l.toLowerCase()}`}>
-                <span className="text-[19px] font-extrabold text-white tabular-nums leading-none">{String(v).padStart(2, "0")}</span>
-                <span className="text-[9px] text-white/30 uppercase tracking-wide mt-0.5">{l}</span>
-              </div>
-            ))}
+            <span className="text-[11px] text-white/35 uppercase tracking-wide">
+              Complete community tasks, unlock chests, earn XP, and strengthen your position before TGE
+            </span>
           </div>
 
           {/* Stats pills */}
@@ -883,6 +944,27 @@ export function EarnPage() {
       </div>
 
       {/* Modals */}
+      {showCampaignModal && (
+        <CampaignPostModal
+          onClose={() => setShowCampaignModal(false)}
+          onComplete={() => {
+            setShowCampaignModal(false);
+
+            setShared(true);
+            setShareCd(5);
+
+            shareTimer.current = setInterval(() => {
+              setShareCd((c) => {
+                if (c <= 1) {
+                  clearInterval(shareTimer.current!);
+                  return 0;
+                }
+                return c - 1;
+              });
+            }, 1000);
+          }}
+        />
+      )}
       {showConnectX && walletAddress && (
         <ConnectXModal wallet={walletAddress} onClose={() => setShowConnectX(false)} />
       )}

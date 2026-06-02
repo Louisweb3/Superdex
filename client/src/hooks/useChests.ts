@@ -165,6 +165,28 @@ export function useChestHistory(wallet: string | null) {
   });
 }
 
+export interface XpHistoryEntry {
+  type: "swap" | "earn_task" | "chest";
+  xp: number;
+  timestamp: number;
+  label: string;
+  detail?: string;
+  txHash?: string;
+}
+
+export function useXpHistory(wallet: string | null) {
+  return useQuery<XpHistoryEntry[]>({
+    queryKey: ["/api/rewards/xp-history", wallet],
+    enabled: !!wallet,
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/rewards/xp-history/${wallet}`);
+      return res.json();
+    },
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+}
+
 // ─── Global stats + leaderboard ──────────────────────────────────────────────
 
 export function useGlobalStats() {

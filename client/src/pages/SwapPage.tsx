@@ -582,15 +582,17 @@ export function SwapPage() {
   const sellUsdPrice = tokenUsdPrice(sellToken);
   const buyUsdPrice = tokenUsdPrice(buyToken);
 
-  const sellUsdValue =
-    sellUsdPrice > 0 && parseFloat(sellAmount || "0") > 0
-      ? `\u2248 $${(parseFloat(sellAmount || "0") * sellUsdPrice).toLocaleString("en-US", { maximumFractionDigits: 2 })}`
+  const sharedUsdValue =
+    quote && parseFloat(quote.buyAmountFormatted) > 0 && buyUsdPrice > 0
+      ? `≈ $${(
+          parseFloat(quote.buyAmountFormatted) * buyUsdPrice
+        ).toLocaleString("en-US", {
+          maximumFractionDigits: 2,
+        })}`
       : "";
 
-  const buyUsdValue =
-    quote && parseFloat(quote.buyAmountFormatted) > 0 && buyUsdPrice > 0
-      ? `\u2248 $${(parseFloat(quote.buyAmountFormatted) * buyUsdPrice).toLocaleString("en-US", { maximumFractionDigits: 2 })}`
-      : "";
+  const sellUsdValue = sharedUsdValue;
+  const buyUsdValue = sharedUsdValue;
 
   const toggleSource = useCallback((id: string) => {
     setSelectedSources((prev) => {

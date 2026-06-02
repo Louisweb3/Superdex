@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, gt } from "drizzle-orm";
 import { db } from "./db";
 import {
   users,
@@ -655,6 +655,73 @@ export class RewardsStorage {
       level: r.level,
       created_at: new Date(r.created_at ?? Date.now()).getTime(),
     }));
+  }
+
+  async getXpHistory(wallet: string, limit = 50) {
+    const key = wallet.toLowerCase();
+    const items: Array<{
+      type: "swap" | "earn_task" | "chest";
+      xp: number;
+      timestamp: number;
+      label: string;
+      detail?: string;
+      txHash?: string;
+    }> = [];
+
+    // XP from swaps
+    const swaps = await db
+      .select()
+      .from(swapEvents)
+      .where(and(eq(swapEvents.wallet_address, key), gt(swapEvents.xp_earned, 0)))
+      .orderBy(desc(swapEvents.timestamp))
+      .limit(limit);
+    for (const s of swaps) {
+      items.push({
+        type: "swap",
+        xp: s.xp_earned,
+        timestamp: new Date(s.timestamp ?? Date.now()).getTime(),
+        label: `${s.sell_symbol} → ${s.buy_symbol}`,
+        detail: `$${Number(s.volume_usd).toFixed(2)} volume`,
+        txHash: s.tx_hash,
+      });
+    }
+
+    // XP from claimed earn tasks
+    const completions = await db
+      .select({
+        claimed_at: taskCompletions.claimed_at,
+        xp_reward: earnTasks.xp_reward,
+        title: earnTasks.title,
+      })
+      .from(taskCompletions)
+      .innerJoin(earnTasks, eq(taskCompletions.task_id, earnTasks.id))
+      .where(and(eq(taskCompletions.wallet_address, key), eq(taskCompletions.claimed, true)));
+    for (const c of completions) {
+      items.push({
+        type: "earn_task",
+        xp: c.xp_reward,
+        timestamp: new Date(c.claimed_at ?? Date.now()).getTime(),
+        label: c.title,
+      });
+    }
+
+    // XP from opened chests
+    const chests = await db
+      .select()
+      .from(chestClaims)
+      .where(and(eq(chestClaims.wallet_address, key), eq(chestClaims.opened, true), gt(chestClaims.xp_awarded, 0)));
+    for (const c of chests) {
+      items.push({
+        type: "chest",
+        xp: c.xp_awarded,
+        timestamp: new Date(c.created_at ?? Date.now()).getTime(),
+        label: c.chest_id === "campaign" ? "Community Campaign Chest" : `${c.tier ?? c.chest_id} Chest`,
+        detail: c.tier ?? undefined,
+      });
+    }
+
+    items.sort((a, b) => b.timestamp - a.timestamp);
+    return items.slice(0, limit);
   }
 
   async getTotalStats() {
