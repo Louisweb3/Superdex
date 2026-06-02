@@ -147,12 +147,12 @@ function ConnectXModal({ onClose, wallet }: { onClose: () => void; wallet: strin
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-[400px] mx-4 mb-4 sm:mb-0 rounded-[24px] border border-white/8 bg-[#060d1a] shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-[400px] mx-4 mb-4 sm:mb-0 rounded-[24px] border border-white/8 bg-[#010804] shadow-2xl overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#1d9bf0]/50 to-transparent" />
         <div className="p-6">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0d1b2a] border border-white/8">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#010804] border border-white/8">
                 <Twitter size={18} className="text-[#1d9bf0]" />
               </div>
               <div>
@@ -167,7 +167,7 @@ function ConnectXModal({ onClose, wallet }: { onClose: () => void; wallet: strin
           <div className="relative mb-4">
             <AtSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1d9bf0]" />
             <input ref={ref} value={username} onChange={(e) => setUsername(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
-              placeholder="yourhandle" className="w-full rounded-[12px] border border-white/8 bg-[#0c1525] pl-9 pr-4 py-3 text-[14px] text-white placeholder:text-white/25 outline-none focus:border-[#1d9bf0]/50"
+              placeholder="yourhandle" className="w-full rounded-[12px] border border-white/8 bg-[#051208] pl-9 pr-4 py-3 text-[14px] text-white placeholder:text-white/25 outline-none focus:border-[#1d9bf0]/50"
               data-testid="input-x-username" />
           </div>
           <Button onClick={submit} disabled={!username.trim() || connectX.isPending}
@@ -356,7 +356,7 @@ function LeaderboardSection({ userWallet }: { userWallet: string | null }) {
   const { data: board, isLoading } = useLeaderboard(50);
   const BADGE: Record<string, string> = { Bronze: "#cd7f32", Silver: "#c0c0c0", Gold: "#ffd25a", Diamond: "#5aa9ff", Legendary: "#f5a623" };
   return (
-    <div className="rounded-[18px] border border-white/6 overflow-hidden" style={{ background: "rgba(6,13,26,0.6)" }}>
+    <div className="rounded-[18px] border border-white/6 overflow-hidden" style={{ background: "rgba(1,8,4,0.6)" }}>
       <div className="px-4 py-3.5 border-b border-white/6 flex items-center gap-2">
         <Trophy size={15} className="text-[#ffd25a]" />
         <h3 className="text-[14px] font-bold text-white">Global Leaderboard</h3>
@@ -398,7 +398,7 @@ function LeaderboardSection({ userWallet }: { userWallet: string | null }) {
 
 function MilestonesSection({ userXp }: { userXp: number }) {
   return (
-    <div className="rounded-[18px] border border-white/6 p-4" style={{ background: "rgba(6,13,26,0.6)" }}>
+    <div className="rounded-[18px] border border-white/6 p-4" style={{ background: "rgba(1,8,4,0.6)" }}>
       <div className="flex items-center gap-2 mb-4">
         <Star size={15} className="text-[#ffd25a]" />
         <h3 className="text-[14px] font-bold text-white">Milestone Achievements</h3>
@@ -436,7 +436,7 @@ const XP_TYPE_CONFIG = {
 function HistorySection({ wallet }: { wallet: string | null }) {
   const { data: history, isLoading } = useXpHistory(wallet);
   return (
-    <div className="rounded-[18px] border border-white/6 overflow-hidden" style={{ background: "rgba(6,13,26,0.6)" }}>
+    <div className="rounded-[18px] border border-white/6 overflow-hidden" style={{ background: "rgba(1,8,4,0.6)" }}>
       <div className="px-4 py-3.5 border-b border-white/6 flex items-center gap-2">
         <Clock size={15} className="text-white/40" />
         <h3 className="text-[14px] font-bold text-white">XP History</h3>
@@ -503,7 +503,7 @@ function ReferralSection({ wallet }: { wallet: string | null }) {
   };
 
   return (
-    <div className="rounded-[22px] border border-white/6 p-5" style={{ background: "linear-gradient(135deg,rgba(6,13,26,0.9),rgba(10,8,22,0.9))" }}>
+    <div className="rounded-[22px] border border-white/6 p-5" style={{ background: "linear-gradient(135deg,rgba(1,8,4,0.9),rgba(1,8,4,0.9))" }}>
       <div className="flex items-center gap-2 mb-1">
         <Users size={17} className="text-[#22c55e]" />
         <h2 className="text-[15px] font-bold text-white">Invite Friends, Earn 25%</h2>
@@ -581,7 +581,7 @@ function CampaignPostModal({
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-[420px] mx-4 rounded-[24px] border border-white/10 bg-[#060d1a] p-6">
+      <div className="relative w-full max-w-[420px] mx-4 rounded-[24px] border border-white/10 bg-[#010804] p-6">
         <h3 className="text-[20px] font-bold text-white mb-2">
           Complete X Tasks
         </h3>
@@ -696,7 +696,7 @@ export function EarnPage() {
   const tierColor = TIER_BADGE[user?.tier ?? "Bronze"] ?? "#cd7f32";
 
   return (
-    <div className="min-h-screen bg-[#030912] pb-24">
+    <div className="min-h-screen bg-[#010804] pb-24">
       <style>{`
         @keyframes float { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-12px)} }
         @keyframes chestShake { 0%,100%{transform:rotate(0deg)} 15%{transform:rotate(-9deg)} 30%{transform:rotate(9deg)} 45%{transform:rotate(-6deg)} 60%{transform:rotate(6deg)} 75%{transform:rotate(-3deg)} }
@@ -711,10 +711,10 @@ export function EarnPage() {
 
       {/* ── Hero ────────────────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden"
-        style={{ background: "linear-gradient(160deg,#060d1e 0%,#03091a 55%,#030912 100%)" }}>
-        <div className="absolute -left-40 -top-32 h-[500px] w-[500px] rounded-full blur-3xl" style={{ background: "rgba(168,85,247,0.11)" }} />
-        <div className="absolute -right-24 top-0 h-80 w-80 rounded-full blur-3xl" style={{ background: "rgba(90,169,255,0.09)" }} />
-        <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full blur-3xl" style={{ background: "rgba(245,166,35,0.07)" }} />
+        style={{ background: "linear-gradient(160deg,#010804 0%,#010804 55%,#010804 100%)" }}>
+        <div className="absolute -left-40 -top-32 h-[500px] w-[500px] rounded-full blur-3xl" style={{ background: "rgba(0,255,136,0.15)" }} />
+        <div className="absolute -right-24 top-0 h-80 w-80 rounded-full blur-3xl" style={{ background: "rgba(0,255,136,0.12)" }} />
+        <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full blur-3xl" style={{ background: "rgba(0,255,136,0.10)" }} />
         <SparkleField />
 
         {/* Floating bg chests */}
@@ -782,7 +782,7 @@ export function EarnPage() {
         <div className="space-y-5">
 
           {/* Campaign card */}
-          <div className="relative overflow-hidden rounded-[24px] border border-white/8 p-6" style={{ background: "rgba(6,13,26,0.95)" }}>
+          <div className="relative overflow-hidden rounded-[24px] border border-white/8 p-6" style={{ background: "rgba(1,8,4,0.95)" }}>
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#a855f7]/40 to-transparent" />
             <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full blur-3xl" style={{ background: "rgba(168,85,247,0.07)" }} />
             <div className="relative">
@@ -915,7 +915,7 @@ export function EarnPage() {
           <ReferralSection wallet={walletAddress} />
 
           {/* Progress card */}
-          <div className="rounded-[22px] border border-white/6 p-5" style={{ background: "rgba(6,13,26,0.95)" }}>
+          <div className="rounded-[22px] border border-white/6 p-5" style={{ background: "rgba(1,8,4,0.95)" }}>
             <div className="flex items-center gap-2 mb-4">
               <Flame size={15} className="text-[#f97316]" />
               <h3 className="text-[14px] font-bold text-white">Your Progress</h3>
