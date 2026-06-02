@@ -2,7 +2,6 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { rewardsStorage, earnStorage } from "./storage";
 import { verifyTransaction } from "./basescan";
-import { buildAuthUrl, consumeState, exchangeCode, getMe, isConfigured, getCallbackUrl } from "./twitter";
 
 const ZEROX_API_KEY = process.env.ZEROX_API_KEY || "";
 const ZEROX_BASE_URL = "https://api.0x.org";
@@ -234,51 +233,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     return res.json(result);
   });
 
-  // ─── Twitter OAuth 2.0 ─────────────────────────────────────────────────────
-  app.get("/api/auth/twitter/connect", (req, res) => {
-    const { wallet } = req.query as { wallet?: string };
-    if (!wallet || wallet.length < 10) return res.status(400).send("Missing wallet");
-    if (!isConfigured()) {
-      return res.redirect(`/?error=twitter_not_configured`);
-    }
-    try {
-      const url = buildAuthUrl(wallet);
-      return res.redirect(url);
-    } catch (e: any) {
-      console.error("[twitter/connect]", e);
-      return res.redirect(`/?error=twitter_oauth_failed`);
-    }
-  });
-
-  app.get("/api/auth/twitter/callback", async (req, res) => {
-    const { code, state, error } = req.query as Record<string, string>;
-    if (error || !code || !state) {
-      return res.redirect("/earn?twitter_error=1");
-    }
-    const entry = consumeState(state);
-    if (!entry) return res.redirect("/earn?twitter_error=1");
-    try {
-      const tokens = await exchangeCode(code, entry.codeVerifier);
-      if (!tokens) return res.redirect("/earn?twitter_error=1");
-      const me = await getMe(tokens.accessToken);
-      if (!me?.id) return res.redirect("/earn?twitter_error=1");
-      await earnStorage.storeTwitterAuth(entry.wallet, me.id, me.username, tokens.accessToken, tokens.refreshToken);
-      return res.redirect(`/earn?twitter_connected=1&x_username=${encodeURIComponent(me.username)}`);
-    } catch (e: any) {
-      console.error("[twitter/callback]", e);
-      return res.redirect("/earn?twitter_error=1");
-    }
-  });
-
   app.get("/api/earn/x-account/:wallet", async (req, res) => {
     const { wallet } = req.params;
     if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
-    const status = await earnStorage.getXStatus(wallet);
-    return res.json({ x_username: status.x_username, twitter_connected: status.twitter_connected, twitter_configured: isConfigured() });
+    const xUsername = await earnStorage.getXUsername(wallet);
+    return res.json({ x_username: xUsername ?? "" });
   });
 
-  app.get("/api/auth/twitter/status", (_req, res) => {
-    return res.json({ configured: isConfigured(), callback_url: getCallbackUrl() });
+  app.post("/api/earn/connect-x", async (req, res) => {
+    const { wallet, xUsername } = req.body;
+    if (!wallet || !xUsername) return res.status(400).json({ error: "Missing wallet or xUsername" });
+    const cleaned = xUsername.replace(/^@/, "").trim();
+    if (!cleaned || cleaned.length < 1 || cleaned.length > 50) return res.status(400).json({ error: "Invalid X username" });
+    await earnStorage.connectXAccount(wallet, cleaned);
+    return res.json({ ok: true, x_username: cleaned.toLowerCase() });
   });
 
   app.post("/api/earn/verify-social", async (req, res) => {

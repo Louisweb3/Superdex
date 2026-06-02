@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useWalletContext } from "@/context/WalletContext";
 import { useRewardUser } from "@/hooks/useRewards";
-import { useXAccount } from "@/hooks/useEarn";
+import { useXAccount, useConnectX } from "@/hooks/useEarn";
 import { useReferralStats, useApplyReferralCode } from "@/hooks/useReferral";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,16 +12,19 @@ import {
   Twitter,
   Copy,
   CheckCheck,
+  AtSign,
   Loader2,
+  ShieldCheck,
+  X,
   Zap,
   TrendingUp,
   Wallet,
   Gift,
   Users,
   Star,
+  ExternalLink,
   ChevronRight,
   DollarSign,
-  BadgeCheck,
 } from "lucide-react";
 
 function StatCard({
@@ -49,6 +52,76 @@ function StatCard({
   );
 }
 
+function ConnectXModal({
+  wallet,
+  onClose,
+}: {
+  wallet: string;
+  onClose: () => void;
+}) {
+  const [username, setUsername] = useState("");
+  const connectX = useConnectX();
+  const { toast } = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 80); }, []);
+
+  const handleSubmit = async () => {
+    const cleaned = username.replace(/^@/, "").trim();
+    if (!cleaned) return;
+    try {
+      await connectX.mutateAsync({ wallet, xUsername: cleaned });
+      toast({ title: "X account connected!", description: `@${cleaned} linked.` });
+      onClose();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-[400px] mx-4 mb-4 sm:mb-0 rounded-[24px] border border-[#1a2535] bg-[#060e18] shadow-2xl overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#1d9bf0]/40 to-transparent" />
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0d1b2a] border border-[#1a2535]">
+                <Twitter size={18} className="text-[#1d9bf0]" />
+              </div>
+              <div>
+                <p className="text-[15px] font-semibold text-[#e8ecf0]">Connect X Account</p>
+                <p className="text-[12px] text-[#5f6a7c]">Required for social tasks</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full border border-[#1a2535] text-[#5f6a7c] hover:text-[#cfd8e3]">
+              <X size={14} />
+            </button>
+          </div>
+          <div className="relative mb-4">
+            <AtSign size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#4d8ab8]" />
+            <input
+              ref={inputRef}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              placeholder="yourhandle"
+              className="w-full rounded-[12px] border border-[#1a2535] bg-[#0d1520] pl-9 pr-4 py-3 text-[14px] text-[#e8ecf0] placeholder:text-[#3d4f5f] outline-none focus:border-[#1d9bf0]/50"
+              data-testid="input-x-username-profile"
+            />
+          </div>
+          <Button
+            onClick={handleSubmit}
+            disabled={!username.trim() || connectX.isPending}
+            className="w-full h-11 rounded-[12px] bg-[#1d9bf0] text-white font-semibold hover:bg-[#1a8cd8] disabled:opacity-40"
+          >
+            {connectX.isPending ? <Loader2 size={16} className="animate-spin mr-2" /> : <ShieldCheck size={16} className="mr-2" />}
+            Connect Account
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ReferralSection({ wallet }: { wallet: string }) {
   const { toast } = useToast();
@@ -175,7 +248,7 @@ export function ProfilePage() {
   const { data: user } = useRewardUser(walletAddress);
   const { data: xAccountData } = useXAccount(walletAddress ?? undefined);
   const xUsername = xAccountData?.x_username ?? "";
-  const twitterConnected = xAccountData?.twitter_connected ?? false;
+  const [showConnectX, setShowConnectX] = useState(false);
 
   const short = walletAddress
     ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`
@@ -188,13 +261,12 @@ export function ProfilePage() {
   };
   const tierColor = TIER_COLOR[user?.tier ?? "Bronze"] ?? "#cd7f32";
 
-  const handleConnectX = () => {
-    if (!walletAddress) return;
-    window.location.href = `/api/auth/twitter/connect?wallet=${walletAddress}`;
-  };
-
   return (
     <div className="flex flex-col gap-5 px-4 pt-4 pb-8">
+      {showConnectX && walletAddress && (
+        <ConnectXModal wallet={walletAddress} onClose={() => setShowConnectX(false)} />
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-[22px] font-bold text-[#e8ecf0] tracking-tight">Profile</h1>
@@ -247,31 +319,20 @@ export function ProfilePage() {
           <div className="rounded-[16px] border border-[#0d1b2a] bg-[#060e18] p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${twitterConnected ? "border-[#1d9bf0]/30 bg-[#040c14]" : "border-[#1a2535] bg-[#0d1520]"}`}>
-                  {twitterConnected
-                    ? <BadgeCheck size={18} className="text-[#1d9bf0]" />
-                    : <Twitter size={18} className="text-[#3d4f5f]" />
-                  }
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${xUsername ? "border-[#1d9bf0]/30 bg-[#040c14]" : "border-[#1a2535] bg-[#0d1520]"}`}>
+                  <Twitter size={18} className={xUsername ? "text-[#1d9bf0]" : "text-[#3d4f5f]"} />
                 </div>
                 <div>
-                  <p className="text-[14px] font-semibold text-[#e8ecf0]">
-                    {twitterConnected && xUsername ? `@${xUsername}` : "X Account"}
-                  </p>
-                  <p className="text-[11px] text-[#5f6a7c]">
-                    {twitterConnected ? "OAuth verified · Social tasks unlocked" : "Not connected"}
-                  </p>
+                  <p className="text-[14px] font-semibold text-[#e8ecf0]">{xUsername ? `@${xUsername}` : "X Account"}</p>
+                  <p className="text-[11px] text-[#5f6a7c]">{xUsername ? "Connected · Social tasks unlocked" : "Not connected"}</p>
                 </div>
               </div>
               <button
-                onClick={handleConnectX}
-                className={`flex items-center gap-1.5 rounded-[10px] border px-3 py-2 text-[12px] font-medium transition-colors ${
-                  twitterConnected
-                    ? "border-[#1a2535] text-[#5f6a7c] hover:text-[#1d9bf0]"
-                    : "border-[#1d9bf0]/40 text-[#1d9bf0] bg-[#040c14] hover:bg-[#0d1b2a]"
-                }`}
+                onClick={() => setShowConnectX(true)}
+                className={`flex items-center gap-1.5 rounded-[10px] border px-3 py-2 text-[12px] font-medium transition-colors ${xUsername ? "border-[#1a2535] text-[#5f6a7c] hover:text-[#1d9bf0]" : "border-[#1d9bf0]/40 text-[#1d9bf0] bg-[#040c14] hover:bg-[#0d1b2a]"}`}
                 data-testid="button-x-connect-profile"
               >
-                {twitterConnected ? "Reconnect" : "Connect via X"}
+                {xUsername ? "Change" : "Connect"}
                 <ChevronRight size={12} />
               </button>
             </div>

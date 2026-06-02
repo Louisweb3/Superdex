@@ -39,19 +39,24 @@ export function useXAccount(wallet: string | undefined) {
     enabled: !!wallet,
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/earn/x-account/${wallet}`);
-      return res.json() as Promise<{ x_username: string; twitter_connected: boolean; twitter_configured: boolean }>;
+      return res.json() as Promise<{ x_username: string }>;
     },
   });
 }
 
-export function useTwitterStatus() {
-  return useQuery({
-    queryKey: ["/api/auth/twitter/status"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/auth/twitter/status");
-      return res.json() as Promise<{ configured: boolean; callback_url: string }>;
+export function useConnectX() {
+  return useMutation({
+    mutationFn: async ({ wallet, xUsername }: { wallet: string; xUsername: string }) => {
+      const res = await apiRequest("POST", "/api/earn/connect-x", { wallet, xUsername });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Failed" }));
+        throw new Error(err.error ?? "Failed to connect X");
+      }
+      return res.json();
     },
-    staleTime: 60_000,
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/earn/x-account", variables.wallet] });
+    },
   });
 }
 
