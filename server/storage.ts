@@ -916,7 +916,7 @@ export class EarnStorage {
   }
   async connectXAccount(wallet: string, xUsername: string): Promise<void> {
     const key = wallet.toLowerCase();
-    await rewardsStorage.ensureUser(key);
+    await rewardsStorage.upsertUser(key);
     await db.update(rewardUsers).set({ x_username: xUsername.replace(/^@/, "").toLowerCase() }).where(eq(rewardUsers.wallet_address, key));
   }
   async getXUsername(wallet: string): Promise<string | null> {
