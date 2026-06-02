@@ -134,7 +134,7 @@ export function RewardsPage(): JSX.Element {
         {/* HEADER */}
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h1 className="text-[22px] font-black text-white">Rewards</h1>
+            <h1 className="text-[22px] font-black text-white">Cashback</h1>
             <p className="mt-1 text-[13px] text-[#6f7b8e]">Earn XP and cashback on every swap</p>
           </div>
           {wallet.isConnected && addr && (
