@@ -497,7 +497,7 @@ function ReferralSection({ wallet }: { wallet: string | null }) {
   };
   const shareX = () => {
     if (!refLink) return;
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join me on @SuperSwapDEX and earn XP toward the TGE! 🎁 ${refLink} #SuperSwap #Base`)}`, "_blank");
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join me on @SuperSwap_fi and earn XP toward the TGE! 🎁 ${refLink} #SuperSwap #Base`)}`, "_blank");
   };
   const shareTg = () => {
     if (!refLink) return;
@@ -570,7 +570,7 @@ function CampaignPostModal({
   onComplete: () => void;
 }) {
   const campaignUrl =
-    "https://x.com/SuperSwap_fi/status/2061417297227698408?s=20";
+    "https://x.com/superswap_fi/status/2061869423271801301";
 
   const openCampaign = () => {
     window.open(campaignUrl, "_blank", "noopener,noreferrer");
