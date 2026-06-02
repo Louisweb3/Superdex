@@ -146,6 +146,7 @@ function SettingsTab() {
     { key: "hero_title_line3", label: "Hero Title Line 3", placeholder: "REPEAT.", desc: "Homepage hero heading" },
     { key: "hero_subtitle", label: "Hero Subtitle", placeholder: "The DEX on Base that rewards you every time you trade.", desc: "Homepage hero description" },
     { key: "site_tagline", label: "Site Tagline", placeholder: "REWARD-FIRST DEX", desc: "Badge on homepage" },
+    { key: "campaign_post_url", label: "Earn Page X Campaign Post URL", placeholder: "https://x.com/superswap_fi/status/...", desc: "The X/Twitter post users must like & repost on the Earn page" },
   ];
 
   return (

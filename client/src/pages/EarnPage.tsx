@@ -3,6 +3,7 @@ import { useWalletContext } from "@/context/WalletContext";
 import { useConnectX, useXAccount } from "@/hooks/useEarn";
 import { useRewardUser } from "@/hooks/useRewards";
 import { useReferralStats } from "@/hooks/useReferral";
+import { usePublicSettings } from "@/hooks/useAdmin";
 import heroBanner from "@assets/800DA97D-FBED-4931-B9C3-37C7C4B59180_1780419181239.png";
 import {
   useCampaignState,
@@ -569,11 +570,14 @@ function CampaignPostModal({
   onClose: () => void;
   onComplete: () => void;
 }) {
-  const campaignUrl =
+  const { data: settings } = usePublicSettings();
+  const campaignUrl = settings?.campaign_post_url ||
     "https://x.com/superswap_fi/status/2061869423271801301";
 
   const openCampaign = () => {
-    window.open(campaignUrl, "_blank", "noopener,noreferrer");
+    if (campaignUrl) {
+      window.open(campaignUrl, "_blank", "noopener,noreferrer");
+    }
   };
 
   return (
