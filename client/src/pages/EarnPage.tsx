@@ -3,6 +3,7 @@ import { useWalletContext } from "@/context/WalletContext";
 import { useConnectX, useXAccount } from "@/hooks/useEarn";
 import { useRewardUser } from "@/hooks/useRewards";
 import { useReferralStats } from "@/hooks/useReferral";
+import heroBanner from "@assets/800DA97D-FBED-4931-B9C3-37C7C4B59180_1780419181239.png";
 import {
   useCampaignState,
   useCampaignSocial,
@@ -730,19 +731,19 @@ export function EarnPage() {
           </div>
         ))}
 
+        {/* Full-width hero banner at the top */}
+        <div className="w-full overflow-hidden">
+          <img
+            src={heroBanner}
+            alt="Super Chest Campaign"
+            className="w-full h-auto object-cover"
+          />
+        </div>
+
         <div className="relative mx-auto max-w-[960px] px-4 py-12 sm:py-16">
-          {/* Hero Banner */}
           {/* Live badge */}
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/4 px-3.5 py-1 mb-5">
             ...
-          </div>
-
-          <div className="mb-8 overflow-hidden rounded-[24px] border border-white/10">
-            <img
-              src="https://i.ibb.co/tpt3W6zK/Chat-GPT-Image-Jun-2-2026-08-40-39-PM.png"
-              alt="Community Chest Campaign"
-              className="w-full h-auto object-cover"
-            />
           </div>
 
           {/* Countdown */}
