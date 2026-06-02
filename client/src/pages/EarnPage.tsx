@@ -418,8 +418,8 @@ export function EarnPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-bold text-[#e8ecf0] tracking-tight">Rewards</h1>
-          <p className="text-[13px] text-[#5f6a7c]">Complete tasks to earn XP &amp; cashback</p>
+          <h1 className="text-[22px] font-bold text-[#e8ecf0] tracking-tight">Earn</h1>
+          <p className="text-[13px] text-[#5f6a7c]">Complete tasks to earn XP & cashback</p>
         </div>
         <div className="flex items-center gap-2">
           {walletAddress && (

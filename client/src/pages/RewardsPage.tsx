@@ -114,8 +114,6 @@ function ConnectPrompt({ onConnect }: { onConnect: () => void }) {
 export function RewardsPage(): JSX.Element {
   const wallet = useWalletContext();
   const [walletOpen, setWalletOpen] = useState(false);
-  const [showCashbackBanner, setShowCashbackBanner] = useState(true);
-  const [showCashbackPopup, setShowCashbackPopup] = useState(false);
   const addr = wallet.isConnected ? wallet.address : null;
 
   const { data: user, isLoading: userLoading } = useRewardUser(addr);
@@ -134,7 +132,7 @@ export function RewardsPage(): JSX.Element {
         {/* HEADER */}
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h1 className="text-[22px] font-black text-white">Cashback</h1>
+            <h1 className="text-[22px] font-black text-white">Rewards</h1>
             <p className="mt-1 text-[13px] text-[#6f7b8e]">Earn XP and cashback on every swap</p>
           </div>
           {wallet.isConnected && addr && (
@@ -256,7 +254,7 @@ export function RewardsPage(): JSX.Element {
                       </div>
                     </div>
                     <button
-                      onClick={() => setShowCashbackPopup(true)}
+                      onClick={() => claimCb.mutate()}
                       disabled={claimCb.isPending || (user.pending_cashback_usd ?? 0) <= 0}
                       data-testid="button-claim-cashback"
                       className="mt-4 w-full rounded-[15px] bg-gradient-to-r from-[#22d3ee] to-[#2dae50] px-4 py-3 text-[14px] font-bold text-white shadow-[0_10px_30px_rgba(45,174,80,0.2)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
@@ -267,23 +265,6 @@ export function RewardsPage(): JSX.Element {
                 </div>
               </div>
             </section>
-
-              {showCashbackBanner && (
-                <div className="relative mt-4 overflow-hidden rounded-[22px] border border-[#182332] bg-[#060d17]">
-                  <button
-                    onClick={() => setShowCashbackBanner(false)}
-                    className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white"
-                  >
-                    ✕
-                  </button>
-                  <img
-                    src="https://i.ibb.co/KpSTyYT1/HJug-Gr-Yb-MAAIuhz-767b1430-0326-4132-8299-730b07959375.png"
-                    alt="Cashback Promotion"
-                    className="w-full object-cover"
-                  />
-                </div>
-              )}
-
 
             {/* Per-Token Cashback */}
             {tokenCashbacks && tokenCashbacks.length > 0 && (
@@ -401,43 +382,6 @@ export function RewardsPage(): JSX.Element {
           </div>
         )}
       </div>
-
-
-      {showCashbackPopup && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-md rounded-[28px] border border-[#1b2432] bg-[#08111d] p-6 shadow-2xl">
-            <div className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#0b1811] border border-[#1d3428]">
-                <span className="text-3xl">🎁</span>
-              </div>
-
-              <h3 className="text-[24px] font-black text-white">
-                Cashback Already Sent
-              </h3>
-
-              <p className="mt-4 text-[14px] leading-relaxed text-[#9aa6b8]">
-                Your cashback rewards have already been distributed directly to your wallet.
-              </p>
-
-              <p className="mt-3 text-[14px] leading-relaxed text-[#9aa6b8]">
-                Rewards are automatically sent every Sunday based on eligible swap activity.
-              </p>
-
-              <p className="mt-3 text-[14px] leading-relaxed text-[#9aa6b8]">
-                Manual cashback claiming will be available in a future update.
-                Thank you for being part of the SuperSwap community.
-              </p>
-
-              <button
-                onClick={() => setShowCashbackPopup(false)}
-                className="mt-6 w-full rounded-[16px] bg-gradient-to-r from-[#22d3ee] to-[#2dae50] px-4 py-3 text-[14px] font-bold text-white"
-              >
-                Got It
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* WALLET MODAL */}
       <ConnectWalletModal
