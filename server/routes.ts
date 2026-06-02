@@ -190,8 +190,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     return res.json(await rewardsStorage.getSwapHistory(wallet, 20));
   });
 
-  app.get("/api/rewards/leaderboard", async (_req, res) => {
-    return res.json(await rewardsStorage.getLeaderboard(10));
+  app.get("/api/rewards/leaderboard", async (req, res) => {
+    const limit = Math.min(Math.max(Number(req.query.limit ?? 50), 1), 100);
+    return res.json(await rewardsStorage.getLeaderboard(limit));
+  });
+
+  app.get("/api/rewards/rank/:wallet", async (req, res) => {
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    const rank = await rewardsStorage.getUserRank(wallet);
+    return res.json({ rank });
   });
 
   app.post("/api/rewards/cashback/claim", async (req, res) => {
@@ -339,6 +347,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const result = await chestStorage.openChest(wallet, chestId);
     if (!result.ok) return res.status(400).json(result);
     return res.json(result);
+  });
+
+  app.get("/api/chests/:wallet/campaign-state", async (req, res) => {
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    return res.json(await chestStorage.getCampaignState(wallet));
+  });
+
+  app.get("/api/chests/:wallet/history", async (req, res) => {
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    return res.json(await chestStorage.getChestHistory(wallet));
   });
 
   // ─── Analytics (0x Trade Analytics API) ─────────────────────────────────────

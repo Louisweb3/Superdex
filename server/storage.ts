@@ -835,6 +835,17 @@ export class RewardsStorage {
       referred_by: user.referred_by ?? "",
     };
   }
+
+  async getUserRank(wallet: string): Promise<number> {
+    const key = wallet.toLowerCase();
+    const user = await this.getUser(key);
+    if (!user || !user.xp) return 0;
+    const [result] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(rewardUsers)
+      .where(sql`${rewardUsers.xp} > ${user.xp}`);
+    return Number(result?.count ?? 0) + 1;
+  }
 }
 
 export const rewardsStorage = new RewardsStorage();
@@ -1044,8 +1055,8 @@ export class ChestStorage {
   }
 
   async completeSocial(wallet: string, chestId: string): Promise<{ ok: boolean; error?: string }> {
-    const def = CHEST_DEFS.find((c) => c.id === chestId);
-    if (!def) return { ok: false, error: "Unknown chest" };
+    const isKnown = CHEST_DEFS.some((c) => c.id === chestId) || chestId === "campaign";
+    if (!isKnown) return { ok: false, error: "Unknown chest" };
     const key = wallet.toLowerCase();
     const user = await rewardsStorage.getUser(key);
     if (!user?.x_username) return { ok: false, error: "Connect your X account first" };
@@ -1061,8 +1072,8 @@ export class ChestStorage {
     chestId: string,
     signature: string
   ): Promise<{ ok: boolean; error?: string }> {
-    const def = CHEST_DEFS.find((c) => c.id === chestId);
-    if (!def) return { ok: false, error: "Unknown chest" };
+    const isKnown = CHEST_DEFS.some((c) => c.id === chestId) || chestId === "campaign";
+    if (!isKnown) return { ok: false, error: "Unknown chest" };
     // Soft signature verification: require a real personal_sign hex signature.
     if (!signature || !/^0x[0-9a-fA-F]{130}$/.test(signature)) {
       return { ok: false, error: "Invalid wallet signature" };
@@ -1077,7 +1088,8 @@ export class ChestStorage {
   async openChest(
     wallet: string,
     chestId: string
-  ): Promise<{ ok: boolean; error?: string; xpAwarded?: number; totalXp?: number }> {
+  ): Promise<{ ok: boolean; error?: string; xpAwarded?: number; totalXp?: number; tier?: string }> {
+    if (chestId === "campaign") return this.campaignOpen(wallet);
     const def = CHEST_DEFS.find((c) => c.id === chestId);
     if (!def) return { ok: false, error: "Unknown chest" };
     const key = wallet.toLowerCase();
@@ -1143,6 +1155,124 @@ export class ChestStorage {
     }
 
     return { ok: true, xpAwarded, totalXp: newXp };
+  }
+
+  // ─── Campaign draw (single chest, random tier) ─────────────────────────────
+  async campaignOpen(wallet: string): Promise<{ ok: boolean; error?: string; xpAwarded?: number; totalXp?: number; tier?: string }> {
+    const key = wallet.toLowerCase();
+    await rewardsStorage.upsertUser(key);
+    const user = await rewardsStorage.getUser(key);
+    if (!user) return { ok: false, error: "User not found" };
+
+    const [claim] = await db
+      .select()
+      .from(chestClaims)
+      .where(and(eq(chestClaims.wallet_address, key), eq(chestClaims.chest_id, "campaign")))
+      .limit(1);
+
+    if (!claim?.social_done) return { ok: false, error: "Complete the X task first" };
+    if (!claim?.verified) return { ok: false, error: "Verify your wallet first" };
+    if (claim?.opened) return { ok: false, error: "You have already opened your Community Chest" };
+
+    // Weighted draw: 65% common, 25% rare, 9% epic, 1% legendary
+    const roll = Math.random() * 100;
+    const tierId = roll < 1 ? "legendary" : roll < 10 ? "epic" : roll < 35 ? "rare" : "common";
+    const def = CHEST_DEFS.find((d) => d.id === tierId)!;
+    const xpAwarded =
+      def.minXp === def.maxXp
+        ? def.minXp
+        : def.minXp + Math.floor(Math.random() * (def.maxXp - def.minXp + 1));
+
+    const won = await db
+      .update(chestClaims)
+      .set({ opened: true, xp_awarded: xpAwarded })
+      .where(and(eq(chestClaims.id, claim.id), eq(chestClaims.opened, false)))
+      .returning();
+    if (won.length === 0) return { ok: false, error: "Already opened" };
+
+    await db
+      .update(rewardUsers)
+      .set({ xp: sql`${rewardUsers.xp} + ${xpAwarded}`, weekly_xp: sql`${rewardUsers.weekly_xp} + ${xpAwarded}` })
+      .where(eq(rewardUsers.wallet_address, key));
+    const [fresh] = await db.select().from(rewardUsers).where(eq(rewardUsers.wallet_address, key)).limit(1);
+    const newXp = fresh?.xp ?? (user.xp ?? 0) + xpAwarded;
+    await db
+      .update(rewardUsers)
+      .set({ level: levelFromXP(newXp), tier: tierFromXP(newXp) })
+      .where(eq(rewardUsers.wallet_address, key));
+
+    const referredBy = (user.referred_by ?? "").toLowerCase();
+    if (referredBy && referredBy !== key) {
+      const bonus = Math.floor(xpAwarded * REFERRAL_PCT);
+      if (bonus > 0) {
+        const refUpdated = await db
+          .update(rewardUsers)
+          .set({
+            xp: sql`${rewardUsers.xp} + ${bonus}`,
+            weekly_xp: sql`${rewardUsers.weekly_xp} + ${bonus}`,
+            referral_bonus_xp: sql`${rewardUsers.referral_bonus_xp} + ${bonus}`,
+          })
+          .where(eq(rewardUsers.wallet_address, referredBy))
+          .returning();
+        const refXp = refUpdated[0]?.xp;
+        if (typeof refXp === "number") {
+          await db
+            .update(rewardUsers)
+            .set({ level: levelFromXP(refXp), tier: tierFromXP(refXp) })
+            .where(eq(rewardUsers.wallet_address, referredBy));
+        }
+      }
+    }
+
+    return { ok: true, xpAwarded, totalXp: newXp, tier: tierId };
+  }
+
+  async getCampaignState(wallet: string): Promise<{
+    social_done: boolean;
+    verified: boolean;
+    opened: boolean;
+    xp_awarded: number;
+    tier: string | null;
+  }> {
+    const key = wallet.toLowerCase();
+    const [claim] = await db
+      .select()
+      .from(chestClaims)
+      .where(and(eq(chestClaims.wallet_address, key), eq(chestClaims.chest_id, "campaign")))
+      .limit(1);
+    let tier: string | null = null;
+    if (claim?.opened && claim.xp_awarded > 0) {
+      const xp = claim.xp_awarded;
+      tier = xp >= 100000 ? "legendary" : xp >= 25000 ? "epic" : xp >= 10000 ? "rare" : "common";
+    }
+    return {
+      social_done: claim?.social_done ?? false,
+      verified: claim?.verified ?? false,
+      opened: claim?.opened ?? false,
+      xp_awarded: claim?.xp_awarded ?? 0,
+      tier,
+    };
+  }
+
+  async getChestHistory(wallet: string): Promise<
+    Array<{ chest_id: string; xp_awarded: number; created_at: Date | null; tier: string }>
+  > {
+    const key = wallet.toLowerCase();
+    const claims = await db
+      .select()
+      .from(chestClaims)
+      .where(and(eq(chestClaims.wallet_address, key), eq(chestClaims.opened, true)))
+      .orderBy(desc(chestClaims.created_at));
+    return claims.map((c) => {
+      let tier: string;
+      if (c.chest_id === "campaign") {
+        const xp = c.xp_awarded;
+        tier = xp >= 100000 ? "legendary" : xp >= 25000 ? "epic" : xp >= 10000 ? "rare" : "common";
+      } else {
+        tier = CHEST_DEFS.find((d) => d.id === c.chest_id)?.rarity ?? c.chest_id;
+      }
+      return { chest_id: c.chest_id, xp_awarded: c.xp_awarded, created_at: c.created_at, tier };
+    });
   }
 }
 

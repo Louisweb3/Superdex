@@ -211,7 +211,8 @@ export interface ChestDef {
   rarity: string;
   minXp: number;
   maxXp: number;
-  requiredXp: number; // total lifetime XP required to unlock this chest
+  chance: number;     // % probability in the campaign random draw
+  requiredXp: number; // total lifetime XP required to unlock this chest tier individually
   color: string;      // hex base
   glow: string;       // hex glow
   tagline: string;
@@ -221,10 +222,11 @@ export interface ChestDef {
 export const CHEST_DEFS: ChestDef[] = [
   {
     id: "common",
-    name: "Community Chest",
+    name: "Common Chest",
     rarity: "Common",
     minXp: 1000,
-    maxXp: 2500,
+    maxXp: 5000,
+    chance: 65,
     requiredXp: 0,
     color: "#7c8a9c",
     glow: "#9fb1c4",
@@ -233,39 +235,42 @@ export const CHEST_DEFS: ChestDef[] = [
   },
   {
     id: "rare",
-    name: "Rare Vault",
+    name: "Rare Chest",
     rarity: "Rare",
-    minXp: 5000,
-    maxXp: 12000,
+    minXp: 10000,
+    maxXp: 20000,
+    chance: 25,
     requiredXp: 2000,
     color: "#2f81f7",
     glow: "#5aa9ff",
-    tagline: "Unlocks at 2,000 XP. Bigger hauls for active traders.",
-    shareText: "Cracked open a Rare Vault on @SuperSwapDEX \uD83D\uDD35 stacking XP for the TGE airdrop. Who's farming with me? #SuperSwap #Base #DeFi",
+    tagline: "25% chance to pull this — serious XP for active traders.",
+    shareText: "Cracked open a Rare Chest on @SuperSwapDEX \uD83D\uDD35 stacking XP for the TGE airdrop. Who's farming with me? #SuperSwap #Base #DeFi",
   },
   {
     id: "epic",
-    name: "Epic Relic",
+    name: "Epic Chest",
     rarity: "Epic",
-    minXp: 20000,
-    maxXp: 50000,
+    minXp: 25000,
+    maxXp: 75000,
+    chance: 9,
     requiredXp: 8000,
     color: "#a855f7",
     glow: "#c98bff",
-    tagline: "Unlocks at 8,000 XP. For the dedicated degens.",
-    shareText: "Just unlocked an Epic Relic on @SuperSwapDEX \uD83D\uDFE3 massive XP toward the TGE. The grind pays. #SuperSwap #Base #Airdrop",
+    tagline: "9% chance. For the dedicated degens.",
+    shareText: "Just pulled an Epic Chest on @SuperSwapDEX \uD83D\uDFE3 massive XP toward the TGE. The grind pays. #SuperSwap #Base #Airdrop",
   },
   {
     id: "legendary",
-    name: "Legendary Ark",
+    name: "Legendary Chest",
     rarity: "Legendary",
-    minXp: 75000,
+    minXp: 100000,
     maxXp: 100000,
+    chance: 1,
     requiredXp: 25000,
     color: "#f5a623",
     glow: "#ffd25a",
-    tagline: "Unlocks at 25,000 XP. The rarest prize in the realm.",
-    shareText: "I opened the LEGENDARY ARK on @SuperSwapDEX \uD83D\uDFE1\uD83D\uDC51 up to 100,000 XP toward the TGE airdrop. Top tier only. #SuperSwap #Base #Airdrop",
+    tagline: "1% chance. The rarest prize in the realm.",
+    shareText: "I pulled the LEGENDARY CHEST on @SuperSwapDEX \uD83D\uDFE1\uD83D\uDC51 100,000 XP toward the TGE airdrop. Top tier only. #SuperSwap #Base #Airdrop",
   },
 ];
 

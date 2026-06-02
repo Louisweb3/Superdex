@@ -1,0 +1,474 @@
+# Build a Gamified Community Chest Campaign Page
+
+Transform the current "Earn" page into a premium, highly animated, gamified **Community Campaign** experience that feels like a seasonal Web3 event rather than a traditional rewards page.
+
+## Objective
+
+Create a Community Chest Campaign where users complete social tasks, verify ownership of their wallet, open randomized reward chests, earn XP, invite friends, and compete on a leaderboard.
+
+The experience should feel polished, premium, engaging, and production-ready with smooth animations, modern UI, and real-time XP updates across the application.
+
+---
+
+# Design Direction
+
+Style:
+
+* Dark premium gaming aesthetic
+* Web3-native design
+* Purple, gold, blue, and emerald reward colors
+* Glassmorphism cards
+* Soft gradients
+* Glow effects
+* Particle systems
+* Lottie animations
+* Smooth micro-interactions
+* Responsive mobile-first layout
+
+Visual Inspiration:
+
+* AAA game reward systems
+* Battle Pass progression systems
+* Loot box opening animations
+* Premium crypto campaign experiences
+
+Animations should be smooth and performant.
+
+---
+
+# Hero Section
+
+Create a large hero banner with:
+
+Title:
+"Community Chest Campaign"
+
+Subtitle:
+"Complete community tasks, unlock chests, earn XP, and strengthen your position before TGE."
+
+Display:
+
+* User XP Balance
+* Global XP Distributed
+* Participant Count
+* User Rank
+* Campaign Countdown Timer
+
+Add:
+
+* Animated floating chests
+* Sparkles
+* Particle effects
+* Animated XP counter
+
+---
+
+# Campaign Flow
+
+## Step 1: Community Verification
+
+Users must complete:
+
+1. Follow official X account
+2. Like campaign post
+3. Repost campaign post
+4. Connect wallet
+5. Sign verification message
+
+Verification message example:
+
+"I am participating in the Community Chest Campaign."
+
+No gas fees required.
+
+Show completion status with animated checkmarks.
+
+---
+
+## Step 2: Claim Community Chest
+
+After verification:
+
+Unlock a large CTA button:
+
+"Open Community Chest"
+
+Button should glow and pulse.
+
+When clicked:
+
+### Chest Opening Animation Sequence
+
+1. Darken background
+2. Bring chest to center screen
+3. Camera zoom effect
+4. Chest shakes
+5. Energy builds around chest
+6. Chest bursts open
+7. Particle explosion
+8. Reward card reveal
+9. XP count-up animation
+10. Celebration effects
+
+Use smooth motion and premium game-like transitions.
+
+---
+
+# Chest System
+
+Create four reward tiers.
+
+---
+
+## Common Chest
+
+Appearance:
+
+* Wooden chest
+* Blue glow
+* Basic particles
+
+Chance:
+
+65%
+
+Rewards:
+
+* 1,000 XP
+* 2,500 XP
+* 5,000 XP
+
+Label:
+
+"Common"
+
+---
+
+## Rare Chest
+
+Appearance:
+
+* Silver chest
+* Purple aura
+* Crystal effects
+
+Chance:
+
+25%
+
+Rewards:
+
+* 10,000 XP
+* 15,000 XP
+* 20,000 XP
+
+Label:
+
+"Rare"
+
+---
+
+## Epic Chest
+
+Appearance:
+
+* Gold chest
+* Lightning effects
+* Bright rays
+
+Chance:
+
+9%
+
+Rewards:
+
+* 25,000 XP
+* 50,000 XP
+* 75,000 XP
+
+Label:
+
+"Epic"
+
+---
+
+## Legendary Community Chest
+
+Appearance:
+
+* Obsidian and gold chest
+* Animated runes
+* Cosmic particles
+* Floating effect
+
+Chance:
+
+1%
+
+Rewards:
+
+* 100,000 XP
+
+Label:
+
+"Legendary"
+
+Legendary chest should have the most dramatic animation and celebration sequence.
+
+---
+
+# XP System
+
+XP is the core progression mechanic.
+
+Create a global XP system.
+
+Every earned XP must:
+
+* Be stored in database
+* Be attached to wallet address
+* Update instantly across application
+* Trigger count-up animation
+
+XP should update in:
+
+* Navbar
+* Profile page
+* Campaign page
+* Leaderboard
+* Referral dashboard
+
+Use real-time synchronization.
+
+Suggested implementation:
+
+* WebSockets
+* Supabase Realtime
+* Live subscriptions
+
+---
+
+# Database Structure
+
+Users Table:
+
+* wallet_address
+* total_xp
+* campaign_xp
+* referral_xp
+* rank
+* created_at
+* updated_at
+
+XP Transactions Table:
+
+* id
+* wallet_address
+* source
+* amount
+* reference_id
+* created_at
+
+Sources:
+
+* community_chest
+* referral_bonus
+* campaign_bonus
+* manual_reward
+
+Never directly edit total XP.
+
+Always calculate XP from transaction history.
+
+Create transaction records for every XP reward.
+
+---
+
+# Referral System
+
+Generate referral link automatically:
+
+app.com/ref/{wallet}
+
+Reward:
+
+Referrer earns 25% bonus XP from all XP earned by invited users.
+
+Example:
+
+Friend earns 20,000 XP
+
+Referrer receives 5,000 XP
+
+Bonus XP must be generated separately and not deducted from referred user.
+
+Referral Dashboard:
+
+* Total Invites
+* Referral XP Earned
+* Top Referrals
+* Referral Activity Feed
+
+Add share buttons:
+
+* X
+* Telegram
+* Discord
+* Copy Link
+
+---
+
+# Leaderboard
+
+Create a global leaderboard.
+
+Display:
+
+* Rank
+* Wallet Address
+* XP Balance
+* Badge
+
+Badges:
+
+Bronze
+
+Silver
+
+Gold
+
+Diamond
+
+Legendary
+
+Show:
+
+* Top 100 Players
+* User Position
+* User Rank
+
+Animate rank changes.
+
+---
+
+# Daily Streak System
+
+Reward consistent participation.
+
+Examples:
+
+Day 1 = +5% XP Bonus
+
+Day 3 = +10% XP Bonus
+
+Day 7 = +20% XP Bonus
+
+Day 30 = +50% XP Bonus
+
+Display streak calendar with animated progression.
+
+---
+
+# Milestone Rewards
+
+Unlock special achievements.
+
+Examples:
+
+10,000 XP = Community Badge
+
+50,000 XP = Rare Chest Ticket
+
+100,000 XP = Epic Chest Ticket
+
+500,000 XP = Legendary Badge
+
+Create animated achievement unlock modals.
+
+---
+
+# XP Activity History
+
+Create a reward history page.
+
+Display:
+
+* Chest Opened
+* XP Earned
+* Referral Bonuses
+* Streak Rewards
+* Achievement Rewards
+
+Show timestamps.
+
+Use modern timeline design.
+
+---
+
+# Backend Logic
+
+When user opens chest:
+
+1. Verify tasks completed
+2. Verify wallet signature
+3. Determine reward tier
+4. Generate XP reward
+5. Create transaction
+6. Update total XP
+7. Update leaderboard
+8. Update referral rewards
+9. Broadcast real-time updates
+10. Display animation
+
+Prevent abuse:
+
+* One claim per campaign period
+* Wallet verification required
+* Server-side reward generation
+* Anti-bot protections
+* Duplicate wallet detection
+
+---
+
+# Empty States
+
+Create beautiful empty states for:
+
+* No XP yet
+* No referrals
+* No leaderboard position
+* Campaign not started
+* Campaign ended
+
+Use illustrations and animations.
+
+---
+
+# Mobile Experience
+
+Fully responsive.
+
+Prioritize mobile usability.
+
+Ensure:
+
+* One-handed interactions
+* Smooth animations
+* Fast load times
+* Touch-friendly controls
+
+---
+
+# Success Criteria
+
+The final experience should feel like a premium game reward system with:
+
+* Exciting chest openings
+* Reward anticipation
+* Real-time XP progression
+* Strong referral mechanics
+* Beautiful animations
+* Professional Web3 campaign design
+* Enterprise-level polish
+
+Build production-ready frontend, backend integration points, database schema, wallet verification flow, XP tracking system, referral engine, leaderboard system, and all supporting animations.
