@@ -7,7 +7,7 @@ import {
 import { TOKENS, DEX_SOURCES, type Token, parseAmount, encodeApprove, NATIVE_ETH_ADDRESS, toHexWei } from "@/lib/tokens";
 import { useWalletContext } from "@/context/WalletContext";
 import { useSwapPrice, fetchSwapQuote, type SwapQuote } from "@/hooks/useSwapQuote";
-import { recordSwapReward } from "@/hooks/useRewards";
+import { recordSwapReward, useMarketPrices, type MarketPrice } from "@/hooks/useRewards";
 import { useBaseTokens } from "@/hooks/useBaseTokens";
 import { useWalletBalances } from "@/hooks/useWalletBalances";
 import maximizeRewardsBg from "@assets/Background__1779712623898.png";
@@ -561,6 +561,37 @@ export function SwapPage() {
     sellToken, buyToken, sellAmount, slippageBps, selectedSources
   );
 
+  const { data: marketPrices } = useMarketPrices();
+
+  // Resolve a token's USD price from CoinGecko-backed market prices.
+  // Stablecoins are pegged to $1; WETH tracks ETH.
+  const tokenUsdPrice = useCallback(
+    (token: Token | null): number => {
+      if (!token) return 0;
+      const sym = token.symbol.toUpperCase();
+      if (sym === "USDC" || sym === "USDT" || sym === "DAI" || sym === "USDB") return 1;
+      const lookup = sym === "WETH" ? "ETH" : sym;
+      const match = (marketPrices ?? []).find(
+        (p: MarketPrice) => p.symbol.toUpperCase() === lookup
+      );
+      return match?.price ?? 0;
+    },
+    [marketPrices]
+  );
+
+  const sellUsdPrice = tokenUsdPrice(sellToken);
+  const buyUsdPrice = tokenUsdPrice(buyToken);
+
+  const sellUsdValue =
+    sellUsdPrice > 0 && parseFloat(sellAmount || "0") > 0
+      ? `\u2248 $${(parseFloat(sellAmount || "0") * sellUsdPrice).toLocaleString("en-US", { maximumFractionDigits: 2 })}`
+      : "";
+
+  const buyUsdValue =
+    quote && parseFloat(quote.buyAmountFormatted) > 0 && buyUsdPrice > 0
+      ? `\u2248 $${(parseFloat(quote.buyAmountFormatted) * buyUsdPrice).toLocaleString("en-US", { maximumFractionDigits: 2 })}`
+      : "";
+
   const toggleSource = useCallback((id: string) => {
     setSelectedSources((prev) => {
       if (prev.length === 0) {
@@ -754,7 +785,7 @@ export function SwapPage() {
                   token={sellToken}
                   amount={sellAmount}
                   onAmountChange={setSellAmount}
-                  usdValue={quote && parseFloat(quote.price) > 0 ? `≈ $${(parseFloat(sellAmount || "0") * parseFloat(quote.price)).toLocaleString("en-US", { maximumFractionDigits: 2 })}` : ""}
+                  usdValue={sellUsdValue}
                   allTokens={allTokens}
                   onTokenChange={setSellToken}
                   disabledToken={buyToken}
@@ -776,11 +807,7 @@ export function SwapPage() {
                   token={buyToken}
                   amount={isLoading ? "…" : (quote?.buyAmountFormatted ?? "")}
                   readonly
-                  usdValue={
-                    quote && parseFloat(quote.buyAmountFormatted) > 0
-                      ? `≈ $${(parseFloat(quote.buyAmountFormatted) * 1).toLocaleString("en-US", { maximumFractionDigits: 2 })}`
-                      : ""
-                  }
+                  usdValue={buyUsdValue}
                   allTokens={allTokens}
                   onTokenChange={setBuyToken}
                   disabledToken={sellToken}
