@@ -741,6 +741,16 @@ export class RewardsStorage {
       .from(rewardUsers);
     const agg = aggRows[0] ?? { totalXp: 0, totalCashback: 0, totalPending: 0, totalWeekly: 0 };
 
+    // Chest-only stats
+    const [chestUsersRow] = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${chestClaims.wallet_address})` })
+      .from(chestClaims)
+      .where(eq(chestClaims.opened, true));
+    const [chestXpRow] = await db
+      .select({ total: sql<number>`COALESCE(SUM(${chestClaims.xp_awarded}), 0)` })
+      .from(chestClaims)
+      .where(eq(chestClaims.opened, true));
+
     return {
       totalXp: Number(agg.totalXp ?? 0),
       totalCashbackUsd: Number(agg.totalCashback ?? 0),
@@ -748,7 +758,58 @@ export class RewardsStorage {
       totalWeeklyCashbackUsd: Number(agg.totalWeekly ?? 0),
       totalUsers: Number(usersRow?.count ?? 0),
       totalSwapEvents: Number(swapsRow?.count ?? 0),
+      chestParticipants: Number(chestUsersRow?.count ?? 0),
+      chestTotalXp: Number(chestXpRow?.total ?? 0),
     };
+  }
+
+  async getChestLeaderboard(limit = 10): Promise<{ wallet_address: string; chest_xp: number; tier: string }[]> {
+    const rows = await db
+      .select({
+        wallet_address: chestClaims.wallet_address,
+        chest_xp: sql<number>`COALESCE(SUM(${chestClaims.xp_awarded}), 0)`,
+      })
+      .from(chestClaims)
+      .where(eq(chestClaims.opened, true))
+      .groupBy(chestClaims.wallet_address)
+      .orderBy(sql`COALESCE(SUM(${chestClaims.xp_awarded}), 0) DESC`)
+      .limit(limit);
+
+    const result = [];
+    for (const r of rows) {
+      const [u] = await db
+        .select({ tier: rewardUsers.tier })
+        .from(rewardUsers)
+        .where(eq(rewardUsers.wallet_address, r.wallet_address))
+        .limit(1);
+      result.push({
+        wallet_address: r.wallet_address,
+        chest_xp: Number(r.chest_xp ?? 0),
+        tier: u?.tier ?? "Bronze",
+      });
+    }
+    return result;
+  }
+
+  async getChestRank(wallet: string): Promise<number> {
+    const key = wallet.toLowerCase();
+    const [userRow] = await db
+      .select({ total: sql<number>`COALESCE(SUM(${chestClaims.xp_awarded}), 0)` })
+      .from(chestClaims)
+      .where(and(eq(chestClaims.wallet_address, key), eq(chestClaims.opened, true)));
+    const userXp = Number(userRow?.total ?? 0);
+    if (userXp === 0) return 0;
+
+    const [rankRow] = await db.execute(
+      sql`SELECT COUNT(*)::int AS count FROM (
+        SELECT wallet_address, SUM(xp_awarded) AS total
+        FROM chest_claims
+        WHERE opened = true
+        GROUP BY wallet_address
+        HAVING SUM(xp_awarded) > ${userXp}
+      ) t`
+    );
+    return (Number((rankRow as any)?.count ?? 0)) + 1;
   }
 
   async getDailyVolume(days: number): Promise<{ date: string; volume: number; swaps: number }[]> {

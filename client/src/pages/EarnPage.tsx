@@ -13,7 +13,9 @@ import {
   useXpHistory,
   useGlobalStats,
   useLeaderboard,
+  useChestLeaderboard,
   useUserRank,
+  useChestRank,
   signChestMessage,
 } from "@/hooks/useChests";
 import { CHEST_DEFS, type ChestDef } from "@shared/schema";
@@ -353,13 +355,13 @@ function LootTierCard({ def }: { def: ChestDef }) {
 // ─── Leaderboard Section ──────────────────────────────────────────────────────
 
 function LeaderboardSection({ userWallet }: { userWallet: string | null }) {
-  const { data: board, isLoading } = useLeaderboard(50);
+  const { data: board, isLoading } = useChestLeaderboard(50);
   const BADGE: Record<string, string> = { Bronze: "#cd7f32", Silver: "#c0c0c0", Gold: "#ffd25a", Diamond: "#5aa9ff", Legendary: "#f5a623" };
   return (
     <div className="rounded-[18px] border border-white/6 overflow-hidden" style={{ background: "rgba(1,8,4,0.6)" }}>
       <div className="px-4 py-3.5 border-b border-white/6 flex items-center gap-2">
         <Trophy size={15} className="text-[#ffd25a]" />
-        <h3 className="text-[14px] font-bold text-white">Global Leaderboard</h3>
+        <h3 className="text-[14px] font-bold text-white">Chest Leaderboard</h3>
         <span className="ml-auto text-[11px] text-white/25">Top 50</span>
       </div>
       {isLoading ? (
@@ -384,7 +386,7 @@ function LeaderboardSection({ userWallet }: { userWallet: string | null }) {
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ color: bc, background: `${bc}18` }}>
                   {entry.tier ?? "Bronze"}
                 </span>
-                <span className="text-[12px] font-bold text-[#ffd25a] tabular-nums">{(entry.xp ?? 0).toLocaleString()}</span>
+                <span className="text-[12px] font-bold text-[#ffd25a] tabular-nums">{(entry.chest_xp ?? 0).toLocaleString()}</span>
               </div>
             );
           })}
@@ -634,7 +636,8 @@ export function EarnPage() {
   const { data: xAccount } = useXAccount(walletAddress ?? undefined);
   const { data: campaign } = useCampaignState(walletAddress);
   const { data: globalStats } = useGlobalStats();
-  const { data: rankData }    = useUserRank(walletAddress);
+  const { data: rankData }    = useChestRank(walletAddress);
+  const { data: chestBoard }  = useChestLeaderboard(50);
 
   const socialMut = useCampaignSocial(walletAddress);
   const verifyMut = useCampaignVerify(walletAddress);
@@ -652,7 +655,8 @@ export function EarnPage() {
   useEffect(() => () => { if (shareTimer.current) clearInterval(shareTimer.current); }, []);
 
   const xConnected = !!xAccount?.x_username;
-  const userXp = user?.xp ?? 0;
+  const userChestXp = user?.xp ?? 0;
+  const userTier = user?.tier ?? "Bronze";
 
   const handleShare = () => {
     setShowCampaignModal(true);
@@ -757,11 +761,11 @@ export function EarnPage() {
           {/* Stats pills */}
           <div className="flex flex-wrap gap-2.5">
             {[
-              { label: "Your XP",      value: userXp.toLocaleString(), icon: <Zap size={13} color="#ffd25a" fill="#ffd25a" />, id: "text-total-xp" },
-              { label: "Your Tier",    value: user?.tier ?? "Bronze",  icon: <Medal size={13} style={{ color: tierColor }} />, id: "text-tier" },
-              { label: "Your Rank",    value: rankData ? `#${rankData.rank}` : "—", icon: <Trophy size={13} color="#5aa9ff" />, id: "text-rank" },
-              { label: "Global XP",   value: (globalStats?.totalXp ?? 0).toLocaleString(), icon: <TrendingUp size={13} color="#22c55e" />, id: "text-global-xp" },
-              { label: "Participants", value: (globalStats?.totalUsers ?? 0).toLocaleString(), icon: <Users size={13} color="#9fb1c4" />, id: "text-participants" },
+              { label: "Your XP",      value: userChestXp.toLocaleString(), icon: <Zap size={13} color="#ffd25a" fill="#ffd25a" />, id: "text-total-xp" },
+              { label: "Your Tier",    value: userTier,  icon: <Medal size={13} style={{ color: tierColor }} />, id: "text-tier" },
+              { label: "Your Rank",    value: rankData?.rank ? `#${rankData.rank}` : "—", icon: <Trophy size={13} color="#5aa9ff" />, id: "text-rank" },
+              { label: "Global XP",   value: (globalStats?.chestTotalXp ?? 0).toLocaleString(), icon: <TrendingUp size={13} color="#22c55e" />, id: "text-global-xp" },
+              { label: "Participants", value: (globalStats?.chestParticipants ?? 0).toLocaleString(), icon: <Users size={13} color="#9fb1c4" />, id: "text-participants" },
             ].map(({ label, value, icon, id }) => (
               <div key={label} className="flex items-center gap-2 rounded-[14px] border border-white/8 bg-white/4 px-3.5 py-2 backdrop-blur-sm">
                 {icon}
@@ -905,7 +909,7 @@ export function EarnPage() {
               ))}
             </div>
             {activeTab === "leaderboard" && <LeaderboardSection userWallet={walletAddress} />}
-            {activeTab === "milestones"  && <MilestonesSection  userXp={userXp} />}
+            {activeTab === "milestones"  && <MilestonesSection  userXp={userChestXp} />}
             {activeTab === "history"     && <HistorySection     wallet={walletAddress} />}
           </div>
         </div>
@@ -923,11 +927,11 @@ export function EarnPage() {
             <div className="mb-3">
               <div className="flex justify-between text-[11px] mb-1.5">
                 <span className="text-white/40">Level {user?.level ?? 1}</span>
-                <span className="text-white/40">{userXp.toLocaleString()} XP</span>
+                <span className="text-white/40">{userChestXp.toLocaleString()} XP</span>
               </div>
               <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.07)" }}>
                 <div className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${Math.min(((userXp % 100) / 100) * 100, 100)}%`,
+                  style={{ width: `${Math.min(((userChestXp % 100) / 100) * 100, 100)}%`,
                     background: "linear-gradient(90deg,#a855f7,#ffd25a)" }} />
               </div>
             </div>

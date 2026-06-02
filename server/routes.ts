@@ -208,6 +208,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     return res.json({ rank });
   });
 
+  app.get("/api/rewards/chest-rank/:wallet", async (req, res) => {
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    const rank = await rewardsStorage.getChestRank(wallet);
+    return res.json({ rank });
+  });
+
+  app.get("/api/rewards/chest-leaderboard", async (req, res) => {
+    const limit = Math.min(Math.max(Number(req.query.limit ?? 50), 1), 100);
+    return res.json(await rewardsStorage.getChestLeaderboard(limit));
+  });
+
   app.post("/api/rewards/cashback/claim", async (req, res) => {
     const { wallet } = req.body;
     if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });

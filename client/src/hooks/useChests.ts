@@ -39,6 +39,8 @@ export interface GlobalStats {
   totalUsers: number;
   totalSwapEvents: number;
   totalCashbackUsd: number;
+  chestParticipants: number;
+  chestTotalXp: number;
 }
 
 export interface LeaderboardEntry {
@@ -46,6 +48,12 @@ export interface LeaderboardEntry {
   xp: number;
   tier: string;
   level: number;
+}
+
+export interface ChestLeaderboardEntry {
+  wallet_address: string;
+  chest_xp: number;
+  tier: string;
 }
 
 function invalidateAll(wallet: string) {
@@ -219,6 +227,30 @@ export function useUserRank(wallet: string | null) {
     enabled: !!wallet,
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/rewards/rank/${wallet}`);
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useChestLeaderboard(limit = 50) {
+  return useQuery<ChestLeaderboardEntry[]>({
+    queryKey: ["/api/rewards/chest-leaderboard", limit],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/rewards/chest-leaderboard?limit=${limit}`);
+      return res.json();
+    },
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useChestRank(wallet: string | null) {
+  return useQuery<{ rank: number }>({
+    queryKey: ["/api/rewards/chest-rank", wallet],
+    enabled: !!wallet,
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/rewards/chest-rank/${wallet}`);
       return res.json();
     },
     staleTime: 60_000,
