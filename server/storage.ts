@@ -94,7 +94,7 @@ export interface DailyQuest {
   id: string;
   wallet_address: string;
   date: string;
-  quest_type: "swaps" | "volume" | "login";
+  quest_type: "swaps" | "volume" | "login" | "volume_500" | "volume_1k" | "volume_2500" | "volume_5k" | "volume_10k" | "volume_25k" | "volume_100k";
   target: number;
   progress: number;
   completed: boolean;
@@ -384,6 +384,13 @@ export class RewardsStorage {
     // Update quest progress
     await this.updateQuestProgressDB(key, today, "swaps", 1);
     await this.updateQuestProgressDB(key, today, "volume", volumeUsd);
+    await this.updateQuestProgressDB(key, today, "volume_500", volumeUsd);
+    await this.updateQuestProgressDB(key, today, "volume_1k", volumeUsd);
+    await this.updateQuestProgressDB(key, today, "volume_2500", volumeUsd);
+    await this.updateQuestProgressDB(key, today, "volume_5k", volumeUsd);
+    await this.updateQuestProgressDB(key, today, "volume_10k", volumeUsd);
+    await this.updateQuestProgressDB(key, today, "volume_25k", volumeUsd);
+    await this.updateQuestProgressDB(key, today, "volume_100k", volumeUsd);
 
     // ── Referral XP: award 35% of xpEarned to referrer, + 500 XP milestone ──
     const [userRow] = await db.select().from(rewardUsers).where(eq(rewardUsers.wallet_address, key)).limit(1);
@@ -491,9 +498,21 @@ export class RewardsStorage {
   async getDailyQuests(wallet: string): Promise<DailyQuest[]> {
     const key = wallet.toLowerCase();
     const today = todayUTC();
-    const types: DailyQuest["quest_type"][] = ["swaps", "volume", "login"];
-    const targets = { swaps: 3, volume: 100, login: 1 };
-    const rewards = { swaps: 50, volume: 100, login: 25 };
+    const types: DailyQuest["quest_type"][] = [
+      "login", "swaps", "volume",
+      "volume_500", "volume_1k", "volume_2500",
+      "volume_5k", "volume_10k", "volume_25k", "volume_100k",
+    ];
+    const targets: Record<string, number> = {
+      swaps: 3, volume: 100, login: 1,
+      volume_500: 500, volume_1k: 1000, volume_2500: 2500,
+      volume_5k: 5000, volume_10k: 10000, volume_25k: 25000, volume_100k: 100000,
+    };
+    const rewards: Record<string, number> = {
+      swaps: 50, volume: 100, login: 25,
+      volume_500: 400, volume_1k: 1000, volume_2500: 3000,
+      volume_5k: 6000, volume_10k: 12500, volume_25k: 30000, volume_100k: 125000,
+    };
     const results: DailyQuest[] = [];
 
     for (const type of types) {

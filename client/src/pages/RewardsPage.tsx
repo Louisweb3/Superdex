@@ -299,12 +299,27 @@ export function RewardsPage(): JSX.Element {
               <div className="grid gap-3">
                 {quests?.map((quest) => {
                   const pct = quest.target > 0 ? Math.min((quest.progress / quest.target) * 100, 100) : 100;
-                  const labels: Record<string, { title: string; desc: string; icon: string; glow: string }> = {
-                    swaps: { title: "Swap Master", desc: "Complete 3 swaps today", icon: iconLightning, glow: "#22d3ee" },
-                    volume: { title: "Volume Hunter", desc: "Trade $100 volume", icon: iconChart, glow: "#8b5cf6" },
-                    login: { title: "Daily Check-in", desc: "Visit SuperSwap today", icon: iconGift, glow: "#2dae50" },
+
+                  type QuestInfo = { title: string; desc: string; icon: string; glow: string; volLabel?: string };
+                  const labels: Record<string, QuestInfo> = {
+                    login:        { title: "Daily Check-in",      desc: "Visit SuperSwap today",          icon: iconGift,      glow: "#2dae50" },
+                    swaps:        { title: "Swap Master",          desc: "Complete 3 swaps today",          icon: iconLightning, glow: "#22d3ee" },
+                    volume:       { title: "Volume Hunter",        desc: "Trade $100 volume today",         icon: iconChart,     glow: "#8b5cf6" },
+                    volume_500:   { title: "Rising Trader",        desc: "Trade $500 volume today",         icon: iconChart,     glow: "#a855f7", volLabel: "$500" },
+                    volume_1k:    { title: "Power Trader",         desc: "Trade $1,000 volume today",       icon: iconChart,     glow: "#ec4899", volLabel: "$1K" },
+                    volume_2500:  { title: "Elite Trader",         desc: "Trade $2,500 volume today",       icon: iconChart,     glow: "#f97316", volLabel: "$2.5K" },
+                    volume_5k:    { title: "Whale Apprentice",     desc: "Trade $5,000 volume today",       icon: iconChart,     glow: "#eab308", volLabel: "$5K" },
+                    volume_10k:   { title: "Whale Trader",         desc: "Trade $10,000 volume today",      icon: iconChart,     glow: "#ef4444", volLabel: "$10K" },
+                    volume_25k:   { title: "Mega Whale",           desc: "Trade $25,000 volume today",      icon: iconChart,     glow: "#f43f5e", volLabel: "$25K" },
+                    volume_100k:  { title: "Legendary Trader",     desc: "Trade $100,000 volume today",     icon: iconChart,     glow: "#fbbf24", volLabel: "$100K" },
                   };
-                  const info = labels[quest.quest_type];
+
+                  const info = labels[quest.quest_type] ?? { title: quest.quest_type, desc: "", icon: iconChart, glow: "#8b5cf6" };
+                  const isVol = quest.quest_type.startsWith("volume");
+                  const progressLabel = isVol
+                    ? `$${Math.floor(quest.progress).toLocaleString()} / $${quest.target.toLocaleString()}`
+                    : `${Math.floor(pct)}%`;
+
                   return (
                     <div key={quest.id} className="relative overflow-hidden rounded-[22px] border border-[#182332] bg-[#060d17] p-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-[2px]">
                       <div className="absolute right-[-20px] top-[-20px] h-[90px] w-[90px] rounded-full blur-[60px]" style={{ background: `${info.glow}22` }} />
@@ -312,20 +327,26 @@ export function RewardsPage(): JSX.Element {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3">
                             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border" style={{ background: `${info.glow}15`, borderColor: `${info.glow}55` }}>
-                              <img src={info.icon} alt="" className="h-6 w-6" />
+                              {info.volLabel ? (
+                                <span className="text-[11px] font-black" style={{ color: info.glow }}>{info.volLabel}</span>
+                              ) : (
+                                <img src={info.icon} alt="" className="h-6 w-6" />
+                              )}
                             </div>
                             <div>
                               <h3 className="text-[16px] font-bold text-white">{info.title}</h3>
                               <p className="mt-1 text-[13px] text-[#8c98aa]">{info.desc}</p>
                             </div>
                           </div>
-                          <div className="shrink-0 rounded-full border border-[#1d3428] bg-[#0b1811] px-3 py-1 text-[11px] font-bold text-[#3acd5b]">+{quest.xp_reward} XP</div>
+                          <div className="shrink-0 rounded-full border border-[#1d3428] bg-[#0b1811] px-3 py-1 text-[11px] font-bold text-[#3acd5b]">
+                            +{quest.xp_reward >= 1000 ? (quest.xp_reward / 1000).toFixed(quest.xp_reward % 1000 === 0 ? 0 : 1) + "K" : quest.xp_reward} XP
+                          </div>
                         </div>
                         {/* progress */}
                         <div className="mt-4">
                           <div className="mb-2 flex items-center justify-between">
                             <span className="text-[11px] text-[#7e8b9d]">Progress</span>
-                            <span className="text-[11px] font-semibold text-white">{Math.floor(pct)}%</span>
+                            <span className="text-[11px] font-semibold text-white">{progressLabel}</span>
                           </div>
                           <div className="h-[9px] overflow-hidden rounded-full bg-[#111827]">
                             <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${info.glow}, #2dae50)` }} />
