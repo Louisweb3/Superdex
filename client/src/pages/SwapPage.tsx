@@ -624,7 +624,10 @@ export function SwapPage() {
           gas: toHexWei(refreshedQuote.transaction.gas),
         });
         setTxHash(hash);
-        const volUsd = parseFloat(sellAmount) * parseFloat(refreshedQuote.price ?? "0");
+        const sellPriceUsd2 = getTokenPriceUsd(sellToken);
+        const volUsd = sellPriceUsd2 > 0
+          ? parseFloat(sellAmount) * sellPriceUsd2
+          : parseFloat(sellAmount) * parseFloat(refreshedQuote.price ?? "0");
         recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd).catch(() => {});
       } else {
         if (!fullQuote.transaction) throw new Error("No transaction data in quote");
@@ -635,7 +638,10 @@ export function SwapPage() {
           gas: toHexWei(fullQuote.transaction.gas),
         });
         setTxHash(hash);
-        const volUsd = parseFloat(sellAmount) * parseFloat(fullQuote.price ?? "0");
+        const sellPriceUsd = getTokenPriceUsd(sellToken);
+        const volUsd = sellPriceUsd > 0
+          ? parseFloat(sellAmount) * sellPriceUsd
+          : parseFloat(sellAmount) * parseFloat(fullQuote.price ?? "0");
         recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd).catch(() => {});
       }
     } catch (err: any) {
@@ -644,6 +650,19 @@ export function SwapPage() {
       setSwapping(false);
     }
   }, [wallet, sellToken, buyToken, sellAmount, slippageBps, selectedSources]);
+
+  // ─── Token price resolver (uses DexScreener price; falls back to WETH for native ETH) ──
+  const getTokenPriceUsd = useCallback((token: Token): number => {
+    if (token.price && token.price > 0) return token.price;
+    // Native ETH has no price in useBaseTokens — use WETH as proxy
+    if (token.isNative || token.address.toLowerCase() === NATIVE_ETH_ADDR_LOWER) {
+      const weth = allTokens.find(
+        (t) => t.address.toLowerCase() === "0x4200000000000000000000000000000000000006"
+      );
+      return weth?.price ?? 0;
+    }
+    return 0;
+  }, [allTokens]);
 
   // ─── Computed display values ─────────────────────────────────────────────────
   const rateStr = quote
@@ -754,7 +773,11 @@ export function SwapPage() {
                   token={sellToken}
                   amount={sellAmount}
                   onAmountChange={setSellAmount}
-                  usdValue={quote && parseFloat(quote.price) > 0 ? `≈ $${(parseFloat(sellAmount || "0") * parseFloat(quote.price)).toLocaleString("en-US", { maximumFractionDigits: 2 })}` : ""}
+                  usdValue={(() => {
+                    const p = getTokenPriceUsd(sellToken);
+                    const v = parseFloat(sellAmount || "0") * p;
+                    return p > 0 && v > 0 ? `≈ $${v.toLocaleString("en-US", { maximumFractionDigits: 2 })}` : "";
+                  })()}
                   allTokens={allTokens}
                   onTokenChange={setSellToken}
                   disabledToken={buyToken}
@@ -776,11 +799,12 @@ export function SwapPage() {
                   token={buyToken}
                   amount={isLoading ? "…" : (quote?.buyAmountFormatted ?? "")}
                   readonly
-                  usdValue={
-                    quote && parseFloat(quote.buyAmountFormatted) > 0
-                      ? `≈ $${(parseFloat(quote.buyAmountFormatted) * 1).toLocaleString("en-US", { maximumFractionDigits: 2 })}`
-                      : ""
-                  }
+                  usdValue={(() => {
+                    if (!quote || parseFloat(quote.buyAmountFormatted) <= 0) return "";
+                    const p = getTokenPriceUsd(buyToken);
+                    const v = parseFloat(quote.buyAmountFormatted) * p;
+                    return p > 0 && v > 0 ? `≈ $${v.toLocaleString("en-US", { maximumFractionDigits: 2 })}` : "";
+                  })()}
                   allTokens={allTokens}
                   onTokenChange={setBuyToken}
                   disabledToken={sellToken}
