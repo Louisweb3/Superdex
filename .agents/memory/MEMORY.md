@@ -1,2 +1,3 @@
+- [Supabase connection](supabase-connection.md) — DB connects via discrete pg fields (not URI) through server/connection.ts; Supabase pooler needs ssl rejectUnauthorized:false (self-signed CA chain).
 - [drizzle-kit push interactive prompt](drizzle-push-interactive.md) — db:push rename prompt ignores piped stdin; create new tables via direct psql instead.
 - [Community Chest Campaign](community-chest-campaign.md) — campaign uses chestId="campaign" (not in CHEST_DEFS); special-cased in storage completeSocial/verifyWallet/openChest; named export EarnPage must be preserved.
