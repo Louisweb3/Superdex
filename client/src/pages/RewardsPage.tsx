@@ -13,8 +13,6 @@ import {
   type DailyQuest,
   type SwapEvent,
 } from "@/hooks/useRewards";
-import { useEarnTasks, useTaskCompletions } from "@/hooks/useEarn";
-
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 
 import iconTrophy from "@assets/icon_trophy.png";
@@ -103,6 +101,43 @@ function ConnectPrompt({ onConnect }: { onConnect: () => void }) {
       >
         Connect Wallet
       </button>
+    </div>
+  );
+}
+
+function LeaderRow({
+  user,
+  rank,
+  isMe,
+}: {
+  user: RewardUser;
+  rank: number;
+  isMe: boolean;
+}) {
+  const tierColors: Record<string, string> = {
+    Bronze: "#cd7f32",
+    Silver: "#9aa0ad",
+    Gold: "#f5c518",
+    Diamond: "#7df9ff",
+  };
+  const color = tierColors[user.tier] ?? "#2dae50";
+  const medals = ["🥇", "🥈", "🥉"];
+
+  return (
+    <div className={`flex items-center gap-3 border-b border-[#0d1624] py-3 last:border-0 ${isMe ? "rounded-[8px] bg-[#081420] px-2" : ""}`}>
+      <span className="w-6 shrink-0 text-center text-[14px] font-bold text-[#6c778a]">
+        {rank <= 3 ? medals[rank - 1] : rank}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[14px] font-medium text-[#c8ccd4] truncate">
+          {isMe ? "You (" + shortWallet(user.wallet_address) + ")" : shortWallet(user.wallet_address)}
+        </p>
+        <p className="text-[11px] text-[#667082]">{user.total_swaps} swaps · Lv.{user.level}</p>
+      </div>
+      <div className="flex flex-col items-end shrink-0">
+        <span className="text-[13px] font-bold" style={{ color }}>{fmtXP(user.xp)} XP</span>
+        <span className="text-[10px] font-medium" style={{ color: color + "aa" }}>{user.tier}</span>
+      </div>
     </div>
   );
 }
@@ -379,6 +414,22 @@ export function RewardsPage(): JSX.Element {
                 </div>
               </section>
             )}
+
+            {/* LEADERBOARD */}
+            <section>
+              <h2 className="mb-4 text-[13px] font-bold uppercase tracking-[0.28em] text-[#7f8b9d]">XP Leaderboard</h2>
+              <div className="rounded-[22px] border border-[#182332] bg-[#060d17] px-4 py-2">
+                {leaderboard && leaderboard.length > 0 ? (
+                  leaderboard.map((u, i) => (
+                    <LeaderRow key={u.wallet_address} user={u} rank={i + 1} isMe={u.wallet_address === addr?.toLowerCase()} />
+                  ))
+                ) : (
+                  <div className="flex items-center justify-center py-8">
+                    <p className="text-[13px] text-[#6c778a]">Be the first to top the leaderboard!</p>
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
         )}
       </div>
