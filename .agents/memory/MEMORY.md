@@ -1,0 +1,1 @@
+- [drizzle-kit push interactive prompt](drizzle-push-interactive.md) — db:push rename prompt ignores piped stdin; create new tables via direct psql instead.

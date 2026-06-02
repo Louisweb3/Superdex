@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { rewardsStorage, earnStorage } from "./storage";
+import { rewardsStorage, earnStorage, chestStorage } from "./storage";
 import { verifyTransaction } from "./basescan";
 
 const ZEROX_API_KEY = process.env.ZEROX_API_KEY || "";
@@ -307,6 +307,38 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const result = await rewardsStorage.applyReferralCode(wallet, code);
     if (!result.ok) return res.status(400).json({ error: result.error });
     return res.json({ ok: true });
+  });
+
+  // ─── Community Chests API ───────────────────────────────────────────────────
+  app.get("/api/chests/:wallet", async (req, res) => {
+    const { wallet } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    return res.json(await chestStorage.getChests(wallet));
+  });
+
+  app.post("/api/chests/:wallet/:chestId/social", async (req, res) => {
+    const { wallet, chestId } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    const result = await chestStorage.completeSocial(wallet, chestId);
+    if (!result.ok) return res.status(400).json(result);
+    return res.json(result);
+  });
+
+  app.post("/api/chests/:wallet/:chestId/verify", async (req, res) => {
+    const { wallet, chestId } = req.params;
+    const { signature } = req.body ?? {};
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    const result = await chestStorage.verifyWallet(wallet, chestId, signature);
+    if (!result.ok) return res.status(400).json(result);
+    return res.json(result);
+  });
+
+  app.post("/api/chests/:wallet/:chestId/open", async (req, res) => {
+    const { wallet, chestId } = req.params;
+    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    const result = await chestStorage.openChest(wallet, chestId);
+    if (!result.ok) return res.status(400).json(result);
+    return res.json(result);
   });
 
   // ─── Analytics (0x Trade Analytics API) ─────────────────────────────────────

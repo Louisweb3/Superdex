@@ -984,6 +984,169 @@ export const earnStorage = new EarnStorage();
 
 // ─── Admin CMS Storage ───────────────────────────────────────────────────────────────────
 import { siteSettings, pageBlocks, adminEvents, socialLinks } from "@shared/schema";
+import { chestClaims, CHEST_DEFS, type ChestClaim } from "@shared/schema";
+
+// ─── Community Chest Storage ──────────────────────────────────────────────────
+const REFERRAL_PCT = 0.25; // referrer earns 25% of referred user's chest XP
+
+export interface ChestState {
+  id: string;
+  name: string;
+  rarity: string;
+  minXp: number;
+  maxXp: number;
+  requiredXp: number;
+  color: string;
+  glow: string;
+  tagline: string;
+  shareText: string;
+  unlocked: boolean;
+  social_done: boolean;
+  verified: boolean;
+  opened: boolean;
+  xp_awarded: number;
+}
+
+export class ChestStorage {
+  private async getOrCreate(wallet: string, chestId: string): Promise<ChestClaim> {
+    const key = wallet.toLowerCase();
+    const [existing] = await db
+      .select()
+      .from(chestClaims)
+      .where(and(eq(chestClaims.wallet_address, key), eq(chestClaims.chest_id, chestId)))
+      .limit(1);
+    if (existing) return existing;
+    const [inserted] = await db
+      .insert(chestClaims)
+      .values({ id: randomUUID(), wallet_address: key, chest_id: chestId })
+      .returning();
+    return inserted;
+  }
+
+  async getChests(wallet: string): Promise<ChestState[]> {
+    const key = wallet.toLowerCase();
+    await rewardsStorage.upsertUser(key);
+    const user = await rewardsStorage.getUser(key);
+    const totalXp = user?.xp ?? 0;
+    const claims = await db.select().from(chestClaims).where(eq(chestClaims.wallet_address, key));
+
+    return CHEST_DEFS.map((def) => {
+      const claim = claims.find((c) => c.chest_id === def.id);
+      return {
+        ...def,
+        unlocked: totalXp >= def.requiredXp,
+        social_done: claim?.social_done ?? false,
+        verified: claim?.verified ?? false,
+        opened: claim?.opened ?? false,
+        xp_awarded: claim?.xp_awarded ?? 0,
+      };
+    });
+  }
+
+  async completeSocial(wallet: string, chestId: string): Promise<{ ok: boolean; error?: string }> {
+    const def = CHEST_DEFS.find((c) => c.id === chestId);
+    if (!def) return { ok: false, error: "Unknown chest" };
+    const key = wallet.toLowerCase();
+    const user = await rewardsStorage.getUser(key);
+    if (!user?.x_username) return { ok: false, error: "Connect your X account first" };
+    const claim = await this.getOrCreate(key, chestId);
+    if (!claim.social_done) {
+      await db.update(chestClaims).set({ social_done: true }).where(eq(chestClaims.id, claim.id));
+    }
+    return { ok: true };
+  }
+
+  async verifyWallet(
+    wallet: string,
+    chestId: string,
+    signature: string
+  ): Promise<{ ok: boolean; error?: string }> {
+    const def = CHEST_DEFS.find((c) => c.id === chestId);
+    if (!def) return { ok: false, error: "Unknown chest" };
+    // Soft signature verification: require a real personal_sign hex signature.
+    if (!signature || !/^0x[0-9a-fA-F]{130}$/.test(signature)) {
+      return { ok: false, error: "Invalid wallet signature" };
+    }
+    const key = wallet.toLowerCase();
+    const claim = await this.getOrCreate(key, chestId);
+    if (!claim.social_done) return { ok: false, error: "Complete the X task first" };
+    await db.update(chestClaims).set({ verified: true, signature }).where(eq(chestClaims.id, claim.id));
+    return { ok: true };
+  }
+
+  async openChest(
+    wallet: string,
+    chestId: string
+  ): Promise<{ ok: boolean; error?: string; xpAwarded?: number; totalXp?: number }> {
+    const def = CHEST_DEFS.find((c) => c.id === chestId);
+    if (!def) return { ok: false, error: "Unknown chest" };
+    const key = wallet.toLowerCase();
+    await rewardsStorage.upsertUser(key);
+    const user = await rewardsStorage.getUser(key);
+    if (!user) return { ok: false, error: "User not found" };
+    if ((user.xp ?? 0) < def.requiredXp) {
+      return { ok: false, error: `Requires ${def.requiredXp.toLocaleString()} XP to unlock` };
+    }
+    const claim = await this.getOrCreate(key, chestId);
+    if (!claim.social_done) return { ok: false, error: "Complete the X task first" };
+    if (!claim.verified) return { ok: false, error: "Sign the verification message first" };
+    if (claim.opened) return { ok: false, error: "Chest already opened" };
+
+    const xpAwarded =
+      def.minXp + Math.floor(Math.random() * (def.maxXp - def.minXp + 1));
+
+    // Race-safe claim: only the request that flips opened false->true wins and awards XP.
+    const won = await db
+      .update(chestClaims)
+      .set({ opened: true, xp_awarded: xpAwarded })
+      .where(and(eq(chestClaims.id, claim.id), eq(chestClaims.opened, false)))
+      .returning();
+    if (won.length === 0) return { ok: false, error: "Chest already opened" };
+
+    // Atomic XP increment, then recompute level/tier from the new total.
+    await db
+      .update(rewardUsers)
+      .set({
+        xp: sql`${rewardUsers.xp} + ${xpAwarded}`,
+        weekly_xp: sql`${rewardUsers.weekly_xp} + ${xpAwarded}`,
+      })
+      .where(eq(rewardUsers.wallet_address, key));
+    const [fresh] = await db.select().from(rewardUsers).where(eq(rewardUsers.wallet_address, key)).limit(1);
+    const newXp = fresh?.xp ?? (user.xp ?? 0) + xpAwarded;
+    await db
+      .update(rewardUsers)
+      .set({ level: levelFromXP(newXp), tier: tierFromXP(newXp) })
+      .where(eq(rewardUsers.wallet_address, key));
+
+    // Referral bonus — referrer earns 25% of opened chest XP (atomic increment).
+    const referredBy = (user.referred_by ?? "").toLowerCase();
+    if (referredBy && referredBy !== key) {
+      const bonus = Math.floor(xpAwarded * REFERRAL_PCT);
+      if (bonus > 0) {
+        const refUpdated = await db
+          .update(rewardUsers)
+          .set({
+            xp: sql`${rewardUsers.xp} + ${bonus}`,
+            weekly_xp: sql`${rewardUsers.weekly_xp} + ${bonus}`,
+            referral_bonus_xp: sql`${rewardUsers.referral_bonus_xp} + ${bonus}`,
+          })
+          .where(eq(rewardUsers.wallet_address, referredBy))
+          .returning();
+        const refXp = refUpdated[0]?.xp;
+        if (typeof refXp === "number") {
+          await db
+            .update(rewardUsers)
+            .set({ level: levelFromXP(refXp), tier: tierFromXP(refXp) })
+            .where(eq(rewardUsers.wallet_address, referredBy));
+        }
+      }
+    }
+
+    return { ok: true, xpAwarded, totalXp: newXp };
+  }
+}
+
+export const chestStorage = new ChestStorage();
 
 export interface CmsPageBlock {
   id: string;

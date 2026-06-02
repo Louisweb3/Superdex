@@ -7,6 +7,7 @@ import {
   integer,
   numeric,
   boolean,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -181,6 +182,92 @@ export const adminAnnouncements = pgTable("admin_announcements", {
 export const insertAdminAnnouncementSchema = createInsertSchema(adminAnnouncements).omit({ id: true, created_at: true });
 export type InsertAdminAnnouncement = z.infer<typeof insertAdminAnnouncementSchema>;
 export type AdminAnnouncement = typeof adminAnnouncements.$inferSelect;
+
+// ─── Community Chest claims ───────────────────────────────────────────────────
+export const chestClaims = pgTable(
+  "chest_claims",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    wallet_address: varchar("wallet_address", { length: 42 }).notNull(),
+    chest_id: varchar("chest_id", { length: 16 }).notNull(),
+    social_done: boolean("social_done").notNull().default(false),
+    verified: boolean("verified").notNull().default(false),
+    signature: text("signature").notNull().default(""),
+    opened: boolean("opened").notNull().default(false),
+    xp_awarded: integer("xp_awarded").notNull().default(0),
+    created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
+  },
+  (t) => ({
+    walletChestUidx: uniqueIndex("chest_claims_wallet_chest_uidx").on(t.wallet_address, t.chest_id),
+  })
+);
+
+export type ChestClaim = typeof chestClaims.$inferSelect;
+
+// ─── Community Chest definitions (shared between client + server) ──────────────
+export interface ChestDef {
+  id: string;
+  name: string;
+  rarity: string;
+  minXp: number;
+  maxXp: number;
+  requiredXp: number; // total lifetime XP required to unlock this chest
+  color: string;      // hex base
+  glow: string;       // hex glow
+  tagline: string;
+  shareText: string;  // text pre-filled when sharing on X (the like + RT action)
+}
+
+export const CHEST_DEFS: ChestDef[] = [
+  {
+    id: "common",
+    name: "Community Chest",
+    rarity: "Common",
+    minXp: 1000,
+    maxXp: 2500,
+    requiredXp: 0,
+    color: "#7c8a9c",
+    glow: "#9fb1c4",
+    tagline: "Open to everyone — your first taste of TGE rewards.",
+    shareText: "I just opened a Community Chest on @SuperSwapDEX and earned XP toward the TGE airdrop \uD83D\uDC8E\u26A1 Trade. Earn. Repeat. #SuperSwap #Base",
+  },
+  {
+    id: "rare",
+    name: "Rare Vault",
+    rarity: "Rare",
+    minXp: 5000,
+    maxXp: 12000,
+    requiredXp: 2000,
+    color: "#2f81f7",
+    glow: "#5aa9ff",
+    tagline: "Unlocks at 2,000 XP. Bigger hauls for active traders.",
+    shareText: "Cracked open a Rare Vault on @SuperSwapDEX \uD83D\uDD35 stacking XP for the TGE airdrop. Who's farming with me? #SuperSwap #Base #DeFi",
+  },
+  {
+    id: "epic",
+    name: "Epic Relic",
+    rarity: "Epic",
+    minXp: 20000,
+    maxXp: 50000,
+    requiredXp: 8000,
+    color: "#a855f7",
+    glow: "#c98bff",
+    tagline: "Unlocks at 8,000 XP. For the dedicated degens.",
+    shareText: "Just unlocked an Epic Relic on @SuperSwapDEX \uD83D\uDFE3 massive XP toward the TGE. The grind pays. #SuperSwap #Base #Airdrop",
+  },
+  {
+    id: "legendary",
+    name: "Legendary Ark",
+    rarity: "Legendary",
+    minXp: 75000,
+    maxXp: 100000,
+    requiredXp: 25000,
+    color: "#f5a623",
+    glow: "#ffd25a",
+    tagline: "Unlocks at 25,000 XP. The rarest prize in the realm.",
+    shareText: "I opened the LEGENDARY ARK on @SuperSwapDEX \uD83D\uDFE1\uD83D\uDC51 up to 100,000 XP toward the TGE airdrop. Top tier only. #SuperSwap #Base #Airdrop",
+  },
+];
 
 // ─── Admin CMS: Social Links ──────────────────────────────────────────────────
 export const socialLinks = pgTable("social_links", {
