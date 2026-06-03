@@ -471,7 +471,7 @@ function TxModal({ hash, cashback, onClose }: { hash: string; cashback: number; 
                 +${cashback.toFixed(4)}
               </p>
               <p className="font-['Inter',sans-serif] text-[11px] text-[#3a5a40] mt-0.5">
-                50% of integrator fee · credited to your rewards
+                credited to your rewards· distributed weekly
               </p>
             </div>
           )}

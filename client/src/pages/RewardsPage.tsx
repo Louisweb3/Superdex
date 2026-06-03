@@ -114,6 +114,9 @@ function ConnectPrompt({ onConnect }: { onConnect: () => void }) {
 export function RewardsPage(): JSX.Element {
   const wallet = useWalletContext();
   const [walletOpen, setWalletOpen] = useState(false);
+  const [showMigrationBanner, setShowMigrationBanner] = useState(true);
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [showCashbackBanner, setShowCashbackBanner] = useState(true);
   const addr = wallet.isConnected ? wallet.address : null;
 
   const { data: user, isLoading: userLoading } = useRewardUser(addr);
@@ -224,22 +227,24 @@ export function RewardsPage(): JSX.Element {
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="text-[13px] font-bold uppercase tracking-[0.28em] text-[#7f8b9d]">Cashback</h2>
-                  <p className="mt-1 text-[13px] text-[#6f7b8e]">0.15% of swap volume distributed weekly</p>
+                  <p className="mt-1 text-[13px] text-[#6f7b8e]">0.15% of swap volume distributed every Sunday</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
                 {/* Weekly earned */}
                 <div className="relative overflow-hidden rounded-[22px] border border-[#182332] bg-[#060d17] p-5 backdrop-blur-xl">
                   <div className="absolute right-[-20px] top-[-20px] h-[90px] w-[90px] rounded-full bg-emerald-500/10 blur-[60px]" />
                   <div className="relative z-10">
                     <div className="flex items-center gap-2">
-                      <p className="text-[10px] uppercase tracking-[0.22em] text-[#6f7b8e]">This Week Earned</p>
+                      <p className="text-[10px] uppercase tracking-[0.22em] text-[#6f7b8e]">This Week Cashback Earned</p>
                       <span className="flex h-1.5 w-1.5 rounded-full bg-[#3acd5b] animate-pulse" />
                     </div>
-                    <p className="mt-1 text-[28px] font-black text-[#3acd5b]">{fmtUsd(user.weekly_cashback_usd ?? 0)}</p>
-                    <p className="mt-1 text-[12px] text-[#7f8b9d]">Unclaimed until Sunday midnight UTC</p>
+                    <p className="mt-1 text-[28px] font-black text-[#3acd5b]" data-testid="text-weekly-cashback">{fmtUsd(user.weekly_cashback_usd ?? 0)}</p>
+                    <p className="mt-1 text-[12px] text-[#7f8b9d]">Distributed to your wallet every Sunday</p>
                   </div>
                 </div>
+
                 {/* Pending + claim */}
                 <div className="relative overflow-hidden rounded-[22px] border border-[#182332] bg-[#060d17] p-5 backdrop-blur-xl">
                   <div className="absolute left-[-20px] bottom-[-20px] h-[90px] w-[90px] rounded-full bg-cyan-400/10 blur-[60px]" />
@@ -254,17 +259,69 @@ export function RewardsPage(): JSX.Element {
                       </div>
                     </div>
                     <button
-                      onClick={() => claimCb.mutate()}
-                      disabled={claimCb.isPending || (user.pending_cashback_usd ?? 0) <= 0}
+                      onClick={() => setShowClaimModal(true)}
                       data-testid="button-claim-cashback"
-                      className="mt-4 w-full rounded-[15px] bg-gradient-to-r from-[#22d3ee] to-[#2dae50] px-4 py-3 text-[14px] font-bold text-white shadow-[0_10px_30px_rgba(45,174,80,0.2)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="mt-4 w-full rounded-[15px] bg-gradient-to-r from-[#22d3ee] to-[#2dae50] px-4 py-3 text-[14px] font-bold text-white shadow-[0_10px_30px_rgba(45,174,80,0.2)] transition-all hover:scale-[1.02] active:scale-[0.98]"
                     >
-                      {claimCb.isPending ? "Claiming\u2026" : "Claim Cashback"}
+                      Claim Cashback
                     </button>
                   </div>
                 </div>
               </div>
+
+              {/* Cashback promo banner with close button */}
+              {showCashbackBanner && (
+                <div className="relative mt-3 overflow-hidden rounded-[22px] border border-[#182332]">
+                  <button
+                    onClick={() => setShowCashbackBanner(false)}
+                    className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white/70 transition-colors hover:bg-black/80 hover:text-white"
+                    data-testid="btn-close-cashback-banner"
+                    aria-label="Close banner"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                  <img
+                    src="https://i.ibb.co/dJpgRVjg/HJug-Gr-Yb-MAAIuhz-767b1430-0326-4132-8299-730b07959375.png"
+                    alt="Cashback rewards banner"
+                    className="w-full rounded-[22px] object-cover"
+                    data-testid="img-cashback-banner"
+                  />
+                </div>
+              )}
             </section>
+
+            {/* Claim Paused Modal */}
+            {showClaimModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+                <div className="w-full max-w-[360px] overflow-hidden rounded-[24px] border border-[#1a3428] bg-[#030e1a]">
+                  <div className="flex flex-col items-center gap-4 px-6 py-8 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#0b1e14] border border-[#1d4a30]">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3acd5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-[18px] font-black text-white">Manual Claim Paused</p>
+                      <p className="mt-3 text-[14px] leading-relaxed text-[#8d98aa]">
+                        Manual claim is temporarily paused due to <span className="font-bold text-[#3acd5b]">v2 migration</span>.
+                      </p>
+                      <p className="mt-3 text-[14px] leading-relaxed text-[#8d98aa]">
+                        <span className="font-bold text-white">CASHBACKS</span> are automatically distributed to your wallet <span className="font-bold text-[#3acd5b]">every Sunday</span>. No CLAIM needed.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowClaimModal(false)}
+                      data-testid="btn-close-claim-modal"
+                      className="mt-2 w-full rounded-[15px] border border-[#1a4a2a] bg-[#0a2015] px-4 py-3 text-[14px] font-bold text-[#3acd5b] transition-all hover:bg-[#0d2818] active:scale-[0.98]"
+                    >
+                      Got it
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Per-Token Cashback */}
             {tokenCashbacks && tokenCashbacks.length > 0 && (
