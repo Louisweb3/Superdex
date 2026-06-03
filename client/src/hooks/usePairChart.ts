@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 const WETH = "0x4200000000000000000000000000000000000006";
 const NATIVE_ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
@@ -102,56 +102,4 @@ export function usePairChart(sellAddress: string, buyAddress: string, range: Cha
   }, [poolAddress, range]);
 
   return { data, isLoading, change, poolAddress };
-}
-
-// ── Bulk token prices from GeckoTerminal (same source as the chart) ──────────
-// Returns a map of lowercase address → USD price, refreshed every 30s.
-export function useTokenPrices(addresses: string[]): Record<string, number> {
-  const [prices, setPrices] = useState<Record<string, number>>({});
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (addresses.length === 0) return;
-
-    // Normalize: native ETH → WETH for GeckoTerminal lookup, but keep a map
-    // so we can return the price under both the original and normalized address.
-    const normalized = addresses.map((a) => normalizeAddress(a));
-    const uniqueNorm = [...new Set(normalized)];
-
-    async function fetch30s() {
-      try {
-        const res = await fetch(
-          `https://api.geckoterminal.com/api/v2/simple/networks/base/token_price/${uniqueNorm.join(",")}`,
-          { headers: { Accept: "application/json;version=20230302" } }
-        );
-        if (!res.ok) return;
-        const json = await res.json();
-        const raw: Record<string, string> = json?.data?.attributes?.token_prices ?? {};
-
-        // Build result: index by both normalized and original addresses
-        const result: Record<string, number> = {};
-        for (const [normAddr, priceStr] of Object.entries(raw)) {
-          const price = parseFloat(priceStr);
-          if (!isNaN(price)) result[normAddr.toLowerCase()] = price;
-        }
-        // Also index native ETH under its original address if WETH was returned
-        for (let i = 0; i < addresses.length; i++) {
-          const orig = addresses[i].toLowerCase();
-          const norm = normalized[i].toLowerCase();
-          if (orig !== norm && result[norm] !== undefined) {
-            result[orig] = result[norm];
-          }
-        }
-        setPrices(result);
-      } catch { /* silent — keep previous prices */ }
-
-      timerRef.current = setTimeout(fetch30s, 30_000);
-    }
-
-    fetch30s();
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addresses.join(",")]);
-
-  return prices;
 }
