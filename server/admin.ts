@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { db } from "./db";
 import { adminStorage } from "./storage";
 import { sql } from "drizzle-orm";
-import { users, rewardUsers, swapEvents, dailyQuests, siteSettings, pageBlocks, adminEvents, socialLinks, earnTasks, taskCompletions, adminAnnouncements } from "@shared/schema";
+import { users, rewardUsers, swapEvents, dailyQuests, siteSettings, pageBlocks, adminEvents, socialLinks, earnTasks, taskCompletions, adminAnnouncements, popularTokens } from "@shared/schema";
 import { earnStorage } from "./storage";
 
 const ADMIN_PASSWORD = "MKM2026";
@@ -178,6 +178,28 @@ export function registerAdminRoutes(app: Express) {
     return res.json({ ok: true });
   });
 
+  // ── Popular Tokens Admin ────────────────────────────────────────────────
+  app.get("/api/admin/popular-tokens", requireAdmin, async (_req, res) => {
+    return res.json(await adminStorage.getPopularTokens(false));
+  });
+
+  app.post("/api/admin/popular-tokens", requireAdmin, async (req, res) => {
+    const t = req.body;
+    if (!t.symbol || !t.name || !t.address) return res.status(400).json({ error: "Missing required fields" });
+    const saved = await adminStorage.upsertPopularToken(t);
+    return res.json(saved);
+  });
+
+  app.delete("/api/admin/popular-tokens/:id", requireAdmin, async (req, res) => {
+    await adminStorage.deletePopularToken(String(req.params.id));
+    return res.json({ ok: true });
+  });
+
+  // Public popular tokens
+  app.get("/api/popular-tokens", async (_req, res) => {
+    return res.json(await adminStorage.getPopularTokens(true));
+  });
+
   // ── Announcements Admin ─────────────────────────────────────────────────
   app.get("/api/admin/announcements", requireAdmin, async (_req, res) => {
     return res.json(await earnStorage.getAnnouncements(false));
@@ -199,8 +221,122 @@ export function registerAdminRoutes(app: Express) {
     return res.json({ ok: true });
   });
 
+  // Public announcements (no auth)
+  app.get("/api/announcements", async (_req, res) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const all = await earnStorage.getAnnouncements(false);
+    const active = all.filter((a) => {
+      if (!a.active) return false;
+      if (a.start_date && a.start_date > today) return false;
+      if (a.end_date && a.end_date < today) return false;
+      return true;
+    });
+    return res.json(active);
+  });
+
+  // ── AI Builder ──────────────────────────────────────────────────────────
+  app.post("/api/admin/ai-builder", requireAdmin, async (req, res) => {
+    const { prompt } = req.body;
+    if (!prompt) return res.status(400).json({ error: "Missing prompt" });
+
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (!openaiKey) {
+      return res.json({
+        response: "⚠️ No OpenAI API key found. Add `OPENAI_API_KEY` in the Secrets panel (🔒 icon in the sidebar) to enable the AI Builder.",
+        actions: [],
+      });
+    }
+
+    const settings = await adminStorage.getAllSettings();
+    const tokens = await adminStorage.getPopularTokens(false);
+    const context = `You are the AI admin assistant for SuperSwap DEX — a reward-first DEX on Base network.
+
+Current site settings:
+${JSON.stringify(settings, null, 2)}
+
+Current popular tokens (${tokens.length}):
+${tokens.map((t) => `${t.symbol} (${t.address})`).join(", ") || "none"}
+
+You can help the admin:
+- Change site settings (hero_title_line1/2/3, hero_subtitle, site_tagline, total_rewards_paid, campaign_post_url)
+- Create/manage announcements (popup banners shown bottom-right to users)
+- Manage popular tokens on the swap page
+- Describe how to change page blocks, events, earn tasks, social links
+
+Respond concisely. Format: first give a friendly confirmation of what you did/will do, then if you're making DB changes, end your message with a JSON block like:
+\`\`\`json
+{"actions": [{"type": "setting", "key": "hero_title_line1", "value": "NEW VALUE"}, ...]}
+\`\`\`
+
+Available action types: "setting" (key+value), "announcement" (title+message+type+icon), "popular_token" (symbol+name+address+decimals+icon_url+sort_order).`;
+
+    try {
+      const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: context },
+            { role: "user", content: prompt },
+          ],
+          max_tokens: 800,
+          temperature: 0.7,
+        }),
+      });
+      if (!aiRes.ok) {
+        const err = await aiRes.text();
+        return res.json({ response: `OpenAI error: ${err}`, actions: [] });
+      }
+      const aiJson = await aiRes.json();
+      const text: string = aiJson.choices?.[0]?.message?.content ?? "No response";
+
+      // Extract and execute actions from JSON block
+      const jsonMatch = text.match(/```json\s*([\s\S]*?)```/);
+      const executedActions: string[] = [];
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]);
+          for (const action of (parsed.actions ?? [])) {
+            if (action.type === "setting" && action.key && action.value !== undefined) {
+              await adminStorage.setSetting(action.key, String(action.value));
+              executedActions.push(`Updated setting: ${action.key}`);
+            } else if (action.type === "announcement") {
+              await earnStorage.createAnnouncement({
+                title: action.title ?? "",
+                message: action.message ?? "",
+                type: action.annType ?? action.type ?? "info",
+                active: true,
+                start_date: new Date().toISOString().slice(0, 10),
+                end_date: "",
+                icon: action.icon ?? "",
+              });
+              executedActions.push(`Created announcement: ${action.title}`);
+            } else if (action.type === "popular_token") {
+              await adminStorage.upsertPopularToken({
+                symbol: action.symbol,
+                name: action.name,
+                address: action.address,
+                decimals: action.decimals ?? 18,
+                icon_url: action.icon_url ?? "",
+                sort_order: action.sort_order ?? 0,
+                active: true,
+              });
+              executedActions.push(`Added token: ${action.symbol}`);
+            }
+          }
+        } catch (_e) { /* ignore parse errors */ }
+      }
+
+      const cleanText = text.replace(/```json[\s\S]*?```/g, "").trim();
+      return res.json({ response: cleanText, actions: executedActions });
+    } catch (e: any) {
+      return res.json({ response: `Error: ${e.message}`, actions: [] });
+    }
+  });
+
   // ── Database Explorer ───────────────────────────────────────────────────
-  type DbTableKey = "users" | "reward_users" | "swap_events" | "daily_quests" | "site_settings" | "page_blocks" | "admin_events" | "social_links" | "earn_tasks" | "task_completions" | "admin_announcements";
+  type DbTableKey = "users" | "reward_users" | "swap_events" | "daily_quests" | "site_settings" | "page_blocks" | "admin_events" | "social_links" | "earn_tasks" | "task_completions" | "admin_announcements" | "popular_tokens";
 
   const TABLE_MAP: Record<DbTableKey, any> = {
     users,
@@ -214,6 +350,7 @@ export function registerAdminRoutes(app: Express) {
     earn_tasks: earnTasks,
     task_completions: taskCompletions,
     admin_announcements: adminAnnouncements,
+    popular_tokens: popularTokens,
   };
 
   app.get("/api/admin/database", requireAdmin, async (_req, res) => {

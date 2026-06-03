@@ -274,6 +274,23 @@ export const CHEST_DEFS: ChestDef[] = [
   },
 ];
 
+// ─── Popular Tokens (swap page quick-select) ──────────────────────────────────
+export const popularTokens = pgTable("popular_tokens", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  symbol: varchar("symbol", { length: 16 }).notNull(),
+  name: varchar("name", { length: 64 }).notNull(),
+  address: varchar("address", { length: 42 }).notNull(),
+  decimals: integer("decimals").notNull().default(18),
+  icon_url: text("icon_url").notNull().default(""),
+  sort_order: integer("sort_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+export const insertPopularTokenSchema = createInsertSchema(popularTokens).omit({ id: true, created_at: true });
+export type InsertPopularToken = z.infer<typeof insertPopularTokenSchema>;
+export type PopularToken = typeof popularTokens.$inferSelect;
+
 // ─── Admin CMS: Social Links ──────────────────────────────────────────────────
 export const socialLinks = pgTable("social_links", {
   id: varchar("id", { length: 36 }).primaryKey(),

@@ -12,6 +12,7 @@ import { recordSwapReward, useMarketPrices, type MarketPrice } from "@/hooks/use
 import { useBaseTokens } from "@/hooks/useBaseTokens";
 import { useWalletBalances } from "@/hooks/useWalletBalances";
 import { usePairChart, type ChartRange } from "@/hooks/usePairChart";
+import { usePublicPopularTokens } from "@/hooks/useAdmin";
 import maximizeRewardsBg from "@assets/Background__1779712623898.png";
 import tokenLogo from "@assets/token_logo_1779712623899.png";
 
@@ -586,6 +587,9 @@ function TxModal({ hash, cashback, onClose }: { hash: string; cashback: number; 
 // ─── Main SwapPage ───────────────────────────────────────────────────────────────
 export function SwapPage() {
   const wallet = useWalletContext();
+
+  // ── DB-driven popular tokens (swap quick-select sidebar) ─────────────────────
+  const { data: dbPopularTokens } = usePublicPopularTokens();
 
   // ── 30 Base tokens from DexScreener ─────────────────────────────────────────
   const { tokens: baseTokens, isLoading: tokensLoading } = useBaseTokens();
@@ -1168,46 +1172,65 @@ export function SwapPage() {
             </div>
 
             {/* Popular Tokens quick-select */}
-            <div className="relative w-full overflow-hidden rounded-[22px] border border-[#0a1825] bg-[#020c18]">
-              <div className="border-b border-[#071522] px-5 py-4">
-                <span className="font-['Inter',sans-serif] text-[15px] font-bold text-[#9da1a8]">Popular Tokens</span>
-              </div>
-              <div className="flex flex-col divide-y divide-[#071522]">
-                {allTokens.slice(0, 6).map((token, idx) => (
-                  <button
-                    key={token.address}
-                    onClick={() => {
-                      if (token.address !== buyToken.address) setSellToken(token);
-                    }}
-                    className="flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-[#030e1c] active:bg-[#040f1e]"
-                    data-testid={`token-quick-${token.symbol}`}
-                  >
-                    <img
-                      src={token.icon}
-                      alt={token.symbol}
-                      className="h-8 w-8 shrink-0 rounded-full object-cover bg-[#0a1825]"
-                      onError={(e) => {
-                        const img = e.target as HTMLImageElement;
-                        img.onerror = null;
-                        img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${token.address.toLowerCase()}.png`;
-                      }}
-                    />
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#9da1a8]">{token.symbol}</span>
-                      <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c] truncate">{token.name}</span>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <TokenSparkline address={token.address} index={idx} />
-                      {(token.address === sellToken.address || token.address === buyToken.address) && (
-                        <span className="font-['Inter',sans-serif] text-[10px] text-[#2dae50]">
-                          {token.address === sellToken.address ? "Selling" : "Buying"}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+            {(() => {
+              // Use DB-driven popular tokens if any; fall back to first 6 from allTokens
+              const popularList: { symbol: string; name: string; address: string; icon: string; token?: Token }[] =
+                dbPopularTokens && dbPopularTokens.length > 0
+                  ? dbPopularTokens.map((pt) => {
+                      const matched = allTokens.find((t) => t.address.toLowerCase() === pt.address.toLowerCase());
+                      return {
+                        symbol: pt.symbol,
+                        name: pt.name,
+                        address: pt.address,
+                        icon: pt.icon_url || `https://dd.dexscreener.com/ds-data/tokens/base/${pt.address.toLowerCase()}.png`,
+                        token: matched,
+                      };
+                    })
+                  : allTokens.slice(0, 6).map((t) => ({ symbol: t.symbol, name: t.name, address: t.address, icon: t.icon, token: t }));
+              return (
+                <div className="relative w-full overflow-hidden rounded-[22px] border border-[#0a1825] bg-[#020c18]">
+                  <div className="border-b border-[#071522] px-5 py-4">
+                    <span className="font-['Inter',sans-serif] text-[15px] font-bold text-[#9da1a8]">Popular Tokens</span>
+                  </div>
+                  <div className="flex flex-col divide-y divide-[#071522]">
+                    {popularList.map((item, idx) => (
+                      <button
+                        key={item.address}
+                        onClick={() => {
+                          const target = item.token ?? allTokens.find((t) => t.address.toLowerCase() === item.address.toLowerCase());
+                          if (target && target.address !== buyToken.address) setSellToken(target);
+                        }}
+                        className="flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-[#030e1c] active:bg-[#040f1e]"
+                        data-testid={`token-quick-${item.symbol}`}
+                      >
+                        <img
+                          src={item.icon}
+                          alt={item.symbol}
+                          className="h-8 w-8 shrink-0 rounded-full object-cover bg-[#0a1825]"
+                          onError={(e) => {
+                            const img = e.target as HTMLImageElement;
+                            img.onerror = null;
+                            img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${item.address.toLowerCase()}.png`;
+                          }}
+                        />
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#9da1a8]">{item.symbol}</span>
+                          <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c] truncate">{item.name}</span>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <TokenSparkline address={item.address} index={idx} />
+                          {(item.address === sellToken.address || item.address === buyToken.address) && (
+                            <span className="font-['Inter',sans-serif] text-[10px] text-[#2dae50]">
+                              {item.address === sellToken.address ? "Selling" : "Buying"}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* DEX Sources Info */}
             <div className="relative w-full overflow-hidden rounded-[22px] border border-[#0a1825] bg-[#020c18] px-5 py-4">

@@ -296,6 +296,58 @@ export function useAdminAnnouncements() {
   return { announcements, create, update, remove };
 }
 
+// ── Popular Tokens Admin ────────────────────────────────────────────────────────────────
+export interface AdminPopularToken {
+  id: string;
+  symbol: string;
+  name: string;
+  address: string;
+  decimals: number;
+  icon_url: string;
+  sort_order: number;
+  active: boolean;
+}
+
+export function useAdminPopularTokens() {
+  const qc = useQueryClient();
+  const tokens = useQuery<AdminPopularToken[]>({
+    queryKey: ["/api/admin/popular-tokens"],
+    queryFn: () => adminFetch("/api/admin/popular-tokens"),
+    enabled: !!getToken(),
+  });
+  const upsert = useMutation({
+    mutationFn: (t: Partial<AdminPopularToken> & { symbol: string; name: string; address: string }) =>
+      adminFetch("/api/admin/popular-tokens", { method: "POST", body: JSON.stringify(t) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/admin/popular-tokens"] });
+      qc.invalidateQueries({ queryKey: ["/api/popular-tokens"] });
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => adminFetch(`/api/admin/popular-tokens/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/admin/popular-tokens"] });
+      qc.invalidateQueries({ queryKey: ["/api/popular-tokens"] });
+    },
+  });
+  return { tokens, upsert, remove };
+}
+
+export function usePublicPopularTokens() {
+  return useQuery<AdminPopularToken[]>({
+    queryKey: ["/api/popular-tokens"],
+    queryFn: () => fetch("/api/popular-tokens").then((r) => r.json()),
+  });
+}
+
+export function usePublicAnnouncements() {
+  return useQuery<AdminAnnouncementItem[]>({
+    queryKey: ["/api/announcements"],
+    queryFn: () => fetch("/api/announcements").then((r) => r.json()),
+    staleTime: 60_000,
+  });
+}
+
 // ── Database Explorer ───────────────────────────────────────────────────────────────────
 export interface DbTableCount {
   table: string;

@@ -9,6 +9,7 @@ import NotFound from "@/pages/not-found";
 import { LandinHome } from "@/pages/LandinHome";
 import { AdminPage } from "@/pages/AdminPage";
 import { DocsPage } from "@/pages/DocsPage";
+import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 
 function Router() {
   return (
@@ -35,6 +36,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Router />
+            <AnnouncementBanner />
           </TooltipProvider>
         </WalletProvider>
       </QueryClientProvider>

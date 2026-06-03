@@ -10,6 +10,7 @@ import {
   earnTasks,
   taskCompletions,
   adminAnnouncements,
+  popularTokens,
   type User,
   type InsertUser,
   type TokenCashback,
@@ -18,6 +19,7 @@ import {
   type TaskCompletion,
   type InsertTaskCompletion,
   type AdminAnnouncement,
+  type PopularToken,
 } from "@shared/schema";
 
 // ─── Base user storage (keep for auth compat) ────────────────────────────────────────────────
@@ -1590,6 +1592,47 @@ export class AdminStorage {
 
   async deleteSocialLink(id: string): Promise<void> {
     await db.delete(socialLinks).where(eq(socialLinks.id, id));
+  }
+
+  // ── Popular Tokens ────────────────────────────────────────────────────────────
+  async getPopularTokens(activeOnly = false): Promise<PopularToken[]> {
+    const rows = activeOnly
+      ? await db.select().from(popularTokens).where(eq(popularTokens.active, true)).orderBy(asc(popularTokens.sort_order))
+      : await db.select().from(popularTokens).orderBy(asc(popularTokens.sort_order));
+    return rows;
+  }
+
+  async upsertPopularToken(token: Partial<PopularToken> & { symbol: string; name: string; address: string }): Promise<PopularToken> {
+    const id = token.id ?? randomUUID();
+    const [existing] = await db.select().from(popularTokens).where(eq(popularTokens.id, id)).limit(1);
+    if (existing) {
+      await db.update(popularTokens).set({
+        symbol: token.symbol,
+        name: token.name,
+        address: token.address,
+        decimals: token.decimals ?? existing.decimals,
+        icon_url: token.icon_url ?? existing.icon_url,
+        sort_order: token.sort_order ?? existing.sort_order,
+        active: token.active ?? existing.active,
+      }).where(eq(popularTokens.id, id));
+    } else {
+      await db.insert(popularTokens).values({
+        id,
+        symbol: token.symbol,
+        name: token.name,
+        address: token.address,
+        decimals: token.decimals ?? 18,
+        icon_url: token.icon_url ?? "",
+        sort_order: token.sort_order ?? 0,
+        active: token.active ?? true,
+      });
+    }
+    const [row] = await db.select().from(popularTokens).where(eq(popularTokens.id, id)).limit(1);
+    return row;
+  }
+
+  async deletePopularToken(id: string): Promise<void> {
+    await db.delete(popularTokens).where(eq(popularTokens.id, id));
   }
 }
 
