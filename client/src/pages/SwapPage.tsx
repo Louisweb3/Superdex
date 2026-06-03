@@ -11,7 +11,7 @@ import { useSwapPrice, fetchSwapQuote, type SwapQuote } from "@/hooks/useSwapQuo
 import { recordSwapReward, useMarketPrices, type MarketPrice } from "@/hooks/useRewards";
 import { useBaseTokens } from "@/hooks/useBaseTokens";
 import { useWalletBalances } from "@/hooks/useWalletBalances";
-import { usePairChart, type ChartRange } from "@/hooks/usePairChart";
+import { usePairChart, useTokenPrices, type ChartRange } from "@/hooks/usePairChart";
 import maximizeRewardsBg from "@assets/Background__1779712623898.png";
 import tokenLogo from "@assets/token_logo_1779712623899.png";
 
@@ -532,6 +532,14 @@ export function SwapPage() {
       };
     });
   }, [baseTokens, balances]);
+
+  // ── GeckoTerminal prices for popular tokens (same source as the chart) ───────
+  const popularAddresses = useMemo(
+    () => allTokens.slice(0, 6).map((t) => t.address),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allTokens.slice(0, 6).map((t) => t.address).join(",")]
+  );
+  const geckoTokenPrices = useTokenPrices(popularAddresses);
 
   // Default to first two tokens (ETH and USDC)
   const defaultSell = useMemo(
@@ -1123,12 +1131,13 @@ export function SwapPage() {
                     </div>
                     <div className="flex flex-col items-end gap-0.5">
                       {(() => {
-                        const displayPrice = tokenUsdPrice(token) || token.price || 0;
+                        const displayPrice =
+                          geckoTokenPrices[token.address.toLowerCase()] ?? 0;
                         return displayPrice > 0 ? (
                           <span className="font-['Inter',sans-serif] text-[13px] font-semibold text-[#c8ccd2]">
                             {displayPrice >= 1
                               ? `$${displayPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                              : `$${displayPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`}
+                              : `$${displayPrice.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 })}`}
                           </span>
                         ) : null;
                       })()}
