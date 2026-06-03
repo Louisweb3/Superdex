@@ -6,7 +6,7 @@ import { verifyTransaction } from "./basescan";
 const ZEROX_API_KEY = process.env.ZEROX_API_KEY || "";
 const ZEROX_BASE_URL = "https://api.0x.org";
 const CHAIN_ID = 8453;
-const FEE_RECIPIENT = "0x07808cD830c5D599dF3CC95a9Cf43EBada5B373a";
+const FEE_RECIPIENT = "0xea8d70f2e7e577160b1c5a2c6e33bfd8ad6dde5e";
 const FEE_BPS = 30;
 
 // Simple in-memory price cache

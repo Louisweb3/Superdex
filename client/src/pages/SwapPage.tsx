@@ -449,7 +449,7 @@ function RoutesPanel({ quote, buyToken }: { quote: SwapQuote; buyToken: Token })
 }
 
 // ─── Tx Status Modal ─────────────────────────────────────────────────────────────
-function TxModal({ hash, onClose }: { hash: string; onClose: () => void }) {
+function TxModal({ hash, cashback, onClose }: { hash: string; cashback: number; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div className="w-full max-w-[360px] overflow-hidden rounded-[22px] border border-[#0f2a1a] bg-[#030e1a]">
@@ -463,6 +463,19 @@ function TxModal({ hash, onClose }: { hash: string; onClose: () => void }) {
               Your transaction has been broadcast to Base.
             </p>
           </div>
+
+          {cashback > 0 && (
+            <div className="w-full rounded-[14px] border border-[#1a4a2a] bg-[#040f18] px-4 py-3 text-center">
+              <p className="font-['Inter',sans-serif] text-[11px] text-[#4d5a6e] uppercase tracking-wider mb-1">Cashback Earned</p>
+              <p className="font-['Inter',sans-serif] text-[22px] font-bold text-[#2dae50]" data-testid="text-cashback-earned">
+                +${cashback.toFixed(4)}
+              </p>
+              <p className="font-['Inter',sans-serif] text-[11px] text-[#3a5a40] mt-0.5">
+                50% of integrator fee · credited to your rewards
+              </p>
+            </div>
+          )}
+
           <a
             href={`https://basescan.org/tx/${hash}`}
             target="_blank"
@@ -551,6 +564,7 @@ export function SwapPage() {
   const [showDexPanel, setShowDexPanel] = useState(false);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [swapCashback, setSwapCashback] = useState(0);
   const [swapping, setSwapping] = useState(false);
   const [swapError, setSwapError] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
@@ -614,11 +628,24 @@ export function SwapPage() {
     setSellAmount(quote?.buyAmountFormatted ?? "1");
   };
 
+  // Compute USD volume of a swap — uses sell-side price first, falls back to buy-side
+  const computeVolumeUsd = useCallback((
+    sellAmt: string,
+    buyAmt: string,
+  ): number => {
+    const sell = parseFloat(sellAmt);
+    const buy = parseFloat(buyAmt);
+    if (sellUsdPrice > 0 && !isNaN(sell)) return sell * sellUsdPrice;
+    if (buyUsdPrice > 0 && !isNaN(buy)) return buy * buyUsdPrice;
+    return 0;
+  }, [sellUsdPrice, buyUsdPrice]);
+
   // ─── Execute Swap ────────────────────────────────────────────────────────────
   const handleSwap = useCallback(async () => {
     if (!wallet.isConnected || !wallet.address) return;
     setSwapError(null);
     setSwapping(true);
+    setSwapCashback(0);
 
     try {
       const fullQuote = await fetchSwapQuote(
@@ -640,7 +667,8 @@ export function SwapPage() {
             data: approveData,
             value: "0x0",
           });
-          await new Promise((r) => setTimeout(r, 2000));
+          // Wait for approval to be mined
+          await new Promise((r) => setTimeout(r, 3000));
         } finally {
           setApproving(false);
         }
@@ -648,35 +676,39 @@ export function SwapPage() {
         const refreshedQuote = await fetchSwapQuote(
           sellToken, buyToken, sellAmount, wallet.address, slippageBps, selectedSources
         );
-        if (!refreshedQuote.transaction) throw new Error("No transaction data in quote");
+        if (!refreshedQuote.transaction) throw new Error("No transaction data in quote after approval");
 
         const hash = await wallet.sendTransaction({
           to: refreshedQuote.transaction.to,
           data: refreshedQuote.transaction.data,
-          value: toHexWei(refreshedQuote.transaction.value),
+          value: toHexWei(refreshedQuote.transaction.value ?? "0"),
           gas: toHexWei(refreshedQuote.transaction.gas),
         });
         setTxHash(hash);
-        const volUsd = parseFloat(sellAmount) * parseFloat(refreshedQuote.price ?? "0");
-        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd).catch(() => {});
+        const volUsd = computeVolumeUsd(sellAmount, refreshedQuote.buyAmountFormatted);
+        const cb = volUsd * 0.0015;
+        setSwapCashback(cb);
+        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, volUsd).catch(() => {});
       } else {
         if (!fullQuote.transaction) throw new Error("No transaction data in quote");
         const hash = await wallet.sendTransaction({
           to: fullQuote.transaction.to,
           data: fullQuote.transaction.data,
-          value: toHexWei(fullQuote.transaction.value),
+          value: toHexWei(fullQuote.transaction.value ?? "0"),
           gas: toHexWei(fullQuote.transaction.gas),
         });
         setTxHash(hash);
-        const volUsd = parseFloat(sellAmount) * parseFloat(fullQuote.price ?? "0");
-        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, isNaN(volUsd) ? 0 : volUsd).catch(() => {});
+        const volUsd = computeVolumeUsd(sellAmount, fullQuote.buyAmountFormatted);
+        const cb = volUsd * 0.0015;
+        setSwapCashback(cb);
+        recordSwapReward(wallet.address!, hash, sellToken.symbol, buyToken.symbol, volUsd).catch(() => {});
       }
     } catch (err: any) {
       setSwapError(err.message ?? "Swap failed");
     } finally {
       setSwapping(false);
     }
-  }, [wallet, sellToken, buyToken, sellAmount, slippageBps, selectedSources]);
+  }, [wallet, sellToken, buyToken, sellAmount, slippageBps, selectedSources, computeVolumeUsd]);
 
   // ─── Computed display values ─────────────────────────────────────────────────
   const rateStr = quote
@@ -849,8 +881,10 @@ export function SwapPage() {
                 
                   <div className="flex items-center justify-between">
                     <span className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">Est. Cashback</span>
-                    <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#2dae50]">
-                      {quote && sellAmount ? fmtUsd(parseFloat(sellAmount) * parseFloat(quote.price ?? "0") * 0.0015) : "—"}
+                    <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#2dae50]" data-testid="text-est-cashback">
+                      {quote && sellAmount
+                        ? fmtUsd(computeVolumeUsd(sellAmount, quote.buyAmountFormatted) * 0.0015)
+                        : "—"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -1091,7 +1125,7 @@ export function SwapPage() {
       </div>
 
       {/* Tx success modal */}
-      {txHash && <TxModal hash={txHash} onClose={() => setTxHash(null)} />}
+      {txHash && <TxModal hash={txHash} cashback={swapCashback} onClose={() => { setTxHash(null); setSwapCashback(0); }} />}
     </>
   );
 }
