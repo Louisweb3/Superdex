@@ -278,20 +278,27 @@ function TokenBox({
     (t) => t.address.toLowerCase() === token.address.toLowerCase()
   );
   const bal = tokenWithBalance?.balance;
-  const hasBalance = bal !== undefined && bal > 0;
+  const balLoaded = bal !== undefined;
 
   return (
     <div className="relative rounded-[18px] border border-[#0d1e2e] bg-[#040e1e] px-4 pt-3 pb-4">
       <div className="mb-2 flex items-center justify-between">
         <span className="font-['Inter',sans-serif] text-[13px] font-medium text-[#4d5a6e]">{label}</span>
-        {hasBalance && onAmountChange && (
-          <button
-            onClick={() => onAmountChange(String(bal))}
-            className="font-['Inter',sans-serif] text-[11px] font-semibold text-[#2dae50] hover:underline"
-            data-testid="button-balance-max"
-          >
-            Balance: {bal!.toLocaleString("en-US", { maximumFractionDigits: 6 })} {token.symbol}
-          </button>
+        {balLoaded && onAmountChange && (
+          <div className="flex items-center gap-2">
+            <span className="font-['Inter',sans-serif] text-[11px] text-[#4d5a6e]">
+              Balance: {(bal ?? 0).toLocaleString("en-US", { maximumFractionDigits: 6 })} {token.symbol}
+            </span>
+            {bal !== undefined && bal > 0 && (
+              <button
+                onClick={() => onAmountChange(String(bal))}
+                className="rounded-[6px] border border-[#1a4a2a] bg-[#051510] px-1.5 py-0.5 font-['Inter',sans-serif] text-[10px] font-bold text-[#2dae50] hover:bg-[#071e12] transition-colors"
+                data-testid="button-balance-max"
+              >
+                MAX
+              </button>
+            )}
+          </div>
         )}
       </div>
       <div className="flex items-center gap-3">
@@ -1062,11 +1069,19 @@ export function SwapPage() {
                       <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#9da1a8]">{token.symbol}</span>
                       <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c] truncate">{token.name}</span>
                     </div>
-                    <div className="flex flex-col items-end">
-                      <span className="font-['Inter',sans-serif] text-[12px] text-[#4d5a6e]">
-                        {token.address === sellToken.address ? "Selling" :
-                         token.address === buyToken.address ? "Buying" : ""}
-                      </span>
+                    <div className="flex flex-col items-end gap-0.5">
+                      {token.price !== undefined && token.price > 0 && (
+                        <span className="font-['Inter',sans-serif] text-[13px] font-semibold text-[#c8ccd2]">
+                          {token.price >= 1
+                            ? `$${token.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : `$${token.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`}
+                        </span>
+                      )}
+                      {(token.address === sellToken.address || token.address === buyToken.address) && (
+                        <span className="font-['Inter',sans-serif] text-[10px] text-[#2dae50]">
+                          {token.address === sellToken.address ? "Selling" : "Buying"}
+                        </span>
+                      )}
                     </div>
                   </button>
                 ))}
