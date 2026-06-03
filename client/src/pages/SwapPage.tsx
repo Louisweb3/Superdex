@@ -255,6 +255,81 @@ function TokenPickerModal({
   );
 }
 
+// ─── Token Sparkline ─────────────────────────────────────────────────────────────
+const SPARKLINE_CACHE: Record<string, { points: number[]; up: boolean } | null> = {};
+const SPARKLINE_PENDING: Record<string, Promise<void>> = {};
+const NATIVE = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+const WETH_BASE = "0x4200000000000000000000000000000000000006";
+
+async function fetchSparklinePoints(address: string): Promise<{ points: number[]; up: boolean } | null> {
+  try {
+    const res = await fetch(`/api/sparkline/${address.toLowerCase()}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+function useSparkline(address: string, delayMs = 0) {
+  const [state, setState] = useState<{ points: number[]; up: boolean } | null | "loading">("loading");
+
+  useEffect(() => {
+    const key = address.toLowerCase() === NATIVE ? WETH_BASE : address.toLowerCase();
+    if (SPARKLINE_CACHE[key] !== undefined) {
+      setState(SPARKLINE_CACHE[key]);
+      return;
+    }
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      if (!SPARKLINE_PENDING[key]) {
+        SPARKLINE_PENDING[key] = fetchSparklinePoints(address).then((result) => {
+          SPARKLINE_CACHE[key] = result;
+          delete SPARKLINE_PENDING[key];
+        });
+      }
+      SPARKLINE_PENDING[key]?.then(() => {
+        if (!cancelled) setState(SPARKLINE_CACHE[key] ?? null);
+      });
+    };
+    const timer = delayMs > 0 ? setTimeout(run, delayMs) : (run(), undefined);
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [address, delayMs]);
+
+  return state;
+}
+
+function TokenSparkline({ address, index = 0 }: { address: string; index?: number }) {
+  const delay = index * 350;
+  const data = useSparkline(address, delay);
+  if (data === "loading" || !data) {
+    return <div className="w-[64px] h-[32px] opacity-20 rounded bg-[#0d1e2e]" />;
+  }
+  const { points, up } = data;
+  const W = 64, H = 32, pad = 2;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+  const xs = points.map((_, i) => pad + (i / (points.length - 1)) * (W - pad * 2));
+  const ys = points.map((p) => H - pad - ((p - min) / range) * (H - pad * 2));
+  const linePoints = xs.map((x, i) => `${x},${ys[i]}`).join(" ");
+  const fillPoints = `${xs[0]},${H} ` + linePoints + ` ${xs[xs.length - 1]},${H}`;
+  const color = up ? "#2dae50" : "#e05050";
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="shrink-0">
+      <defs>
+        <linearGradient id={`sg-${address.slice(2, 8)}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={fillPoints} fill={`url(#sg-${address.slice(2, 8)})`} />
+      <polyline points={linePoints} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // ─── Token Input Box ────────────────────────────────────────────────────────────
 function TokenBox({
   label, token, amount, onAmountChange, readonly, usdValue,
@@ -1098,7 +1173,7 @@ export function SwapPage() {
                 <span className="font-['Inter',sans-serif] text-[15px] font-bold text-[#9da1a8]">Popular Tokens</span>
               </div>
               <div className="flex flex-col divide-y divide-[#071522]">
-                {allTokens.slice(0, 6).map((token) => (
+                {allTokens.slice(0, 6).map((token, idx) => (
                   <button
                     key={token.address}
                     onClick={() => {
@@ -1121,14 +1196,8 @@ export function SwapPage() {
                       <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#9da1a8]">{token.symbol}</span>
                       <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c] truncate">{token.name}</span>
                     </div>
-                    <div className="flex flex-col items-end gap-0.5">
-                      {token.price !== undefined && token.price > 0 && (
-                        <span className="font-['Inter',sans-serif] text-[13px] font-semibold text-[#c8ccd2]">
-                          {token.price >= 1
-                            ? `$${token.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                            : `$${token.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`}
-                        </span>
-                      )}
+                    <div className="flex flex-col items-end gap-1">
+                      <TokenSparkline address={token.address} index={idx} />
                       {(token.address === sellToken.address || token.address === buyToken.address) && (
                         <span className="font-['Inter',sans-serif] text-[10px] text-[#2dae50]">
                           {token.address === sellToken.address ? "Selling" : "Buying"}

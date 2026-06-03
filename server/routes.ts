@@ -13,7 +13,90 @@ const FEE_BPS = 30;
 let priceCache: { data: any; ts: number } | null = null;
 const PRICE_TTL = 30_000;
 
+// GeckoTerminal proxy caches
+const WETH_BASE = "0x4200000000000000000000000000000000000006";
+const NATIVE_ADDR = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+const sparklineCache = new Map<string, { data: { points: number[]; up: boolean } | null; ts: number }>();
+const SPARKLINE_TTL = 5 * 60_000;
+
+// Pool address cache
+const poolCache = new Map<string, { poolAddr: string | null; ts: number }>();
+const POOL_TTL = 10 * 60_000;
+
+// OHLCV chart data cache per "address:range"
+const chartCache = new Map<string, { data: { time: number; price: number }[]; ts: number }>();
+const CHART_TTL: Record<string, number> = { "1H": 60_000, "24H": 2 * 60_000, "7D": 5 * 60_000 };
+
+const RANGE_CONFIG: Record<string, { interval: string; limit: number; aggregate?: number }> = {
+  "1H":  { interval: "minute", limit: 60,  aggregate: 1 },
+  "24H": { interval: "hour",   limit: 24 },
+  "7D":  { interval: "hour",   limit: 168 },
+};
+
+async function getTopPool(addr: string): Promise<string | null> {
+  const cached = poolCache.get(addr);
+  if (cached && Date.now() - cached.ts < POOL_TTL) return cached.poolAddr;
+  try {
+    const res = await fetch(
+      `https://api.geckoterminal.com/api/v2/networks/base/tokens/${addr}/pools?page=1`,
+      { headers: { Accept: "application/json;version=20230302" } }
+    );
+    const poolAddr = res.ok ? ((await res.json())?.data?.[0]?.attributes?.address ?? null) : null;
+    poolCache.set(addr, { poolAddr, ts: Date.now() });
+    return poolAddr;
+  } catch { poolCache.set(addr, { poolAddr: null, ts: Date.now() }); return null; }
+}
+
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+
+  // ─── GeckoTerminal sparkline proxy (24h close prices for mini charts) ────────
+  app.get("/api/sparkline/:address", async (req, res) => {
+    try {
+      const addr = req.params.address.toLowerCase() === NATIVE_ADDR ? WETH_BASE : req.params.address.toLowerCase();
+      const cached = sparklineCache.get(addr);
+      if (cached && Date.now() - cached.ts < SPARKLINE_TTL) return res.json(cached.data);
+
+      const poolAddr = await getTopPool(addr);
+      if (!poolAddr) { sparklineCache.set(addr, { data: null, ts: Date.now() }); return res.json(null); }
+
+      const ohlcvRes = await fetch(
+        `https://api.geckoterminal.com/api/v2/networks/base/pools/${poolAddr}/ohlcv/hour?limit=24`,
+        { headers: { Accept: "application/json;version=20230302" } }
+      );
+      if (!ohlcvRes.ok) { sparklineCache.set(addr, { data: null, ts: Date.now() }); return res.json(null); }
+      const rawOhlcv: number[][] = (await ohlcvRes.json())?.data?.attributes?.ohlcv_list ?? [];
+      if (rawOhlcv.length < 2) { sparklineCache.set(addr, { data: null, ts: Date.now() }); return res.json(null); }
+      const closes = rawOhlcv.map(([,,,, c]: number[]) => c).reverse();
+      const result = { points: closes, up: closes[closes.length - 1] >= closes[0] };
+      sparklineCache.set(addr, { data: result, ts: Date.now() });
+      return res.json(result);
+    } catch { return res.json(null); }
+  });
+
+  // ─── GeckoTerminal full chart proxy (1H / 24H / 7D) ─────────────────────────
+  app.get("/api/chart/:address", async (req, res) => {
+    try {
+      const addr = req.params.address.toLowerCase() === NATIVE_ADDR ? WETH_BASE : req.params.address.toLowerCase();
+      const range = (String(req.query.range || "24H")).toUpperCase();
+      const cfg = RANGE_CONFIG[range] ?? RANGE_CONFIG["24H"];
+      const cacheKey = `${addr}:${range}`;
+      const cached = chartCache.get(cacheKey);
+      if (cached && Date.now() - cached.ts < (CHART_TTL[range] ?? 120_000)) return res.json(cached.data);
+
+      const poolAddr = await getTopPool(addr);
+      if (!poolAddr) { chartCache.set(cacheKey, { data: [], ts: Date.now() }); return res.json([]); }
+
+      let url = `https://api.geckoterminal.com/api/v2/networks/base/pools/${poolAddr}/ohlcv/${cfg.interval}?limit=${cfg.limit}`;
+      if (cfg.aggregate) url += `&aggregate=${cfg.aggregate}`;
+      const ohlcvRes = await fetch(url, { headers: { Accept: "application/json;version=20230302" } });
+      if (!ohlcvRes.ok) { chartCache.set(cacheKey, { data: [], ts: Date.now() }); return res.json([]); }
+      const raw: number[][] = (await ohlcvRes.json())?.data?.attributes?.ohlcv_list ?? [];
+      const points = raw.slice().reverse().map(([time,,,, close]: number[]) => ({ time: time * 1000, price: close }));
+      chartCache.set(cacheKey, { data: points, ts: Date.now() });
+      return res.json(points);
+    } catch { return res.json([]); }
+  });
 
   // ─── 0x Swap proxy ──────────────────────────────────────────────────────────
   app.get("/api/swap/price", async (req, res) => {
