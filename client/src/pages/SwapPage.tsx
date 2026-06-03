@@ -1122,13 +1122,16 @@ export function SwapPage() {
                       <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c] truncate">{token.name}</span>
                     </div>
                     <div className="flex flex-col items-end gap-0.5">
-                      {token.price !== undefined && token.price > 0 && (
-                        <span className="font-['Inter',sans-serif] text-[13px] font-semibold text-[#c8ccd2]">
-                          {token.price >= 1
-                            ? `$${token.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                            : `$${token.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`}
-                        </span>
-                      )}
+                      {(() => {
+                        const displayPrice = tokenUsdPrice(token) || token.price || 0;
+                        return displayPrice > 0 ? (
+                          <span className="font-['Inter',sans-serif] text-[13px] font-semibold text-[#c8ccd2]">
+                            {displayPrice >= 1
+                              ? `$${displayPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : `$${displayPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`}
+                          </span>
+                        ) : null;
+                      })()}
                       {(token.address === sellToken.address || token.address === buyToken.address) && (
                         <span className="font-['Inter',sans-serif] text-[10px] text-[#2dae50]">
                           {token.address === sellToken.address ? "Selling" : "Buying"}
