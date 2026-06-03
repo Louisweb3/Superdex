@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "bt29I1pyxgbee-dPXSgLo"
@@ -24,3 +23,9 @@ id = "4cTSxLxexT5zn-nkGfWyX"
 uri = "file://attached_assets/icon_gift.png"
 type = "image"
 title = "gift box icon"
+
+[[outputs]]
+id = "agk1cfC0AUSc3XGokUA-5"
+uri = "file://SUPERSWAP_MCP_GUIDE.md"
+type = "text"
+title = "SuperSwap MCP Plugin — Complete Guide"
