@@ -4,12 +4,14 @@ import {
   Info, Zap, CheckSquare, Square, Loader2, ExternalLink, X, AlertTriangle,
   Search, TrendingUp, Wallet
 } from "lucide-react";
+import { AreaChart, Area, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 import { TOKENS, DEX_SOURCES, type Token, parseAmount, encodeApprove, NATIVE_ETH_ADDRESS, toHexWei } from "@/lib/tokens";
 import { useWalletContext } from "@/context/WalletContext";
 import { useSwapPrice, fetchSwapQuote, type SwapQuote } from "@/hooks/useSwapQuote";
 import { recordSwapReward, useMarketPrices, type MarketPrice } from "@/hooks/useRewards";
 import { useBaseTokens } from "@/hooks/useBaseTokens";
 import { useWalletBalances } from "@/hooks/useWalletBalances";
+import { usePairChart, type ChartRange } from "@/hooks/usePairChart";
 import maximizeRewardsBg from "@assets/Background__1779712623898.png";
 import tokenLogo from "@assets/token_logo_1779712623899.png";
 
@@ -575,6 +577,7 @@ export function SwapPage() {
   const [swapping, setSwapping] = useState(false);
   const [swapError, setSwapError] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
+  const [chartRange, setChartRange] = useState<ChartRange>("24H");
 
   const slippageBps = Math.round(parseFloat(slippage || "0.5") * 100);
 
@@ -583,6 +586,9 @@ export function SwapPage() {
   );
 
   const { data: marketPrices } = useMarketPrices();
+
+  // ── Real pair chart data from GeckoTerminal ──────────────────────────────────
+  const { data: chartData, isLoading: chartLoading, change: chartChange } = usePairChart(sellToken.address, buyToken.address, chartRange);
 
   // Resolve a token's USD price from CoinGecko-backed market prices.
   // Stablecoins are pegged to $1; WETH tracks ETH.
@@ -985,7 +991,7 @@ export function SwapPage() {
           {/* ── RIGHT COLUMN ─────────────────────────────────────────── */}
           <div className="flex w-full flex-col gap-3 lg:w-[316px] lg:shrink-0">
 
-            {/* Price chart sparkline */}
+            {/* Price chart — real data from GeckoTerminal */}
             <div className="relative w-full overflow-hidden rounded-[22px] border border-[#0a1825] bg-[#020c18]">
               <div className="px-5 pt-4 pb-2">
                 <div className="flex items-center justify-between">
@@ -1004,13 +1010,18 @@ export function SwapPage() {
                       <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#8c909a]">
                         {sellToken.symbol} / {buyToken.symbol}
                       </span>
+                      {chartChange !== null && (
+                        <span className={`font-['Inter',sans-serif] text-[11px] font-semibold px-1.5 py-0.5 rounded-[6px] ${chartChange >= 0 ? "bg-[#0a2015] text-[#2dae50]" : "bg-[#1a0a0a] text-[#e05050]"}`}>
+                          {chartChange >= 0 ? "+" : ""}{chartChange.toFixed(2)}%
+                        </span>
+                      )}
                     </div>
                     {quote ? (
                       <>
                         <p className="mt-1 font-['Inter',sans-serif] text-[24px] font-bold text-[#c8ccd4]">
                           {parseFloat(quote.price).toLocaleString("en-US", { maximumFractionDigits: 6 })}
                         </p>
-                        <p className={`font-['Inter',sans-serif] text-[13px] ${priceImpactNum < 0 ? "text-[#2dae50]" : "text-[#7a8494]"}`}>
+                        <p className="font-['Inter',sans-serif] text-[12px] text-[#4d5a6e]">
                           {buyToken.symbol} per {sellToken.symbol}
                         </p>
                       </>
@@ -1018,25 +1029,66 @@ export function SwapPage() {
                       <p className="mt-1 font-['Inter',sans-serif] text-[24px] font-bold text-[#2a3a4c]">—</p>
                     )}
                   </div>
+                  {/* Range tabs */}
+                  <div className="flex gap-1">
+                    {(["1H", "24H", "7D"] as ChartRange[]).map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => setChartRange(r)}
+                        className={`rounded-[7px] px-2 py-1 font-['Inter',sans-serif] text-[10px] font-bold transition-colors ${
+                          chartRange === r
+                            ? "bg-[#0c2018] text-[#2dae50] border border-[#1a4a2a]"
+                            : "text-[#3a4a5c] hover:text-[#6a7a8c]"
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div className="px-3 pb-2 h-[100px]">
-                <svg viewBox="0 0 284 100" className="w-full h-full" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="swapChartGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2dae50" stopOpacity="0.25" />
-                      <stop offset="100%" stopColor="#2dae50" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <polygon
-                    points="0,100 0,85 14,80 28,88 42,75 56,82 70,68 84,78 98,60 112,72 126,55 140,65 154,50 168,60 182,42 196,58 210,38 224,48 238,30 252,40 266,25 280,35 284,18 284,100"
-                    fill="url(#swapChartGrad)"
-                  />
-                  <polyline
-                    points="0,85 14,80 28,88 42,75 56,82 70,68 84,78 98,60 112,72 126,55 140,65 154,50 168,60 182,42 196,58 210,38 224,48 238,30 252,40 266,25 280,35 284,18"
-                    fill="none" stroke="#2dae50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                  />
-                </svg>
+              <div className="pb-2 h-[120px]">
+                {chartLoading ? (
+                  <div className="flex h-full items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-[#2dae50] opacity-50" />
+                  </div>
+                ) : chartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={chartChange !== null && chartChange < 0 ? "#e05050" : "#2dae50"} stopOpacity={0.25} />
+                          <stop offset="100%" stopColor={chartChange !== null && chartChange < 0 ? "#e05050" : "#2dae50"} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <YAxis domain={["auto", "auto"]} hide />
+                      <Tooltip
+                        contentStyle={{ background: "#040e1e", border: "1px solid #0d1e2e", borderRadius: "10px", padding: "6px 10px" }}
+                        labelStyle={{ display: "none" }}
+                        formatter={(val: number) => [
+                          val >= 1
+                            ? `$${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : `$${val.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 })}`,
+                          sellToken.symbol
+                        ]}
+                        itemStyle={{ color: "#c8ccd4", fontSize: "12px", fontFamily: "Inter, sans-serif" }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="price"
+                        stroke={chartChange !== null && chartChange < 0 ? "#e05050" : "#2dae50"}
+                        strokeWidth={1.5}
+                        fill="url(#chartGrad)"
+                        dot={false}
+                        activeDot={{ r: 3, fill: chartChange !== null && chartChange < 0 ? "#e05050" : "#2dae50", strokeWidth: 0 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <span className="font-['Inter',sans-serif] text-[12px] text-[#3a4a5c]">No chart data</span>
+                  </div>
+                )}
               </div>
             </div>
 
