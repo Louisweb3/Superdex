@@ -99,7 +99,33 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── 0x Swap proxy ──────────────────────────────────────────────────────────
+  async function zeroxFetch(url: string, timeoutMs = 15000): Promise<{ ok: boolean; status: number; data: any }> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2", "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+      let data: any;
+      const contentType = response.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        data = { error: text || `HTTP ${response.status}` };
+      }
+      return { ok: response.ok, status: response.status, data };
+    } catch (err: any) {
+      if (err.name === "AbortError") throw new Error("Quote request timed out. Please try again.");
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   app.get("/api/swap/price", async (req, res) => {
+    console.log("[swap/price] request received", req.query.sellToken, "->", req.query.buyToken, req.query.sellAmount);
     try {
       const { sellToken, buyToken, sellAmount, slippageBps, includedSources, excludedSources } = req.query;
       if (!sellToken || !buyToken || !sellAmount)
@@ -118,19 +144,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (includedSources) params.set("includedSources", String(includedSources));
       if (excludedSources) params.set("excludedSources", String(excludedSources));
 
-      const response = await fetch(`${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`, {
-        headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2", "Content-Type": "application/json" },
-      });
-      const data = await response.json();
-      if (!response.ok) return res.status(response.status).json(data);
+      const { ok, status, data } = await zeroxFetch(`${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`);
+      console.log("[swap/price] 0x response status:", status, ok ? "ok" : "error");
+      if (!ok) return res.status(status).json(data);
       return res.json(data);
     } catch (err: any) {
-      console.error("0x price error:", err);
+      console.error("[swap/price] error:", err.message);
       return res.status(500).json({ error: err.message });
     }
   });
 
   app.get("/api/swap/quote", async (req, res) => {
+    console.log("[swap/quote] request received", req.query.sellToken, "->", req.query.buyToken);
     try {
       const { sellToken, buyToken, sellAmount, taker, slippageBps, includedSources, excludedSources } = req.query;
       if (!sellToken || !buyToken || !sellAmount || !taker)
@@ -150,14 +175,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (includedSources) params.set("includedSources", String(includedSources));
       if (excludedSources) params.set("excludedSources", String(excludedSources));
 
-      const response = await fetch(`${ZEROX_BASE_URL}/swap/allowance-holder/quote?${params}`, {
-        headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2", "Content-Type": "application/json" },
-      });
-      const data = await response.json();
-      if (!response.ok) return res.status(response.status).json(data);
+      const { ok, status, data } = await zeroxFetch(`${ZEROX_BASE_URL}/swap/allowance-holder/quote?${params}`);
+      console.log("[swap/quote] 0x response status:", status, ok ? "ok" : "error");
+      if (!ok) return res.status(status).json(data);
       return res.json(data);
     } catch (err: any) {
-      console.error("0x quote error:", err);
+      console.error("[swap/quote] error:", err.message);
       return res.status(500).json({ error: err.message });
     }
   });
