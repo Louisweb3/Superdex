@@ -127,7 +127,8 @@ export function RewardsPage(): JSX.Element {
   const claimCb = useClaimCashback(addr);
   const { data: tokenCashbacks } = useTokenCashbacks(addr);
 
-  const loading = userLoading && addr;
+  const loading = addr && userLoading;
+  const loadFailed = addr && !userLoading && !user;
 
   return (
     <>
@@ -159,6 +160,27 @@ export function RewardsPage(): JSX.Element {
             </div>
             <div className="h-[120px] rounded-[24px] bg-[#101827]" />
             <div className="h-[120px] rounded-[24px] bg-[#101827]" />
+          </div>
+        )}
+
+        {/* LOAD FAILED */}
+        {loadFailed && (
+          <div className="flex flex-col items-center justify-center gap-4 py-16">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[#2a1a1a] bg-[#0e0808]">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9543a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <div className="text-center">
+              <p className="text-[17px] font-bold text-white">Could not load rewards</p>
+              <p className="mt-1 text-[13px] text-[#6f7b8e]">Check your connection and try again</p>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="rounded-[14px] border border-[#1a3428] bg-[#0a2015] px-6 py-2.5 text-[14px] font-bold text-[#3acd5b] transition-all hover:bg-[#0d2818]"
+            >
+              Retry
+            </button>
           </div>
         )}
 

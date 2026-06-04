@@ -774,7 +774,6 @@ export function SwapPage() {
           to: refreshedQuote.transaction.to,
           data: refreshedQuote.transaction.data,
           value: toHexWei(refreshedQuote.transaction.value ?? "0"),
-          gas: toHexWei(refreshedQuote.transaction.gas),
         });
         setTxHash(hash);
         const volUsd = computeVolumeUsd(sellAmount, refreshedQuote.buyAmountFormatted);
@@ -787,7 +786,6 @@ export function SwapPage() {
           to: fullQuote.transaction.to,
           data: fullQuote.transaction.data,
           value: toHexWei(fullQuote.transaction.value ?? "0"),
-          gas: toHexWei(fullQuote.transaction.gas),
         });
         setTxHash(hash);
         const volUsd = computeVolumeUsd(sellAmount, fullQuote.buyAmountFormatted);

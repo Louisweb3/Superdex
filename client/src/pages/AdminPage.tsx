@@ -651,8 +651,26 @@ function EventsTab() {
 // ─── Earn Tasks Tab ───────────────────────────────────────────────────────────
 function EarnTasksTab() {
   const { tasks, create, update, remove } = useAdminEarnTasks();
+  const { settings, update: updateSetting } = useAdminSettings();
   const [editing, setEditing] = useState<Partial<AdminEarnTask> | null>(null);
+  const [campaignUrl, setCampaignUrl] = useState("");
+  const [campaignSaved, setCampaignSaved] = useState(false);
   const empty: Partial<AdminEarnTask> = { title: "", description: "", type: "onchain", category: "swap_volume", target_value: 0, target_count: 1, xp_reward: 0, cashback_reward: 0, icon: "", verification_url: "", sort_order: 0, active: true };
+
+  const currentCampaignUrl = settings.data?.campaign_post_url ?? "";
+
+  const saveCampaignUrl = () => {
+    updateSetting.mutate({ key: "campaign_post_url", value: campaignUrl || "" });
+    setCampaignSaved(true);
+    setTimeout(() => setCampaignSaved(false), 2000);
+  };
+
+  const clearCampaignUrl = () => {
+    setCampaignUrl("");
+    updateSetting.mutate({ key: "campaign_post_url", value: "" });
+    setCampaignSaved(true);
+    setTimeout(() => setCampaignSaved(false), 2000);
+  };
 
   const save = () => {
     if (!editing) return;
@@ -665,6 +683,39 @@ function EarnTasksTab() {
     <div className="flex flex-col gap-4">
       <SectionHeader title="Earn Tasks" description="Tasks users complete to earn XP and cashback"
         action={<Btn size="sm" onClick={() => setEditing({ ...empty })}><Plus className="h-3.5 w-3.5" />New Task</Btn>} />
+
+      {/* Campaign Post URL */}
+      <Card className="px-4 py-4">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <p className="font-['Inter',sans-serif] text-[13px] font-bold text-[#c8ccd4]">X/Twitter Campaign Post URL</p>
+            <p className="font-['Inter',sans-serif] text-[11px] text-[#3a4a5c] mt-0.5">The post users must like &amp; repost on the Earn page to unlock the campaign chest</p>
+          </div>
+          {campaignSaved && <Badge variant="green"><CheckCircle className="h-3 w-3 mr-1" />Saved</Badge>}
+        </div>
+        {currentCampaignUrl && !campaignUrl && (
+          <div className="mb-2 flex items-center gap-2 rounded-[8px] border border-[#0f1e2e] bg-[#020816] px-3 py-2">
+            <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[#3a4a5c]" />
+            <span className="font-['Inter',sans-serif] text-[12px] text-[#4a9fd4] truncate flex-1">{currentCampaignUrl}</span>
+            <span className="font-['Inter',sans-serif] text-[10px] text-[#2dae50] shrink-0">Active</span>
+          </div>
+        )}
+        <div className="flex gap-2">
+          <Input
+            value={campaignUrl}
+            onChange={(e: any) => setCampaignUrl(e.target.value)}
+            placeholder={currentCampaignUrl || "https://x.com/superswap_fi/status/..."}
+          />
+          <Btn onClick={saveCampaignUrl} disabled={updateSetting.isPending} size="sm">
+            <Save className="h-3.5 w-3.5" />Save
+          </Btn>
+          {currentCampaignUrl && (
+            <Btn onClick={clearCampaignUrl} disabled={updateSetting.isPending} variant="danger" size="sm">
+              <Trash2 className="h-3.5 w-3.5" />Clear
+            </Btn>
+          )}
+        </div>
+      </Card>
       {editing && (
         <Card className="px-4 py-4 border-[#1a5c2a]">
           <p className="font-['Inter',sans-serif] text-[13px] font-bold text-[#d0d2d6] mb-3">{editing.id ? "Edit Task" : "New Task"}</p>
