@@ -572,7 +572,7 @@ function CampaignPostModal({
 }) {
   const { data: settings } = usePublicSettings();
   const campaignUrl = settings?.campaign_post_url ||
-    "https://x.com/SuperSwap_fi/status/2062249666977354053";
+    "https://x.com/SuperSwap_fi/status/2062474950737567758?s=20";
 
   const openCampaign = () => {
     if (campaignUrl) {
