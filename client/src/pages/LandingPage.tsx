@@ -487,15 +487,15 @@ export const LandingPage = (): JSX.Element => {
           padding: "0 24px 0",
         }}
       >
-        {/* Browser chrome */}
+        {/* Browser chrome frame */}
         <div
           style={{
             borderRadius: 16,
             border: "1px solid rgba(255,255,255,0.1)",
             overflow: "hidden",
-            background: "#0d0d0d",
+            background: "#0a0a0a",
             boxShadow:
-              "0 0 0 1px rgba(255,255,255,0.06), 0 60px 140px rgba(0,0,0,0.85), 0 0 80px rgba(0,188,132,0.04)",
+              "0 0 0 1px rgba(255,255,255,0.05), 0 80px 160px rgba(0,0,0,0.9), 0 0 100px rgba(0,188,132,0.05)",
           }}
         >
           {/* Browser top bar */}
@@ -504,386 +504,63 @@ export const LandingPage = (): JSX.Element => {
               display: "flex",
               alignItems: "center",
               gap: 8,
-              padding: "10px 16px",
+              padding: "11px 16px",
               borderBottom: "1px solid rgba(255,255,255,0.07)",
               backgroundColor: "#0a0a0a",
             }}
           >
             <div style={{ display: "flex", gap: 6 }}>
-              {["#3a3a3a", "#3a3a3a", "#3a3a3a"].map((c, i) => (
-                <div key={i} style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: c }} />
+              {["#ff5f57", "#febc2e", "#28c840"].map((c, i) => (
+                <div key={i} style={{ width: 11, height: 11, borderRadius: "50%", backgroundColor: c, opacity: 0.85 }} />
               ))}
             </div>
             <div
               style={{
-                marginLeft: 8,
-                height: 24,
+                marginLeft: 12,
+                height: 26,
                 flex: 1,
-                maxWidth: 280,
-                borderRadius: 5,
-                backgroundColor: "rgba(255,255,255,0.05)",
+                maxWidth: 320,
+                borderRadius: 6,
+                backgroundColor: "rgba(255,255,255,0.06)",
                 display: "flex",
                 alignItems: "center",
-                paddingLeft: 10,
+                justifyContent: "center",
+                gap: 6,
               }}
             >
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
-                superswapfi.xyz
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <circle cx="5" cy="5" r="4" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+                <path d="M5 2v3l2 1" stroke="rgba(255,255,255,0.25)" strokeWidth="1" strokeLinecap="round" />
+              </svg>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", letterSpacing: "0.02em" }}>
+                dex.superswapfi.xyz
               </span>
             </div>
-
-            {/* Tab bar mimicking SuperSwap */}
-            <div
-              className="hidden sm:flex"
-              style={{ marginLeft: "auto", gap: 4, alignItems: "center" }}
-            >
-              {["Swap", "Earn", "Vault", "Rewards"].map((tab, i) => (
-                <div
-                  key={tab}
-                  style={{
-                    padding: "3px 10px",
-                    borderRadius: 5,
-                    fontSize: 11,
-                    color: i === 0 ? "#e8e8e8" : "rgba(255,255,255,0.35)",
-                    backgroundColor: i === 0 ? "rgba(255,255,255,0.08)" : "transparent",
-                    fontWeight: i === 0 ? 600 : 400,
-                  }}
-                >
-                  {tab}
-                </div>
-              ))}
-            </div>
           </div>
 
-          {/* App interface mockup */}
-          <div
+          {/* Real app screenshot */}
+          <img
+            src="/figmaAssets/app-preview.png"
+            alt="SuperSwap trading interface"
+            data-testid="img-app-preview"
             style={{
-              display: "flex",
-              minHeight: 380,
-              backgroundColor: "#080808",
+              width: "100%",
+              display: "block",
+              objectFit: "cover",
+              objectPosition: "top",
             }}
-          >
-            {/* Left panel — swap UI */}
-            <div
-              style={{
-                flex: 1,
-                padding: "28px 32px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                borderRight: "1px solid rgba(255,255,255,0.06)",
-              }}
-            >
-              <div style={{ width: "100%", maxWidth: 380 }}>
-                {/* Swap card header */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: 16,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: "'Fragment Mono', monospace",
-                      fontSize: 15,
-                      fontWeight: 500,
-                      color: "#e8e8e8",
-                    }}
-                  >
-                    Swap
-                  </span>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      fontSize: 11,
-                      color: "#00bc84",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        backgroundColor: "#00bc84",
-                        boxShadow: "0 0 6px #00bc84",
-                      }}
-                    />
-                    Live
-                  </div>
-                </div>
-
-                {/* You Pay */}
-                <div
-                  style={{
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    backgroundColor: "rgba(255,255,255,0.03)",
-                    padding: "14px 16px",
-                    marginBottom: 6,
-                  }}
-                >
-                  <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 10 }}>
-                    You Pay
-                  </p>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "6px 12px",
-                        borderRadius: 8,
-                        backgroundColor: "rgba(255,255,255,0.06)",
-                      }}
-                    >
-                      <img
-                        src="/figmaAssets/image-7.png"
-                        alt="ETH"
-                        style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover" }}
-                        onError={e => { e.currentTarget.style.display = "none"; }}
-                      />
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "#e8e8e8" }}>ETH</span>
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>▾</span>
-                    </div>
-                    <span
-                      style={{
-                        fontFamily: "'Fragment Mono', monospace",
-                        fontSize: 22,
-                        fontWeight: 400,
-                        color: "#e8e8e8",
-                      }}
-                    >
-                      1
-                    </span>
-                  </div>
-                  <p style={{ margin: "8px 0 0", textAlign: "right", fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
-                    ≈ $1,749.72
-                  </p>
-                </div>
-
-                {/* Swap arrow */}
-                <div style={{ display: "flex", justifyContent: "center", margin: "6px 0" }}>
-                  <div
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: "50%",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      backgroundColor: "rgba(255,255,255,0.04)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#00bc84",
-                      fontSize: 16,
-                    }}
-                  >
-                    ⇅
-                  </div>
-                </div>
-
-                {/* You Receive */}
-                <div
-                  style={{
-                    borderRadius: 12,
-                    border: "1px solid rgba(0,188,132,0.2)",
-                    backgroundColor: "rgba(0,188,132,0.04)",
-                    padding: "14px 16px",
-                    marginBottom: 14,
-                  }}
-                >
-                  <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 10 }}>
-                    You Receive
-                  </p>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "6px 12px",
-                        borderRadius: 8,
-                        backgroundColor: "rgba(255,255,255,0.06)",
-                      }}
-                    >
-                      <img
-                        src="/figmaAssets/image-5.png"
-                        alt="USDC"
-                        style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover" }}
-                        onError={e => { e.currentTarget.style.display = "none"; }}
-                      />
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "#e8e8e8" }}>USDC</span>
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>▾</span>
-                    </div>
-                    <span
-                      style={{
-                        fontFamily: "'Fragment Mono', monospace",
-                        fontSize: 22,
-                        fontWeight: 400,
-                        color: "#00bc84",
-                      }}
-                    >
-                      1,749.72
-                    </span>
-                  </div>
-                  <p style={{ margin: "8px 0 0", textAlign: "right", fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
-                    ≈ $1,749.72
-                  </p>
-                </div>
-
-                {/* Swap button */}
-                <div
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    borderRadius: 10,
-                    backgroundColor: "#00bc84",
-                    color: "#080808",
-                    textAlign: "center",
-                    fontSize: 14,
-                    fontWeight: 700,
-                  }}
-                >
-                  Connect Wallet to Swap
-                </div>
-
-                {/* Cashback */}
-                <div
-                  style={{
-                    marginTop: 10,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    fontSize: 12,
-                    color: "#00bc84",
-                  }}
-                >
-                  <span>⚡</span>
-                  <span>Est. Cashback: $2.50 · Earn $SUPER</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right panel — stats/chart (desktop only) */}
-            <div
-              className="hidden md:flex"
-              style={{
-                width: 360,
-                flexShrink: 0,
-                flexDirection: "column",
-                padding: "28px 28px",
-                gap: 16,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <img
-                  src="/figmaAssets/image-7.png"
-                  alt="ETH"
-                  style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }}
-                  onError={e => { e.currentTarget.style.display = "none"; }}
-                />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#e8e8e8" }}>ETH / USDC</span>
-                <span
-                  style={{
-                    marginLeft: 4,
-                    padding: "2px 7px",
-                    borderRadius: 5,
-                    backgroundColor: "rgba(229,57,57,0.12)",
-                    color: "#e05252",
-                    fontSize: 11,
-                    fontWeight: 600,
-                  }}
-                >
-                  -6.31%
-                </span>
-              </div>
-              <div>
-                <p
-                  style={{
-                    fontFamily: "'Fragment Mono', monospace",
-                    fontSize: 26,
-                    fontWeight: 400,
-                    color: "#e8e8e8",
-                    margin: 0,
-                    letterSpacing: "-0.03em",
-                  }}
-                >
-                  1,749.72
-                </p>
-                <p style={{ margin: "4px 0 0", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-                  USDC per ETH
-                </p>
-              </div>
-              <img
-                src="/figmaAssets/chart-line.png"
-                alt="Price chart"
-                style={{
-                  width: "100%",
-                  borderRadius: 8,
-                  objectFit: "cover",
-                  opacity: 0.75,
-                }}
-                onError={e => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-
-              {/* Mini stats */}
-              <div
-                style={{
-                  marginTop: "auto",
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 10,
-                }}
-              >
-                {[
-                  { label: "24h Volume", value: "$4.2M" },
-                  { label: "Liquidity", value: "$18.1M" },
-                  { label: "Rewards Today", value: "$1.8K" },
-                  { label: "Active Traders", value: "342" },
-                ].map(({ label, value }) => (
-                  <div
-                    key={label}
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: 8,
-                      backgroundColor: "rgba(255,255,255,0.03)",
-                      border: "1px solid rgba(255,255,255,0.07)",
-                    }}
-                  >
-                    <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{label}</p>
-                    <p
-                      style={{
-                        margin: "4px 0 0",
-                        fontFamily: "'Fragment Mono', monospace",
-                        fontSize: 14,
-                        color: "#e8e8e8",
-                        fontWeight: 400,
-                      }}
-                    >
-                      {value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          />
         </div>
 
-        {/* Bottom fade over screenshot */}
+        {/* Bottom fade */}
         <div
           style={{
             position: "absolute",
             bottom: 0,
             left: 0,
             right: 0,
-            height: 140,
-            background: "linear-gradient(to top, #080808 30%, transparent)",
+            height: 180,
+            background: "linear-gradient(to top, #080808 20%, transparent)",
             pointerEvents: "none",
           }}
         />
