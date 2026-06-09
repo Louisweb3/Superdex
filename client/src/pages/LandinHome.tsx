@@ -16,7 +16,7 @@ import { ProfilePage } from "./ProfilePage";
 
 // Map URL paths → tab names, and vice-versa
 const PATH_TO_TAB: Record<string, string> = {
-  "/": "home",
+  "/app": "home",
   "/swap": "swap",
   "/rewards": "rewards",
   "/earn": "earn",
@@ -26,7 +26,7 @@ const PATH_TO_TAB: Record<string, string> = {
 };
 
 const TAB_TO_PATH: Record<string, string> = {
-  home: "/",
+  home: "/app",
   swap: "/swap",
   rewards: "/rewards",
   earn: "/earn",

@@ -7,6 +7,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WalletProvider } from "@/context/WalletContext";
 import NotFound from "@/pages/not-found";
 import { LandinHome } from "@/pages/LandinHome";
+import { LandingPage } from "@/pages/LandingPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { DocsPage } from "@/pages/DocsPage";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
@@ -14,7 +15,8 @@ import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={LandinHome} />
+      <Route path="/" component={LandingPage} />
+      <Route path="/app" component={LandinHome} />
       <Route path="/swap" component={LandinHome} />
       <Route path="/rewards" component={LandinHome} />
       <Route path="/vault" component={LandinHome} />
