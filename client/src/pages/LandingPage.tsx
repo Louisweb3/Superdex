@@ -252,7 +252,7 @@ export const LandingPage = (): JSX.Element => {
         >
           The DEX That Rewards
           <br />
-          Every Trades
+          Every Swap
         </motion.h1>
 
         {/* Subtitle */}
@@ -266,8 +266,9 @@ export const LandingPage = (): JSX.Element => {
             color: "rgba(255,255,255,0.5)",
           }}
         >
-           SuperDex, the next generation of on-chain trading on Base with up to 100x leverage. Swap, trade, and leverage all powered by shared liquidity.
-          
+          SuperSwap finds you the best route across every DEX on Base, then
+          automatically pays you $SUPER tokens on every trade — zero extra steps,
+          real cashback, every time.
         </motion.p>
 
         {/* CTA buttons */}
