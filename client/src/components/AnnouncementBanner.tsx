@@ -35,7 +35,7 @@ export function AnnouncementBanner() {
     setDismissed(getDismissed());
   }, []);
 
-  const visible = (all ?? []).filter((a) => !dismissed.includes(a.id));
+  const visible = (Array.isArray(all) ? all : []).filter((a) => !dismissed.includes(a.id));
   if (visible.length === 0) return null;
 
   const ann = visible[current % visible.length];
