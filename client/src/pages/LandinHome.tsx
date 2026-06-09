@@ -89,7 +89,7 @@ export const LandinHome = (): JSX.Element => {
 
   return (
     <main className="w-full bg-[#020b1c] min-h-screen">
-      <div className="mx-auto flex w-full max-w-[941px] flex-col">
+      <div className="mx-auto flex w-full max-w-[941px] lg:max-w-[1280px] flex-col">
         <div className="relative isolate flex min-h-screen w-full flex-col">
           {backgroundLayers.map((layer) => (
             <img
@@ -101,11 +101,11 @@ export const LandinHome = (): JSX.Element => {
           ))}
 
           <header className="relative z-20 w-full shrink-0">
-            <AppHeaderSection onNavSelect={handleTabChange} />
+            <AppHeaderSection onNavSelect={handleTabChange} activeTab={activeTab} />
           </header>
 
-          {/* Scrollable content area — bottom padding matches nav height */}
-          <div className="relative z-10 flex w-full flex-1 flex-col overflow-y-auto pb-[134px] sm:pb-[166px]">
+          {/* Scrollable content area — bottom padding matches nav height (removed on desktop) */}
+          <div className="relative z-10 flex w-full flex-1 flex-col overflow-y-auto pb-[134px] sm:pb-[166px] lg:pb-10">
             {isHome && (
               <>
                 {/* HERO SECTION WITH SOCIAL BOX */}
@@ -250,8 +250,8 @@ export const LandinHome = (): JSX.Element => {
               )}
           </div>
 
-          {/* Fixed bottom nav — always visible, never scrolls */}
-          <div className="fixed bottom-0 left-0 right-0 z-50 mx-auto w-full max-w-[941px]">
+          {/* Fixed bottom nav — mobile only, hidden on desktop */}
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 mx-auto w-full max-w-[941px]">
             <AssetTickerNavSection
               activeTab={activeTab}
               onTabChange={handleTabChange}

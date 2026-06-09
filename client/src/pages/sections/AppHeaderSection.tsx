@@ -20,14 +20,25 @@ import {
 
 interface AppHeaderSectionProps {
   onNavSelect?: (tab: string) => void;
+  activeTab?: string;
 }
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + "…" + addr.slice(-4);
 }
 
+const DESKTOP_NAV = [
+  { value: "home",      label: "Home" },
+  { value: "swap",      label: "Swap" },
+  { value: "rewards",   label: "Rewards" },
+  { value: "earn",      label: "Earn" },
+  { value: "vault",     label: "Vault" },
+  { value: "analytics", label: "Analytics" },
+];
+
 export const AppHeaderSection = ({
   onNavSelect,
+  activeTab,
 }: AppHeaderSectionProps): JSX.Element => {
   const [walletOpen, setWalletOpen] = useState(false);
 
@@ -66,6 +77,32 @@ export const AppHeaderSection = ({
               </span>
             </span>
           </button>
+
+          {/* DESKTOP NAV LINKS — hidden on mobile */}
+          <nav className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+            {DESKTOP_NAV.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => onNavSelect?.(item.value)}
+                data-testid={`button-desknav-${item.value}`}
+                className={`px-4 py-2 rounded-[14px] text-[14px] font-medium transition-all duration-200 whitespace-nowrap ${
+                  activeTab === item.value
+                    ? "bg-[#0d2218] text-[#2dae50] border border-[#1a3428]"
+                    : "text-[#8b97aa] hover:text-white hover:bg-[#0a1520] border border-transparent"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+            <a
+              href="/docs"
+              data-testid="button-desknav-docs"
+              className="px-4 py-2 rounded-[14px] text-[14px] font-medium text-[#8b97aa] hover:text-white hover:bg-[#0a1520] border border-transparent transition-all duration-200 whitespace-nowrap"
+            >
+              Docs
+            </a>
+          </nav>
 
           {/* RIGHT */}
           {wallet.isConnected && wallet.address ? (
