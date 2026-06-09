@@ -252,7 +252,7 @@ export const LandingPage = (): JSX.Element => {
         >
           The DEX That Rewards
           <br />
-          Every Swap
+          Every Trades
         </motion.h1>
 
         {/* Subtitle */}
@@ -266,8 +266,8 @@ export const LandingPage = (): JSX.Element => {
             color: "rgba(255,255,255,0.5)",
           }}
         >
-          SuperSwap finds you the best route across every DEX on Base, then automatically
-          pays you $SUPER tokens on every trade — zero extra steps, real cashback, every time.
+           SuperDex, the next generation of on-chain trading on Base with up to 100x leverage. Swap, trade, and leverage all powered by shared liquidity.
+          
         </motion.p>
 
         {/* CTA buttons */}
@@ -889,6 +889,180 @@ export const LandingPage = (): JSX.Element => {
         />
       </motion.section>
 
+      <motion.section
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.7 }}
+        style={{
+          padding: "120px 24px",
+          backgroundColor: "#080808",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+          }}
+        >
+          <h2
+            style={{
+              textAlign: "center",
+              fontFamily: "'Fragment Mono', monospace",
+              fontSize: "clamp(32px, 5vw, 56px)",
+              color: "#e8e8e8",
+              marginBottom: 70,
+              letterSpacing: "-0.03em",
+            }}
+          >
+            Built for serious traders
+          </h2>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: 24,
+            }}
+          >
+            {[
+              {
+                title: "Unified Cross-Margin",
+                desc: "Trade all markets from one collateral pool",
+              },
+              {
+                title: "Multi-Asset Collateral",
+                desc: "Use BTC, ETH, stablecoins and TradFi assets as margin",
+              },
+              {
+                title: "Native Yield",
+                desc: "Earn yield on idle collateral while you trade",
+              },
+              {
+                title: "Zero Gas Trading",
+                desc: "Trades settle off-chain with on-chain security",
+              },
+              {
+                title: "TradFi Integration",
+                desc: "Trade equities, forex, and commodities alongside crypto",
+              },
+              {
+                title: "Advanced Order Types",
+                desc: "Market, limit, scaled, and conditional orders",
+              },
+            ].map((feature) => (
+              <div
+                key={feature.title}
+                style={{
+                  background: "#111111",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 14,
+                  padding: 28,
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 10,
+                    background: "rgba(0,188,132,0.12)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 20,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 12,
+                      height: 12,
+                      background: "#00bc84",
+                      transform: "rotate(45deg)",
+                    }}
+                  />
+                </div>
+
+                <h3
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 700,
+                    color: "#e8e8e8",
+                    marginBottom: 10,
+                  }}
+                >
+                  {feature.title}
+                </h3>
+
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.55)",
+                    lineHeight: 1.7,
+                    fontSize: 15,
+                  }}
+                >
+                  {feature.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.section>
+      
+      <motion.section
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.7 }}
+        style={{
+          padding: "140px 24px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          textAlign: "center",
+        }}
+      >
+        <h2
+          style={{
+            fontFamily: "'Fragment Mono', monospace",
+            fontSize: "clamp(40px, 6vw, 72px)",
+            lineHeight: 1.1,
+            color: "#e8e8e8",
+            marginBottom: 32,
+            letterSpacing: "-0.03em",
+          }}
+        >
+          Ready to trade everything?
+        </h2>
+
+        <a
+          href="https://dex.superswapfi.xyz"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            padding: "16px 40px",
+            backgroundColor: "#00bc84",
+            color: "#080808",
+            borderRadius: 10,
+            fontWeight: 700,
+            fontSize: 16,
+            textDecoration: "none",
+            boxShadow: "0 0 40px rgba(0,188,132,0.35)",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#00d496";
+            e.currentTarget.style.transform = "translateY(-2px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "#00bc84";
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
+        >
+          Start Trading
+        </a>
+      </motion.section>
+      
       {/* ══ FOOTER ══════════════════════════════════════════ */}
       <footer
         style={{
