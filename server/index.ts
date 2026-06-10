@@ -4,6 +4,7 @@ import { registerAdminRoutes } from "./admin";
 import { registerMcpRoutes } from "./mcp";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { rewardsStorage } from "./storage";
 
 const app = express();
 const httpServer = createServer(app)
@@ -88,6 +89,17 @@ app.use((req, res, next) => {
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }
+
+  // Proactively reset stale weekly cashbacks every hour so inactive users
+  // never show a previous week's balance as their current-week cashback.
+  const runWeeklyReset = async () => {
+    try {
+      const flushed = await rewardsStorage.batchResetWeeklyCashbacks();
+      if (flushed > 0) log(`Weekly cashback batch reset: flushed ${flushed} user(s) to pending`);
+    } catch (_) {}
+  };
+  runWeeklyReset(); // run once on startup
+  setInterval(runWeeklyReset, 60 * 60 * 1000); // then every hour
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.

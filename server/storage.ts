@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { eq, and, desc, sql, gt } from "drizzle-orm";
+import { eq, and, desc, sql, gt, gte } from "drizzle-orm";
 import { db } from "./db";
 import {
   users,
@@ -231,6 +231,57 @@ export class RewardsStorage {
       weekly_xp: 0,
       last_weekly_reset: currentWeek,
     };
+  }
+
+  /** Proactively flush stale weekly cashback for ALL users whose week has rolled over.
+   *  Called on a server-side interval so inactive users never show a stale weekly balance. */
+  async batchResetWeeklyCashbacks(): Promise<number> {
+    const currentWeek = weekStartUTC();
+    const result = await db.execute(sql`
+      UPDATE reward_users
+      SET
+        pending_cashback_usd = (pending_cashback_usd::numeric + weekly_cashback_usd::numeric),
+        weekly_cashback_usd  = 0,
+        weekly_xp            = 0,
+        last_weekly_reset    = ${currentWeek}
+      WHERE last_weekly_reset != ${currentWeek}
+        AND weekly_cashback_usd::numeric > 0
+    `);
+    return (result as any).rowCount ?? 0;
+  }
+
+  /** Recompute weekly_cashback_usd for all users from swap_events (corrects any drift). */
+  async recalcWeeklyCashbacks(): Promise<void> {
+    const weekStart = (() => {
+      const d = new Date();
+      const day = d.getUTCDay();
+      const diff = d.getUTCDate() - day;
+      d.setUTCDate(diff);
+      d.setUTCHours(0, 0, 0, 0);
+      return d;
+    })();
+
+    // Get correct weekly cashback per user from swap_events
+    const rows = await db
+      .select({
+        wallet_address: swapEvents.wallet_address,
+        correct: sql<number>`ROUND(SUM(${swapEvents.volume_usd}::numeric * 0.0015), 6)`,
+      })
+      .from(swapEvents)
+      .where(gte(swapEvents.timestamp, weekStart))
+      .groupBy(swapEvents.wallet_address);
+
+    for (const row of rows) {
+      await db
+        .update(rewardUsers)
+        .set({ weekly_cashback_usd: String(row.correct) })
+        .where(
+          and(
+            eq(rewardUsers.wallet_address, row.wallet_address),
+            sql`ABS(${rewardUsers.weekly_cashback_usd}::numeric - ${row.correct}) > 0.000001`
+          )
+        );
+    }
   }
 
   async getUser(wallet: string): Promise<RewardUser | undefined> {
