@@ -3,13 +3,13 @@ import { encodeFunctionData, decodeFunctionResult } from "viem";
 import { useWalletContext } from "@/context/WalletContext";
 import { useRewardUser } from "@/hooks/useRewards";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, CheckCircle, XCircle, ExternalLink, Wallet, Zap, Copy, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, ExternalLink, Wallet, Zap, Copy, AlertTriangle, Gem, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 // ─── Contract constants ────────────────────────────────────────────────────────
 
-const CLAIM_CONTRACT = "0xBA77bF8f8119F8604090e2419b64a0a0e6D78907" as `0x${string}`;
+const CLAIM_CONTRACT = "0x1D39749fE726e47a66A0bC5D1B7D5316Ff4c5E75" as `0x${string}`;
 const XP_TOKEN      = "0xAE3aE4734D03C26E6614fbEdd1d7EF5C30F68741" as `0x${string}`;
 const CLAIM_FEE_ETH = "0.000038";
 const CLAIM_FEE_WEI = BigInt("38000000000000");
@@ -427,47 +427,60 @@ export function EarnPage() {
               {phase !== "success" && (
                 <div className="rounded-[18px] mb-6 divide-y divide-white/6"
                   style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  {[
-                    {
-                      label: "Claim Reward",
-                      value: "10,000 XP",
-                      sub: "SuperSwap Season 1",
-                      valueColor: "#ffd25a",
-                      icon: "⚡",
-                    },
-                    {
-                      label: "Network",
-                      value: "Base",
-                      sub: "Chain ID 8453",
-                      valueColor: "#0052ff",
-                      icon: "🔵",
-                    },
-                    {
-                      label: "Claim Fee",
-                      value: `${CLAIM_FEE_ETH} ETH`,
-                      sub: "≈ gas-free after",
-                      valueColor: "#00bc84",
-                      icon: "💎",
-                    },
-                    {
-                      label: "Eligibility",
-                      value: "One per wallet",
-                      sub: "Permanent on-chain",
-                      valueColor: "rgba(255,255,255,0.55)",
-                      icon: "🎫",
-                    },
-                  ].map(row => (
-                    <div key={row.label} className="flex items-center gap-4 px-4 py-3.5">
-                      <div className="text-[20px] flex-none">{row.icon}</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] text-white/40">{row.label}</p>
-                        <p className="text-[11px] text-white/20 mt-0.5">{row.sub}</p>
-                      </div>
-                      <span className="text-[14px] font-bold" style={{ color: row.valueColor }}>
-                        {row.value}
-                      </span>
+
+                  {/* Claim Reward row */}
+                  <div className="flex items-center gap-4 px-4 py-3.5">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-none"
+                      style={{ background: "rgba(255,210,90,0.12)", border: "1px solid rgba(255,210,90,0.2)" }}>
+                      <Zap size={16} className="text-[#ffd25a]" fill="#ffd25a" />
                     </div>
-                  ))}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] text-white/40">Claim Reward</p>
+                      <p className="text-[11px] text-white/20 mt-0.5">SuperSwap Season 1</p>
+                    </div>
+                    <span className="text-[14px] font-bold text-[#ffd25a]">10,000 XP</span>
+                  </div>
+
+                  {/* Network row — Base logo inline SVG */}
+                  <div className="flex items-center gap-4 px-4 py-3.5">
+                    {/* Full Base round-logo SVG: circle + "b" path at display size */}
+                    <svg width="36" height="36" viewBox="0 0 111 111" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 12, flexShrink: 0 }}>
+                      <circle cx="55.5" cy="55.5" r="55.5" fill="#0052FF"/>
+                      <path d="M54.921 110.034C85.2133 110.034 109.741 85.5053 109.741 55.2131C109.741 24.9208 85.2133 0.39209 54.921 0.39209C26.1782 0.39209 2.50775 22.4604 0.232422 50.6542H72.8533V59.7719H0.232422C2.50775 87.9658 26.1782 110.034 54.921 110.034Z" fill="white"/>
+                    </svg>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] text-white/40">Network</p>
+                      <p className="text-[11px] text-white/20 mt-0.5">Chain ID 8453</p>
+                    </div>
+                    <span className="text-[14px] font-bold text-[#0052ff]">Base</span>
+                  </div>
+
+                  {/* Claim Fee row */}
+                  <div className="flex items-center gap-4 px-4 py-3.5">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-none"
+                      style={{ background: "rgba(0,188,132,0.12)", border: "1px solid rgba(0,188,132,0.2)" }}>
+                      <Gem size={16} className="text-[#00bc84]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] text-white/40">Claim Fee</p>
+                      <p className="text-[11px] text-white/20 mt-0.5">≈ gas-free after</p>
+                    </div>
+                    <span className="text-[14px] font-bold text-[#00bc84]">{CLAIM_FEE_ETH} ETH</span>
+                  </div>
+
+                  {/* Eligibility row */}
+                  <div className="flex items-center gap-4 px-4 py-3.5">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-none"
+                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <ShieldCheck size={16} className="text-white/50" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] text-white/40">Eligibility</p>
+                      <p className="text-[11px] text-white/20 mt-0.5">Permanent on-chain</p>
+                    </div>
+                    <span className="text-[14px] font-bold text-white/55">One per wallet</span>
+                  </div>
+
                 </div>
               )}
 

@@ -17,7 +17,10 @@ const PRICE_TTL = 30_000;
 const WETH_BASE = "0x4200000000000000000000000000000000000006";
 const NATIVE_ADDR = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
-const sparklineCache = new Map<string, { data: { points: number[]; up: boolean } | null; ts: number }>();
+const sparklineCache = new Map<
+  string,
+  { data: { points: number[]; up: boolean } | null; ts: number }
+>();
 const SPARKLINE_TTL = 5 * 60_000;
 
 // Pool address cache
@@ -25,13 +28,23 @@ const poolCache = new Map<string, { poolAddr: string | null; ts: number }>();
 const POOL_TTL = 10 * 60_000;
 
 // OHLCV chart data cache per "address:range"
-const chartCache = new Map<string, { data: { time: number; price: number }[]; ts: number }>();
-const CHART_TTL: Record<string, number> = { "1H": 60_000, "24H": 2 * 60_000, "7D": 5 * 60_000 };
+const chartCache = new Map<
+  string,
+  { data: { time: number; price: number }[]; ts: number }
+>();
+const CHART_TTL: Record<string, number> = {
+  "1H": 60_000,
+  "24H": 2 * 60_000,
+  "7D": 5 * 60_000,
+};
 
-const RANGE_CONFIG: Record<string, { interval: string; limit: number; aggregate?: number }> = {
-  "1H":  { interval: "minute", limit: 60,  aggregate: 1 },
-  "24H": { interval: "hour",   limit: 24 },
-  "7D":  { interval: "hour",   limit: 168 },
+const RANGE_CONFIG: Record<
+  string,
+  { interval: string; limit: number; aggregate?: number }
+> = {
+  "1H": { interval: "minute", limit: 60, aggregate: 1 },
+  "24H": { interval: "hour", limit: 24 },
+  "7D": { interval: "hour", limit: 168 },
 };
 
 async function getTopPool(addr: string): Promise<string | null> {
@@ -40,71 +53,125 @@ async function getTopPool(addr: string): Promise<string | null> {
   try {
     const res = await fetch(
       `https://api.geckoterminal.com/api/v2/networks/base/tokens/${addr}/pools?page=1`,
-      { headers: { Accept: "application/json;version=20230302" } }
+      { headers: { Accept: "application/json;version=20230302" } },
     );
-    const poolAddr = res.ok ? ((await res.json())?.data?.[0]?.attributes?.address ?? null) : null;
+    const poolAddr = res.ok
+      ? ((await res.json())?.data?.[0]?.attributes?.address ?? null)
+      : null;
     poolCache.set(addr, { poolAddr, ts: Date.now() });
     return poolAddr;
-  } catch { poolCache.set(addr, { poolAddr: null, ts: Date.now() }); return null; }
+  } catch {
+    poolCache.set(addr, { poolAddr: null, ts: Date.now() });
+    return null;
+  }
 }
 
-export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
-
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express,
+): Promise<Server> {
   // ─── GeckoTerminal sparkline proxy (24h close prices for mini charts) ────────
   app.get("/api/sparkline/:address", async (req, res) => {
     try {
-      const addr = req.params.address.toLowerCase() === NATIVE_ADDR ? WETH_BASE : req.params.address.toLowerCase();
+      const addr =
+        req.params.address.toLowerCase() === NATIVE_ADDR
+          ? WETH_BASE
+          : req.params.address.toLowerCase();
       const cached = sparklineCache.get(addr);
-      if (cached && Date.now() - cached.ts < SPARKLINE_TTL) return res.json(cached.data);
+      if (cached && Date.now() - cached.ts < SPARKLINE_TTL)
+        return res.json(cached.data);
 
       const poolAddr = await getTopPool(addr);
-      if (!poolAddr) { sparklineCache.set(addr, { data: null, ts: Date.now() }); return res.json(null); }
+      if (!poolAddr) {
+        sparklineCache.set(addr, { data: null, ts: Date.now() });
+        return res.json(null);
+      }
 
       const ohlcvRes = await fetch(
         `https://api.geckoterminal.com/api/v2/networks/base/pools/${poolAddr}/ohlcv/hour?limit=24`,
-        { headers: { Accept: "application/json;version=20230302" } }
+        { headers: { Accept: "application/json;version=20230302" } },
       );
-      if (!ohlcvRes.ok) { sparklineCache.set(addr, { data: null, ts: Date.now() }); return res.json(null); }
-      const rawOhlcv: number[][] = (await ohlcvRes.json())?.data?.attributes?.ohlcv_list ?? [];
-      if (rawOhlcv.length < 2) { sparklineCache.set(addr, { data: null, ts: Date.now() }); return res.json(null); }
-      const closes = rawOhlcv.map(([,,,, c]: number[]) => c).reverse();
-      const result = { points: closes, up: closes[closes.length - 1] >= closes[0] };
+      if (!ohlcvRes.ok) {
+        sparklineCache.set(addr, { data: null, ts: Date.now() });
+        return res.json(null);
+      }
+      const rawOhlcv: number[][] =
+        (await ohlcvRes.json())?.data?.attributes?.ohlcv_list ?? [];
+      if (rawOhlcv.length < 2) {
+        sparklineCache.set(addr, { data: null, ts: Date.now() });
+        return res.json(null);
+      }
+      const closes = rawOhlcv.map(([, , , , c]: number[]) => c).reverse();
+      const result = {
+        points: closes,
+        up: closes[closes.length - 1] >= closes[0],
+      };
       sparklineCache.set(addr, { data: result, ts: Date.now() });
       return res.json(result);
-    } catch { return res.json(null); }
+    } catch {
+      return res.json(null);
+    }
   });
 
   // ─── GeckoTerminal full chart proxy (1H / 24H / 7D) ─────────────────────────
   app.get("/api/chart/:address", async (req, res) => {
     try {
-      const addr = req.params.address.toLowerCase() === NATIVE_ADDR ? WETH_BASE : req.params.address.toLowerCase();
-      const range = (String(req.query.range || "24H")).toUpperCase();
+      const addr =
+        req.params.address.toLowerCase() === NATIVE_ADDR
+          ? WETH_BASE
+          : req.params.address.toLowerCase();
+      const range = String(req.query.range || "24H").toUpperCase();
       const cfg = RANGE_CONFIG[range] ?? RANGE_CONFIG["24H"];
       const cacheKey = `${addr}:${range}`;
       const cached = chartCache.get(cacheKey);
-      if (cached && Date.now() - cached.ts < (CHART_TTL[range] ?? 120_000)) return res.json(cached.data);
+      if (cached && Date.now() - cached.ts < (CHART_TTL[range] ?? 120_000))
+        return res.json(cached.data);
 
       const poolAddr = await getTopPool(addr);
-      if (!poolAddr) { chartCache.set(cacheKey, { data: [], ts: Date.now() }); return res.json([]); }
+      if (!poolAddr) {
+        chartCache.set(cacheKey, { data: [], ts: Date.now() });
+        return res.json([]);
+      }
 
       let url = `https://api.geckoterminal.com/api/v2/networks/base/pools/${poolAddr}/ohlcv/${cfg.interval}?limit=${cfg.limit}`;
       if (cfg.aggregate) url += `&aggregate=${cfg.aggregate}`;
-      const ohlcvRes = await fetch(url, { headers: { Accept: "application/json;version=20230302" } });
-      if (!ohlcvRes.ok) { chartCache.set(cacheKey, { data: [], ts: Date.now() }); return res.json([]); }
-      const raw: number[][] = (await ohlcvRes.json())?.data?.attributes?.ohlcv_list ?? [];
-      const points = raw.slice().reverse().map(([time,,,, close]: number[]) => ({ time: time * 1000, price: close }));
+      const ohlcvRes = await fetch(url, {
+        headers: { Accept: "application/json;version=20230302" },
+      });
+      if (!ohlcvRes.ok) {
+        chartCache.set(cacheKey, { data: [], ts: Date.now() });
+        return res.json([]);
+      }
+      const raw: number[][] =
+        (await ohlcvRes.json())?.data?.attributes?.ohlcv_list ?? [];
+      const points = raw
+        .slice()
+        .reverse()
+        .map(([time, , , , close]: number[]) => ({
+          time: time * 1000,
+          price: close,
+        }));
       chartCache.set(cacheKey, { data: points, ts: Date.now() });
       return res.json(points);
-    } catch { return res.json([]); }
+    } catch {
+      return res.json([]);
+    }
   });
 
   // ─── 0x Swap proxy ──────────────────────────────────────────────────────────
-  async function zeroxFetch(url: string, timeoutMs = 15000): Promise<{ ok: boolean; status: number; data: any }> {
+  async function zeroxFetch(
+    url: string,
+    timeoutMs = 15000,
+  ): Promise<{ ok: boolean; status: number; data: any }> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetch(url, {
-        headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2", "Content-Type": "application/json" },
+        headers: {
+          "0x-api-key": ZEROX_API_KEY,
+          "0x-version": "v2",
+          "Content-Type": "application/json",
+        },
         signal: controller.signal,
       });
       let data: any;
@@ -117,7 +184,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
       return { ok: response.ok, status: response.status, data };
     } catch (err: any) {
-      if (err.name === "AbortError") throw new Error("Quote request timed out. Please try again.");
+      if (err.name === "AbortError")
+        throw new Error("Quote request timed out. Please try again.");
       throw err;
     } finally {
       clearTimeout(timer);
@@ -125,9 +193,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   }
 
   app.get("/api/swap/price", async (req, res) => {
-    console.log("[swap/price] request received", req.query.sellToken, "->", req.query.buyToken, req.query.sellAmount);
+    console.log(
+      "[swap/price] request received",
+      req.query.sellToken,
+      "->",
+      req.query.buyToken,
+      req.query.sellAmount,
+    );
     try {
-      const { sellToken, buyToken, sellAmount, slippageBps, includedSources, excludedSources } = req.query;
+      const {
+        sellToken,
+        buyToken,
+        sellAmount,
+        slippageBps,
+        includedSources,
+        excludedSources,
+      } = req.query;
       if (!sellToken || !buyToken || !sellAmount)
         return res.status(400).json({ error: "Missing required parameters" });
 
@@ -141,11 +222,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         swapFeeToken: String(sellToken),
       });
       if (slippageBps) params.set("slippageBps", String(slippageBps));
-      if (includedSources) params.set("includedSources", String(includedSources));
-      if (excludedSources) params.set("excludedSources", String(excludedSources));
+      if (includedSources)
+        params.set("includedSources", String(includedSources));
+      if (excludedSources)
+        params.set("excludedSources", String(excludedSources));
 
-      const { ok, status, data } = await zeroxFetch(`${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`);
-      console.log("[swap/price] 0x response status:", status, ok ? "ok" : "error");
+      const { ok, status, data } = await zeroxFetch(
+        `${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`,
+      );
+      console.log(
+        "[swap/price] 0x response status:",
+        status,
+        ok ? "ok" : "error",
+      );
       if (!ok) return res.status(status).json(data);
       return res.json(data);
     } catch (err: any) {
@@ -155,9 +244,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/swap/quote", async (req, res) => {
-    console.log("[swap/quote] request received", req.query.sellToken, "->", req.query.buyToken);
+    console.log(
+      "[swap/quote] request received",
+      req.query.sellToken,
+      "->",
+      req.query.buyToken,
+    );
     try {
-      const { sellToken, buyToken, sellAmount, taker, slippageBps, includedSources, excludedSources } = req.query;
+      const {
+        sellToken,
+        buyToken,
+        sellAmount,
+        taker,
+        slippageBps,
+        includedSources,
+        excludedSources,
+      } = req.query;
       if (!sellToken || !buyToken || !sellAmount || !taker)
         return res.status(400).json({ error: "Missing required parameters" });
 
@@ -172,11 +274,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         swapFeeToken: String(sellToken),
       });
       if (slippageBps) params.set("slippageBps", String(slippageBps));
-      if (includedSources) params.set("includedSources", String(includedSources));
-      if (excludedSources) params.set("excludedSources", String(excludedSources));
+      if (includedSources)
+        params.set("includedSources", String(includedSources));
+      if (excludedSources)
+        params.set("excludedSources", String(excludedSources));
 
-      const { ok, status, data } = await zeroxFetch(`${ZEROX_BASE_URL}/swap/allowance-holder/quote?${params}`);
-      console.log("[swap/quote] 0x response status:", status, ok ? "ok" : "error");
+      const { ok, status, data } = await zeroxFetch(
+        `${ZEROX_BASE_URL}/swap/allowance-holder/quote?${params}`,
+      );
+      console.log(
+        "[swap/quote] 0x response status:",
+        status,
+        ok ? "ok" : "error",
+      );
       if (!ok) return res.status(status).json(data);
       return res.json(data);
     } catch (err: any) {
@@ -192,8 +302,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.json(priceCache.data);
       }
 
-      const url = "https://api.coingecko.com/api/v3/simple/price?ids=ethereum,usd-coin,coinbase-wrapped-btc&vs_currencies=usd&include_24hr_change=true";
-      const resp = await fetch(url, { headers: { Accept: "application/json" } });
+      const url =
+        "https://api.coingecko.com/api/v3/simple/price?ids=ethereum,usd-coin,coinbase-wrapped-btc&vs_currencies=usd&include_24hr_change=true";
+      const resp = await fetch(url, {
+        headers: { Accept: "application/json" },
+      });
 
       let prices: any[] = [];
       if (resp.ok) {
@@ -220,9 +333,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         ];
       } else {
         prices = [
-          { symbol: "ETH",   price: 0, change24h: 0, iconSrc: "/figmaAssets/image-7.png" },
-          { symbol: "cbBTC", price: 0, change24h: 0, iconSrc: "/figmaAssets/image-6.png" },
-          { symbol: "USDC",  price: 1, change24h: 0, iconSrc: "/figmaAssets/image-5.png" },
+          {
+            symbol: "ETH",
+            price: 0,
+            change24h: 0,
+            iconSrc: "/figmaAssets/image-7.png",
+          },
+          {
+            symbol: "cbBTC",
+            price: 0,
+            change24h: 0,
+            iconSrc: "/figmaAssets/image-6.png",
+          },
+          {
+            symbol: "USDC",
+            price: 1,
+            change24h: 0,
+            iconSrc: "/figmaAssets/image-5.png",
+          },
         ];
       }
 
@@ -231,9 +359,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (err: any) {
       console.error("Market prices error:", err);
       return res.json([
-        { symbol: "ETH",   price: 0, change24h: 0, iconSrc: "/figmaAssets/image-7.png" },
-        { symbol: "cbBTC", price: 0, change24h: 0, iconSrc: "/figmaAssets/image-6.png" },
-        { symbol: "USDC",  price: 1, change24h: 0, iconSrc: "/figmaAssets/image-5.png" },
+        {
+          symbol: "ETH",
+          price: 0,
+          change24h: 0,
+          iconSrc: "/figmaAssets/image-7.png",
+        },
+        {
+          symbol: "cbBTC",
+          price: 0,
+          change24h: 0,
+          iconSrc: "/figmaAssets/image-6.png",
+        },
+        {
+          symbol: "USDC",
+          price: 1,
+          change24h: 0,
+          iconSrc: "/figmaAssets/image-5.png",
+        },
       ]);
     }
   });
@@ -242,15 +385,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/rewards/user/:wallet", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     const user = await rewardsStorage.upsertUser(wallet);
     return res.json(user);
   });
 
   app.post("/api/rewards/swap", async (req, res) => {
-    const { wallet, txHash, sellSymbol, buySymbol, volumeUsd, tokenAddress, tokenPrice } = req.body;
+    const {
+      wallet,
+      txHash,
+      sellSymbol,
+      buySymbol,
+      volumeUsd,
+      tokenAddress,
+      tokenPrice,
+    } = req.body;
     if (!wallet || !txHash || !sellSymbol || !buySymbol || volumeUsd == null) {
-      return res.status(400).json({ error: "Missing fields: wallet, txHash, sellSymbol, buySymbol, volumeUsd" });
+      return res
+        .status(400)
+        .json({
+          error:
+            "Missing fields: wallet, txHash, sellSymbol, buySymbol, volumeUsd",
+        });
     }
 
     // Optionally verify on Basescan
@@ -263,28 +420,35 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
 
     const result = await rewardsStorage.recordSwap(
-      wallet, txHash, sellSymbol, buySymbol, Number(volumeUsd),
-      { verified, tokenAddress, tokenPrice: Number(tokenPrice ?? 0) }
+      wallet,
+      txHash,
+      sellSymbol,
+      buySymbol,
+      Number(volumeUsd),
+      { verified, tokenAddress, tokenPrice: Number(tokenPrice ?? 0) },
     );
     return res.json(result);
   });
 
   app.get("/api/rewards/token-cashback/:wallet", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     return res.json(await rewardsStorage.getTokenCashbacks(wallet));
   });
 
   app.get("/api/rewards/quests/:wallet", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     return res.json(await rewardsStorage.getDailyQuests(wallet));
   });
 
   app.post("/api/rewards/quests/:wallet/claim", async (req, res) => {
     const { wallet } = req.params;
     const { questType } = req.body;
-    if (!wallet || !questType) return res.status(400).json({ error: "Missing wallet or questType" });
+    if (!wallet || !questType)
+      return res.status(400).json({ error: "Missing wallet or questType" });
     const result = await rewardsStorage.claimQuest(wallet, questType);
     if (!result) return res.status(400).json({ error: "Quest not claimable" });
     return res.json(result);
@@ -292,13 +456,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/rewards/history/:wallet", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     return res.json(await rewardsStorage.getSwapHistory(wallet, 20));
   });
 
   app.get("/api/rewards/xp-history/:wallet", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     return res.json(await rewardsStorage.getXpHistory(wallet, 50));
   });
 
@@ -309,14 +475,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/rewards/rank/:wallet", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     const rank = await rewardsStorage.getUserRank(wallet);
     return res.json({ rank });
   });
 
   app.get("/api/rewards/chest-rank/:wallet", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     const rank = await rewardsStorage.getChestRank(wallet);
     return res.json({ rank });
   });
@@ -328,7 +496,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/rewards/cashback/claim", async (req, res) => {
     const { wallet } = req.body;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     const result = await rewardsStorage.claimCashback(wallet);
     return res.json(result);
   });
@@ -352,14 +521,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/earn/completions/:wallet", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     await earnStorage.syncOnchainProgress(wallet);
     return res.json(await earnStorage.getCompletions(wallet));
   });
 
   app.post("/api/earn/claim", async (req, res) => {
     const { wallet, taskId } = req.body;
-    if (!wallet || !taskId) return res.status(400).json({ error: "Missing wallet or taskId" });
+    if (!wallet || !taskId)
+      return res.status(400).json({ error: "Missing wallet or taskId" });
     const result = await earnStorage.claimTask(wallet, taskId);
     if (!result) return res.status(400).json({ error: "Task not claimable" });
     return res.json(result);
@@ -367,25 +538,32 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/earn/x-account/:wallet", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     const xUsername = await earnStorage.getXUsername(wallet);
     return res.json({ x_username: xUsername ?? "" });
   });
 
   app.post("/api/earn/connect-x", async (req, res) => {
     const { wallet, xUsername } = req.body;
-    if (!wallet || !xUsername) return res.status(400).json({ error: "Missing wallet or xUsername" });
+    if (!wallet || !xUsername)
+      return res.status(400).json({ error: "Missing wallet or xUsername" });
     const cleaned = xUsername.replace(/^@/, "").trim();
-    if (!cleaned || cleaned.length < 1 || cleaned.length > 50) return res.status(400).json({ error: "Invalid X username" });
+    if (!cleaned || cleaned.length < 1 || cleaned.length > 50)
+      return res.status(400).json({ error: "Invalid X username" });
     await earnStorage.connectXAccount(wallet, cleaned);
     return res.json({ ok: true, x_username: cleaned.toLowerCase() });
   });
 
   app.post("/api/earn/verify-social", async (req, res) => {
     const { wallet, taskId } = req.body;
-    if (!wallet || !taskId) return res.status(400).json({ error: "Missing wallet or taskId" });
+    if (!wallet || !taskId)
+      return res.status(400).json({ error: "Missing wallet or taskId" });
     const result = await earnStorage.verifySocialTask(wallet, taskId);
-    if (!result.success) return res.status(400).json({ error: result.error ?? "Verification failed" });
+    if (!result.success)
+      return res
+        .status(400)
+        .json({ error: result.error ?? "Verification failed" });
     return res.json({ ok: true });
   });
 
@@ -428,14 +606,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── Referral API ──────────────────────────────────────────────────────────
   app.get("/api/referral/stats/:wallet", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     const stats = await rewardsStorage.getReferralStats(wallet);
     return res.json(stats);
   });
 
   app.post("/api/referral/apply", async (req, res) => {
     const { wallet, code } = req.body;
-    if (!wallet || !code) return res.status(400).json({ error: "Missing wallet or code" });
+    if (!wallet || !code)
+      return res.status(400).json({ error: "Missing wallet or code" });
     const result = await rewardsStorage.applyReferralCode(wallet, code);
     if (!result.ok) return res.status(400).json({ error: result.error });
     return res.json({ ok: true });
@@ -444,13 +624,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── Community Chests API ───────────────────────────────────────────────────
   app.get("/api/chests/:wallet", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     return res.json(await chestStorage.getChests(wallet));
   });
 
   app.post("/api/chests/:wallet/:chestId/social", async (req, res) => {
     const { wallet, chestId } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     const result = await chestStorage.completeSocial(wallet, chestId);
     if (!result.ok) return res.status(400).json(result);
     return res.json(result);
@@ -459,7 +641,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/chests/:wallet/:chestId/verify", async (req, res) => {
     const { wallet, chestId } = req.params;
     const { signature } = req.body ?? {};
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     const result = await chestStorage.verifyWallet(wallet, chestId, signature);
     if (!result.ok) return res.status(400).json(result);
     return res.json(result);
@@ -467,7 +650,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/chests/:wallet/:chestId/open", async (req, res) => {
     const { wallet, chestId } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     const result = await chestStorage.openChest(wallet, chestId);
     if (!result.ok) return res.status(400).json(result);
     return res.json(result);
@@ -475,13 +659,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/chests/:wallet/campaign-state", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     return res.json(await chestStorage.getCampaignState(wallet));
   });
 
   app.get("/api/chests/:wallet/history", async (req, res) => {
     const { wallet } = req.params;
-    if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+    if (!wallet || wallet.length < 10)
+      return res.status(400).json({ error: "Invalid wallet" });
     return res.json(await chestStorage.getChestHistory(wallet));
   });
 
@@ -504,11 +690,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     let pages = 0;
     try {
       do {
-        const params = new URLSearchParams({ chainId: String(CHAIN_ID), limit: "100" });
-        if (cursor) params.set("cursor", cursor);
-        const resp = await fetch(`${ZEROX_BASE_URL}/trade-analytics/swap?${params}`, {
-          headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2" },
+        const params = new URLSearchParams({
+          chainId: String(CHAIN_ID),
+          limit: "100",
         });
+        if (cursor) params.set("cursor", cursor);
+        const resp = await fetch(
+          `${ZEROX_BASE_URL}/trade-analytics/swap?${params}`,
+          {
+            headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2" },
+          },
+        );
         if (!resp.ok) break;
         const data = await resp.json();
         allTrades.push(...(data.trades ?? []));
@@ -525,8 +717,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   function periodSecs(period: string): number {
     const map: Record<string, number> = {
-      "24h": 86400, "7d": 604800, "30d": 2592000,
-      "90d": 7776000, "1y": 31536000,
+      "24h": 86400,
+      "7d": 604800,
+      "30d": 2592000,
+      "90d": 7776000,
+      "1y": 31536000,
     };
     return map[period.toLowerCase()] ?? 604800;
   }
@@ -542,38 +737,61 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
     const pairs = [
       // WETH → USDC  (large fill to get multi-source routing)
-      { sell: "0x4200000000000000000000000000000000000006", buy: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", amount: "5000000000000000000" },
+      {
+        sell: "0x4200000000000000000000000000000000000006",
+        buy: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        amount: "5000000000000000000",
+      },
       // cbBTC → USDC
-      { sell: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf", buy: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", amount: "10000000" },
+      {
+        sell: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+        buy: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        amount: "10000000",
+      },
     ];
     const sourceMap: Record<string, number> = {};
     let total = 0;
     for (const p of pairs) {
       try {
         const params = new URLSearchParams({
-          chainId: String(CHAIN_ID), sellToken: p.sell, buyToken: p.buy, sellAmount: p.amount,
-          swapFeeRecipient: FEE_RECIPIENT, swapFeeBps: String(FEE_BPS), swapFeeToken: p.sell,
+          chainId: String(CHAIN_ID),
+          sellToken: p.sell,
+          buyToken: p.buy,
+          sellAmount: p.amount,
+          swapFeeRecipient: FEE_RECIPIENT,
+          swapFeeBps: String(FEE_BPS),
+          swapFeeToken: p.sell,
         });
-        const resp = await fetch(`${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`, {
-          headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2" },
-        });
+        const resp = await fetch(
+          `${ZEROX_BASE_URL}/swap/allowance-holder/price?${params}`,
+          {
+            headers: { "0x-api-key": ZEROX_API_KEY, "0x-version": "v2" },
+          },
+        );
         if (!resp.ok) continue;
         const data = await resp.json();
-        for (const fill of (data?.route?.fills ?? [])) {
+        for (const fill of data?.route?.fills ?? []) {
           const src = fill.source || "Other";
           const prop = Number(fill.proportionBps ?? 0);
           sourceMap[src] = (sourceMap[src] ?? 0) + prop;
           total += prop;
         }
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
-    const sources = total > 0
-      ? Object.entries(sourceMap)
-          .map(([name, bps]) => ({ name, percentage: parseFloat(((bps / total) * 100).toFixed(1)) }))
-          .sort((a, b) => b.percentage - a.percentage)
-          .slice(0, 6)
-      : [];
-    if (sources.length > 0) fillSourcesCache = { data: sources, ts: Date.now() };
+    const sources =
+      total > 0
+        ? Object.entries(sourceMap)
+            .map(([name, bps]) => ({
+              name,
+              percentage: parseFloat(((bps / total) * 100).toFixed(1)),
+            }))
+            .sort((a, b) => b.percentage - a.percentage)
+            .slice(0, 6)
+        : [];
+    if (sources.length > 0)
+      fillSourcesCache = { data: sources, ts: Date.now() };
     return sources;
   }
 
@@ -581,38 +799,63 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/analytics/overview", async (req, res) => {
     try {
       const period = String(req.query.period ?? "7d");
-      const [allTrades, fillSources] = await Promise.all([fetchAll0xTrades(), fetchFillSources()]);
+      const [allTrades, fillSources] = await Promise.all([
+        fetchAll0xTrades(),
+        fetchFillSources(),
+      ]);
 
       const trades = filterByPeriod(allTrades, period);
 
-      const totalVolume = trades.reduce((s, t) => s + parseFloat(t.volumeUsd ?? "0"), 0);
-      const totalFees = trades.reduce((s, t) => s + parseFloat(t.fees?.integratorFee?.amountUsd ?? "0"), 0);
+      const totalVolume = trades.reduce(
+        (s, t) => s + parseFloat(t.volumeUsd ?? "0"),
+        0,
+      );
+      const totalFees = trades.reduce(
+        (s, t) => s + parseFloat(t.fees?.integratorFee?.amountUsd ?? "0"),
+        0,
+      );
       const totalSwaps = trades.length;
       const totalUsers = new Set(trades.map((t) => t.taker)).size;
 
       // Previous period for % change
       const prevCutoff = Date.now() / 1000 - periodSecs(period) * 2;
       const currCutoff = Date.now() / 1000 - periodSecs(period);
-      const prevTrades = allTrades.filter((t) => t.timestamp >= prevCutoff && t.timestamp < currCutoff);
-      const prevVol = prevTrades.reduce((s, t) => s + parseFloat(t.volumeUsd ?? "0"), 0);
-      const prevFees = prevTrades.reduce((s, t) => s + parseFloat(t.fees?.integratorFee?.amountUsd ?? "0"), 0);
+      const prevTrades = allTrades.filter(
+        (t) => t.timestamp >= prevCutoff && t.timestamp < currCutoff,
+      );
+      const prevVol = prevTrades.reduce(
+        (s, t) => s + parseFloat(t.volumeUsd ?? "0"),
+        0,
+      );
+      const prevFees = prevTrades.reduce(
+        (s, t) => s + parseFloat(t.fees?.integratorFee?.amountUsd ?? "0"),
+        0,
+      );
       const prevSwaps = prevTrades.length;
       const prevUsers = new Set(prevTrades.map((t) => t.taker)).size;
 
       const pctChange = (cur: number, prev: number) =>
-        prev > 0 ? parseFloat(((cur - prev) / prev * 100).toFixed(2)) : cur > 0 ? 100 : 0;
+        prev > 0
+          ? parseFloat((((cur - prev) / prev) * 100).toFixed(2))
+          : cur > 0
+            ? 100
+            : 0;
 
       // Token breakdown by volume (buy + sell sides)
       const tokenVol: Record<string, number> = {};
       for (const t of trades) {
-        for (const tok of (t.tokens ?? [])) {
+        for (const tok of t.tokens ?? []) {
           const sym = tok.symbol ?? "?";
-          tokenVol[sym] = (tokenVol[sym] ?? 0) + parseFloat(t.volumeUsd ?? "0") / 2;
+          tokenVol[sym] =
+            (tokenVol[sym] ?? 0) + parseFloat(t.volumeUsd ?? "0") / 2;
         }
       }
       const totalTokenVol = Object.values(tokenVol).reduce((s, v) => s + v, 0);
       const topTokens = Object.entries(tokenVol)
-        .map(([name, vol]) => ({ name, percentage: parseFloat(((vol / totalTokenVol) * 100).toFixed(1)) }))
+        .map(([name, vol]) => ({
+          name,
+          percentage: parseFloat(((vol / totalTokenVol) * 100).toFixed(1)),
+        }))
         .sort((a, b) => b.percentage - a.percentage)
         .slice(0, 5);
 
@@ -622,12 +865,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const platformFees = totalFees * 0.077;
 
       return res.json({
-        totalVolume, totalFees, totalSwaps, totalUsers,
+        totalVolume,
+        totalFees,
+        totalSwaps,
+        totalUsers,
         volumeChange: pctChange(totalVolume, prevVol),
         feesChange: pctChange(totalFees, prevFees),
         swapsChange: pctChange(totalSwaps, prevSwaps),
         usersChange: pctChange(totalUsers, prevUsers),
-        fees: { swap: swapFees, liquidity: liquidityFees, platform: platformFees },
+        fees: {
+          swap: swapFees,
+          liquidity: liquidityFees,
+          platform: platformFees,
+        },
         topTokens,
         fillSources,
       });
@@ -648,15 +898,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const byDay: Record<string, { volume: number; swaps: number }> = {};
       for (const t of trades) {
         const d = new Date((t.timestamp ?? 0) * 1000);
-        const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const key = d.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
         if (!byDay[key]) byDay[key] = { volume: 0, swaps: 0 };
         byDay[key].volume += parseFloat(t.volumeUsd ?? "0");
         byDay[key].swaps += 1;
       }
       // Sort chronologically
       const sorted = Object.entries(byDay)
-        .map(([date, v]) => ({ date, volume: parseFloat(v.volume.toFixed(2)), swaps: v.swaps }))
-        .sort((a, b) => new Date("2026 " + a.date).getTime() - new Date("2026 " + b.date).getTime());
+        .map(([date, v]) => ({
+          date,
+          volume: parseFloat(v.volume.toFixed(2)),
+          swaps: v.swaps,
+        }))
+        .sort(
+          (a, b) =>
+            new Date("2026 " + a.date).getTime() -
+            new Date("2026 " + b.date).getTime(),
+        );
 
       return res.json(sorted);
     } catch (err: any) {
@@ -670,9 +931,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const period = String(req.query.period ?? "all");
       const allTrades = await fetchAll0xTrades();
-      const trades = period === "all" ? allTrades : filterByPeriod(allTrades, period);
+      const trades =
+        period === "all" ? allTrades : filterByPeriod(allTrades, period);
 
-      const pairMap: Record<string, { volume: number; swaps: number; vol24h: number }> = {};
+      const pairMap: Record<
+        string,
+        { volume: number; swaps: number; vol24h: number }
+      > = {};
       const now = Date.now() / 1000;
       for (const t of trades) {
         const syms = (t.tokens ?? []).map((x: any) => x.symbol ?? "?");
@@ -691,7 +956,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           pair,
           volume: parseFloat(v.volume.toFixed(2)),
           swaps: v.swaps,
-          change24h: parseFloat(v.vol24h > 0 ? (v.vol24h / (v.volume || 1) * 100).toFixed(2) : "0"),
+          change24h: parseFloat(
+            v.vol24h > 0
+              ? ((v.vol24h / (v.volume || 1)) * 100).toFixed(2)
+              : "0",
+          ),
         }))
         .sort((a, b) => b.volume - a.volume)
         .slice(0, 8);
@@ -713,13 +982,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const byDay: Record<string, Set<string>> = {};
       for (const t of trades) {
         const d = new Date((t.timestamp ?? 0) * 1000);
-        const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const key = d.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
         if (!byDay[key]) byDay[key] = new Set();
         if (t.taker) byDay[key].add(t.taker);
       }
       const sorted = Object.entries(byDay)
         .map(([date, s]) => ({ date, users: s.size }))
-        .sort((a, b) => new Date("2026 " + a.date).getTime() - new Date("2026 " + b.date).getTime());
+        .sort(
+          (a, b) =>
+            new Date("2026 " + a.date).getTime() -
+            new Date("2026 " + b.date).getTime(),
+        );
 
       return res.json(sorted);
     } catch (err: any) {
@@ -732,24 +1008,33 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/xp-claim", async (req, res) => {
     try {
       const { wallet, txHash } = req.body;
-      if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+      if (!wallet || wallet.length < 10)
+        return res.status(400).json({ error: "Invalid wallet" });
 
-      const CLAIM_CONTRACT = "0xba77bf8f8119f8604090e2419b64a0a0e6d78907";
+      const CLAIM_CONTRACT = "0x1D39749fE726e47a66A0bC5D1B7D5316Ff4c5E75";
 
       if (txHash) {
         const rpcRes = await fetch("https://mainnet.base.org", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            jsonrpc: "2.0", id: 1, method: "eth_getTransactionReceipt",
+            jsonrpc: "2.0",
+            id: 1,
+            method: "eth_getTransactionReceipt",
             params: [txHash],
           }),
         });
-        const { result: receipt } = await rpcRes.json() as any;
-        if (!receipt) return res.status(400).json({ error: "Transaction not found or still pending" });
-        if (receipt.status !== "0x1") return res.status(400).json({ error: "Transaction failed on-chain" });
-        if (receipt.to?.toLowerCase() !== CLAIM_CONTRACT) return res.status(400).json({ error: "Wrong contract" });
-        if (receipt.from?.toLowerCase() !== wallet.toLowerCase()) return res.status(400).json({ error: "Transaction sender mismatch" });
+        const { result: receipt } = (await rpcRes.json()) as any;
+        if (!receipt)
+          return res
+            .status(400)
+            .json({ error: "Transaction not found or still pending" });
+        if (receipt.status !== "0x1")
+          return res.status(400).json({ error: "Transaction failed on-chain" });
+        if (receipt.to?.toLowerCase() !== CLAIM_CONTRACT)
+          return res.status(400).json({ error: "Wrong contract" });
+        if (receipt.from?.toLowerCase() !== wallet.toLowerCase())
+          return res.status(400).json({ error: "Transaction sender mismatch" });
       }
 
       const result = await rewardsStorage.awardXpClaim(wallet);
