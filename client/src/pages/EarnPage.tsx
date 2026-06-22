@@ -115,7 +115,7 @@ export function EarnPage() {
   const mountedRef = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
-  // ── On-chain check whenever wallet connects ──────────────────────────────
+  // ── On-chain + DB check whenever wallet connects ─────────────────────────
   useEffect(() => {
     if (!wallet.address) { setPhase("idle"); return; }
     let cancelled = false;
@@ -129,6 +129,13 @@ export function EarnPage() {
     });
     return () => { cancelled = true; };
   }, [wallet.address]);
+
+  // ── If DB says xp_claimed, lock immediately once rewardUser loads ─────────
+  useEffect(() => {
+    if (rewardUser?.xp_claimed && phase === "ready") {
+      setPhase("already_claimed");
+    }
+  }, [rewardUser?.xp_claimed, phase]);
 
   // ── Claim flow ────────────────────────────────────────────────────────────
   const handleClaim = useCallback(async () => {
@@ -359,26 +366,28 @@ export function EarnPage() {
 
               {/* Already claimed */}
               {phase === "already_claimed" && (
-                <div className="flex flex-col items-center gap-4 py-4">
-                  <div className="w-14 h-14 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(0,188,132,0.1)", border: "2px solid rgba(0,188,132,0.25)" }}>
-                    <CheckCircle size={30} className="text-[#00bc84]" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-semibold text-white mb-1">XP Already Claimed</p>
-                    <p className="text-sm text-white/40">This wallet has claimed 10,000 XP on Base</p>
-                  </div>
-                  <div className="w-full rounded-lg divide-y divide-white/5"
-                    style={{ background: "rgba(0,188,132,0.04)", border: "1px solid rgba(0,188,132,0.12)" }}>
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-sm text-white/40">Total XP (DB)</span>
-                      <span className="text-sm font-semibold text-[#00bc84]">{dbXp.toLocaleString()} XP</span>
+                <div className="flex flex-col items-center gap-3 py-2">
+                  <button
+                    disabled
+                    data-testid="button-claim-disabled"
+                    className="w-full h-16 rounded-xl text-base font-bold text-white/30 flex items-center justify-center gap-3 cursor-not-allowed"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}>
+                    <Zap size={22} />
+                    Claim 10,000 XP
+                  </button>
+                  <div
+                    data-testid="status-already-claimed"
+                    className="w-full flex items-center gap-2.5 rounded-lg px-4 py-3"
+                    style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                    <XCircle size={16} className="text-red-400 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-400">You've already claimed your XP</p>
+                      <p className="text-xs text-red-400/60 mt-0.5">10,000 XP was awarded to this wallet — one claim per wallet.</p>
                     </div>
                   </div>
-                  <button disabled className="w-full h-12 rounded-lg text-sm font-semibold text-white/30 cursor-not-allowed"
-                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    XP Already Claimed ✓
-                  </button>
                 </div>
               )}
 

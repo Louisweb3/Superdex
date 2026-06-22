@@ -196,6 +196,7 @@ export class RewardsStorage {
         referred_by: existing.referred_by ?? "",
         referral_bonus_xp: existing.referral_bonus_xp ?? 0,
         referral_milestone_paid: existing.referral_milestone_paid ?? false,
+        xp_claimed: existing.xp_claimed ?? false,
         created_at: new Date(existing.created_at ?? Date.now()).getTime(),
       };
     }
