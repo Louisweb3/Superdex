@@ -81,8 +81,8 @@ export function useDailyQuests(wallet: string | null) {
     queryKey: ["/api/rewards/quests", wallet],
     queryFn: () => json(`/api/rewards/quests/${wallet}`),
     enabled: !!wallet,
-    refetchInterval: 10_000,
-    staleTime: 5_000,
+    refetchInterval: 60_000,
+    staleTime: 45_000,
   });
 }
 

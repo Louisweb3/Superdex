@@ -3,7 +3,7 @@ import { encodeFunctionData, decodeFunctionResult } from "viem";
 import { useWalletContext } from "@/context/WalletContext";
 import { useRewardUser } from "@/hooks/useRewards";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, CheckCircle, XCircle, ExternalLink, Wallet, Zap, Copy, AlertTriangle, Gem, ShieldCheck, Lock, Layers, Gift } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, ExternalLink, Wallet, Zap, Copy, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -88,39 +88,6 @@ async function readBalance(address: string): Promise<bigint> {
   return val;
 }
 
-// ─── Confetti ────────────────────────────────────────────────────────────────
-
-function Confetti({ active }: { active: boolean }) {
-  const pieces = useMemo(() =>
-    Array.from({ length: 60 }, (_, i) => ({
-      left:  `${(i * 167 + i * i * 3) % 100}%`,
-      delay: `${(i * 0.07) % 1.2}s`,
-      dur:   `${1.8 + (i % 5) * 0.25}s`,
-      color: ["#00bc84", "#ffd25a", "#5aa9ff", "#a855f7", "#f97316", "#ec4899"][i % 6],
-      size:  6 + (i % 4) * 3,
-      rotate: (i * 37) % 360,
-    })), []);
-
-  if (!active) return null;
-  return (
-    <div className="pointer-events-none fixed inset-0 z-[200] overflow-hidden">
-      {pieces.map((p, i) => (
-        <div key={i} style={{
-          position: "absolute",
-          left: p.left,
-          top: "-20px",
-          width: p.size,
-          height: p.size * 0.5,
-          backgroundColor: p.color,
-          borderRadius: 2,
-          transform: `rotate(${p.rotate}deg)`,
-          animation: `confettiFall ${p.dur} ${p.delay} ease-in forwards`,
-        }} />
-      ))}
-    </div>
-  );
-}
-
 // ─── Animated counter ─────────────────────────────────────────────────────────
 
 function AnimatedCounter({ to, duration = 1600 }: { to: number; duration?: number }) {
@@ -132,37 +99,12 @@ function AnimatedCounter({ to, duration = 1600 }: { to: number; duration?: numbe
       const p = Math.min((now - start) / duration, 1);
       setVal(Math.round((1 - Math.pow(1 - p, 3)) * to));
       if (p < 1) raf = requestAnimationFrame(tick);
+      return raf;
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [to, duration]);
   return <>{val.toLocaleString()}</>;
-}
-
-// ─── Particle field (ambient background) ─────────────────────────────────────
-
-function ParticleField() {
-  const dots = useMemo(() =>
-    Array.from({ length: 30 }, (_, i) => ({
-      left:  `${(i * 3.7 + i * i * 0.2) % 96}%`,
-      top:   `${(i * 7.1 + i * 3) % 90}%`,
-      size:  1 + (i % 3),
-      dur:   `${2 + (i % 5) * 0.6}s`,
-      delay: `${(i * 0.3) % 2}s`,
-      opacity: 0.12 + (i % 4) * 0.07,
-    })), []);
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {dots.map((d, i) => (
-        <div key={i} className="absolute rounded-full bg-[#00bc84]" style={{
-          left: d.left, top: d.top,
-          width: d.size, height: d.size,
-          opacity: d.opacity,
-          animation: `twinkle ${d.dur} ease-in-out ${d.delay} infinite`,
-        }} />
-      ))}
-    </div>
-  );
 }
 
 // ─── Confirm modal ────────────────────────────────────────────────────────────
@@ -174,49 +116,43 @@ function ConfirmModal({ onConfirm, onClose, isLoading }: {
 }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-[400px] mx-4 mb-4 sm:mb-0 rounded-[28px] overflow-hidden"
-        style={{ background: "linear-gradient(145deg,#061018,#030c16)", border: "1px solid rgba(0,188,132,0.25)" }}>
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00bc84]/60 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#00bc84]/20 to-transparent" />
-
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-[380px] mx-4 mb-4 sm:mb-0 rounded-2xl overflow-hidden shadow-2xl"
+        style={{ background: "#0a0f14", border: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="p-6">
-          <div className="flex items-center justify-center w-14 h-14 rounded-2xl mx-auto mb-4"
-            style={{ background: "linear-gradient(135deg,#00bc8422,#00bc8408)", border: "1px solid #00bc8440" }}>
-            <Zap size={24} className="text-[#00bc84]" />
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl mx-auto mb-4"
+            style={{ background: "rgba(0,188,132,0.12)", border: "1px solid rgba(0,188,132,0.25)" }}>
+            <Zap size={22} className="text-[#00bc84]" />
           </div>
 
-          <h2 className="text-center text-[18px] font-bold text-white mb-1">Confirm XP Claim</h2>
-          <p className="text-center text-[13px] text-white/40 mb-6">Review the details before confirming</p>
+          <h2 className="text-center text-lg font-semibold text-white mb-1">Confirm XP Claim</h2>
+          <p className="text-center text-sm text-white/40 mb-6">Review details before confirming</p>
 
-          <div className="rounded-[16px] divide-y divide-white/6 mb-6"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="rounded-lg divide-y divide-white/5 mb-6"
+            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
             {[
               { label: "Reward",   value: "10,000 XP",     color: "#ffd25a" },
               { label: "Network",  value: "Base",           color: "#0052ff" },
-              { label: "Claim Fee", value: `${CLAIM_FEE_ETH} ETH`, color: "#00bc84" },
-              { label: "Limit",    value: "One per wallet", color: "rgba(255,255,255,0.4)" },
+              { label: "Limit",    value: "One per wallet", color: "#6b7280" },
             ].map(row => (
-              <div key={row.label} className="flex items-center justify-between px-4 py-3">
-                <span className="text-[13px] text-white/40">{row.label}</span>
-                <span className="text-[13px] font-semibold" style={{ color: row.color }}>{row.value}</span>
+              <div key={row.label} className="flex items-center justify-between px-4 py-2.5">
+                <span className="text-sm text-white/40">{row.label}</span>
+                <span className="text-sm font-medium" style={{ color: row.color }}>{row.value}</span>
               </div>
             ))}
           </div>
 
           <div className="flex gap-3">
             <button onClick={onClose} disabled={isLoading}
-              className="flex-1 h-11 rounded-[12px] text-[14px] font-semibold text-white/50 hover:text-white/70 transition-colors disabled:opacity-40"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-              data-testid="button-cancel-claim">
+              className="flex-1 h-10 rounded-lg text-sm font-medium text-white/50 hover:text-white/70 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
               Cancel
             </button>
             <button onClick={onConfirm} disabled={isLoading}
-              className="flex-1 h-11 rounded-[12px] text-[14px] font-bold text-white disabled:opacity-50 flex items-center justify-center gap-2 transition-opacity"
-              style={{ background: "linear-gradient(135deg,#00bc84,#00a372)" }}
-              data-testid="button-confirm-claim">
-              {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-              {isLoading ? "Sending…" : "Confirm & Claim"}
+              className="flex-1 h-10 rounded-lg text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2 transition-all disabled:cursor-not-allowed"
+              style={{ background: "#00bc84", boxShadow: isLoading ? "none" : "0 4px 12px rgba(0,188,132,0.25)" }}>
+              {isLoading ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
+              {isLoading ? "Sending..." : "Confirm & Claim"}
             </button>
           </div>
         </div>
@@ -249,7 +185,6 @@ export function EarnPage() {
   const [tokenBalance, setTokenBalance] = useState<bigint>(0n);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
-  const [showConfetti, setShowConfetti] = useState(false);
   const [copied, setCopied] = useState(false);
   const mountedRef = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
@@ -279,7 +214,6 @@ export function EarnPage() {
     setPhase("sending");
 
     try {
-      // Switch to Base if needed
       if (wallet.isWrongNetwork) {
         await wallet.switchToBase();
       }
@@ -287,14 +221,12 @@ export function EarnPage() {
       const data = encodeFunctionData({ abi: CLAIM_ABI, functionName: "claim" });
       const valueHex = "0x" + CLAIM_FEE_WEI.toString(16);
 
-      // Send transaction
       const hash = await wallet.sendTransaction({ to: CLAIM_CONTRACT, data, value: valueHex });
       if (!mountedRef.current) return;
       setTxHash(hash);
       setPhase("pending_receipt");
-      toast({ title: "Transaction sent", description: "Waiting for confirmation on Base…" });
+      toast({ title: "Transaction sent", description: "Waiting for confirmation on Base..." });
 
-      // Wait for receipt
       const receipt = await waitForReceipt(hash);
       if (!mountedRef.current) return;
 
@@ -302,7 +234,6 @@ export function EarnPage() {
         throw new Error("Transaction reverted on-chain");
       }
 
-      // Award XP in DB
       setPhase("awarding");
       const res = await fetch("/api/xp-claim", {
         method: "POST",
@@ -314,22 +245,15 @@ export function EarnPage() {
 
       if (!mountedRef.current) return;
 
-      // Refresh on-chain balance
-      readBalance(wallet.address).then(b => { if (mountedRef.current) setTokenBalance(b); }).catch(() => {});
-
-      // Invalidate DB queries
       qc.invalidateQueries({ queryKey: ["/api/rewards/user", wallet.address] });
       qc.invalidateQueries({ queryKey: ["/api/rewards/stats"] });
       qc.invalidateQueries({ queryKey: ["/api/rewards/leaderboard"] });
 
       setPhase("success");
-      setShowConfetti(true);
-      setTimeout(() => { if (mountedRef.current) setShowConfetti(false); }, 5000);
 
     } catch (err: any) {
       if (!mountedRef.current) return;
       const msg: string = err?.message ?? "Transaction failed";
-      // User rejected
       if (msg.includes("4001") || msg.toLowerCase().includes("reject") || msg.toLowerCase().includes("denied")) {
         setPhase("ready");
         toast({ title: "Cancelled", description: "Transaction rejected", variant: "destructive" });
@@ -340,9 +264,8 @@ export function EarnPage() {
     }
   }, [wallet, qc, toast]);
 
-  // ── Total XP: DB xp + on-chain token balance ────────────────────────────
+  // ── Total XP ──────────────────────────────────────────────────────────────
   const dbXp = rewardUser?.xp ?? 0;
-  const tokenXp = Number(tokenBalance / BigInt(10 ** 18)) || 0;
   const displayXp = dbXp;
 
   const isBusy = phase === "sending" || phase === "pending_receipt" || phase === "awarding" || phase === "checking";
@@ -350,384 +273,313 @@ export function EarnPage() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Keyframes injected once */}
       <style>{`
-        @keyframes confettiFall {
-          0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
-        }
-        @keyframes twinkle {
-          0%,100% { opacity: 0.1; transform: scale(1); }
-          50%      { opacity: 0.6; transform: scale(1.6); }
-        }
-        @keyframes xpPulse {
-          0%,100% { text-shadow: 0 0 20px #ffd25a66; }
-          50%      { text-shadow: 0 0 48px #ffd25acc, 0 0 80px #ffd25a44; }
-        }
-        @keyframes borderGlow {
-          0%,100% { border-color: rgba(0,188,132,0.2); box-shadow: 0 0 30px rgba(0,188,132,0.06); }
-          50%      { border-color: rgba(0,188,132,0.5); box-shadow: 0 0 60px rgba(0,188,132,0.18); }
-        }
-        @keyframes floatUp {
-          from { opacity: 0; transform: translateY(20px); }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes badgePop {
-          0%   { transform: scale(0.7); opacity: 0; }
-          60%  { transform: scale(1.08); }
-          100% { transform: scale(1); opacity: 1; }
+        @keyframes pulseGlow {
+          0%,100% { opacity: 0.4; }
+          50%      { opacity: 0.7; }
         }
       `}</style>
 
-      <Confetti active={showConfetti} />
-
-      <div className="relative min-h-screen w-full flex flex-col items-center justify-start py-8 px-4 overflow-hidden">
-        <ParticleField />
+      <div className="relative min-h-screen w-full flex flex-col items-center py-10 px-4 overflow-hidden bg-[#05080a]">
 
         {/* Header */}
-        <div className="relative z-10 w-full max-w-[500px] mb-8 text-center" style={{ animation: "floatUp 0.5s ease-out" }}>
-          <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-4"
-            style={{ background: "rgba(0,188,132,0.08)", border: "1px solid rgba(0,188,132,0.25)" }}>
-            <div className="w-2 h-2 rounded-full bg-[#00bc84] animate-pulse" />
-            <span className="text-[12px] font-bold uppercase tracking-[0.15em] text-[#00bc84]">Season 1 · Live</span>
-          </div>
-          <h1 className="text-[32px] sm:text-[40px] font-extrabold text-white leading-tight mb-2">
-            Claim Your{" "}
-            <span style={{
-              background: "linear-gradient(135deg,#ffd25a,#f97316)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-              animation: "xpPulse 3s ease-in-out infinite",
+        <div className="relative z-10 w-full max-w-[480px] mb-8 text-center" style={{ animation: "fadeIn 0.4s ease-out" }}>
+          <div className="inline-flex items-center gap-3 rounded-xl px-8 py-3 mb-5"
+            style={{ 
+              background: "linear-gradient(135deg, rgba(0,82,255,0.15), rgba(0,82,255,0.05))", 
+              border: "1px solid rgba(0,82,255,0.3)",
+              boxShadow: "0 8px 32px rgba(0,82,255,0.12), 0 0 0 1px rgba(0,82,255,0.15) inset"
             }}>
-              10,000 XP
-            </span>
+            <div className="w-2.5 h-2.5 rounded-full bg-[#0052ff]" style={{ animation: "pulseGlow 2s ease-in-out infinite" }} />
+            <span className="text-sm font-bold uppercase tracking-[0.12em] text-[#0052ff]">Base Beryl · Live</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight mb-3">
+            Claim Your 10,000 XP
           </h1>
-          <p className="text-[15px] text-white/40">SuperSwap Base Season 1 — One claim per wallet</p>
+          <p className="text-sm text-white/45">Claim your SuperSwap Beryl XP. limited time</p>
         </div>
 
         {/* Main card */}
-        <div className="relative z-10 w-full max-w-[500px]"
-          style={{ animation: "floatUp 0.6s ease-out" }}>
-          <div className="relative rounded-[28px] overflow-hidden"
-            style={{
-              background: "linear-gradient(145deg,#061018,#030c16,#020a10)",
-              border: "1px solid rgba(0,188,132,0.22)",
-              boxShadow: "0 24px 80px -12px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,188,132,0.08) inset",
-              animation: "borderGlow 4s ease-in-out infinite",
+        <div className="relative z-10 w-full max-w-[480px]" style={{ animation: "fadeIn 0.5s ease-out" }}>
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl"
+            style={{ 
+              background: "#0a0f14",
+              border: "1px solid rgba(255,255,255,0.06)",
             }}>
-            {/* Top gradient line */}
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00bc84]/60 to-transparent" />
 
-            {/* Glow orb */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[150px] pointer-events-none"
-              style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(0,188,132,0.12) 0%, transparent 70%)" }} />
+            <div className="relative p-6">
 
-            <div className="relative p-6 sm:p-8">
-
-              {/* ── Claim details grid ─────────────────────────── */}
+              {/* Claim details grid */}
               {phase !== "success" && (
-                <div className="rounded-[18px] mb-6 divide-y divide-white/6"
-                  style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="rounded-lg mb-6 divide-y divide-white/5"
+                  style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
 
-                  {/* Claim Reward row */}
-                  <div className="flex items-center gap-4 px-4 py-3.5">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-none"
-                      style={{ background: "rgba(255,210,90,0.12)", border: "1px solid rgba(255,210,90,0.2)" }}>
-                      <Zap size={16} className="text-[#ffd25a]" fill="#ffd25a" />
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <img 
+                        src="https://www.clipartmax.com/png/full/4-45986_christmas-tree-with-gifts-clipart.png"
+                        alt="Reward"
+                        width={32}
+                        height={32}
+                        style={{ borderRadius: 8, flexShrink: 0 }}
+                      />
+                      <div>
+                        <p className="text-sm text-white/40">Claim Reward</p>
+                        <p className="text-xs text-white/30 mt-0.5">SuperSwap Season 1</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] text-white/40">Claim Reward</p>
-                      <p className="text-[11px] text-white/20 mt-0.5">SuperSwap Season 1</p>
-                    </div>
-                    <span className="text-[14px] font-bold text-[#ffd25a]">10,000 XP</span>
+                    <span className="text-sm font-semibold text-[#ffd25a]">10,000 XP</span>
                   </div>
 
-                  {/* Network row — Base logo */}
-                  <div className="flex items-center gap-4 px-4 py-3.5">
-                    <img
-                      src="/base-logo.svg"
-                      alt="Base"
-                      width={36}
-                      height={36}
-                      style={{ borderRadius: 10, flexShrink: 0 }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] text-white/40">Network</p>
-                      <p className="text-[11px] text-white/20 mt-0.5">Chain ID 8453</p>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <img src="https://cdn.brandfetch.io/id6XsSOVVS/w/400/h/400/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX&t=1757929784005" alt="Base" width={32} height={32} style={{ borderRadius: 8 }} />
+                      <div>
+                        <p className="text-sm text-white/40">Network</p>
+                        <p className="text-xs text-white/30 mt-0.5">Chain ID 8453</p>
+                      </div>
                     </div>
-                    <span className="text-[14px] font-bold text-[#0052ff]">Base</span>
+                    <span className="text-sm font-semibold text-[#0052ff]">Base</span>
                   </div>
 
-                  {/* Claim Fee row */}
-                  <div className="flex items-center gap-4 px-4 py-3.5">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-none"
-                      style={{ background: "rgba(0,188,132,0.12)", border: "1px solid rgba(0,188,132,0.2)" }}>
-                      <Gem size={16} className="text-[#00bc84]" />
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <img 
+                        src="https://www.clipartmax.com/png/full/6-61125_advocate-symbol-clip-art.png"
+                        alt="Eligibility"
+                        width={32}
+                        height={32}
+                        style={{ borderRadius: 8, flexShrink: 0 }}
+                      />
+                      <div>
+                        <p className="text-sm text-white/40">Eligibility</p>
+                        <p className="text-xs text-white/30 mt-0.5">On-chain verified</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] text-white/40">Claim Fee</p>
-                      <p className="text-[11px] text-white/20 mt-0.5">≈ gas-free after</p>
-                    </div>
-                    <span className="text-[14px] font-bold text-[#00bc84]">{CLAIM_FEE_ETH} ETH</span>
-                  </div>
-
-                  {/* Eligibility row */}
-                  <div className="flex items-center gap-4 px-4 py-3.5">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-none"
-                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                      <ShieldCheck size={16} className="text-white/50" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] text-white/40">Eligibility</p>
-                      <p className="text-[11px] text-white/20 mt-0.5">Permanent on-chain</p>
-                    </div>
-                    <span className="text-[14px] font-bold text-white/55">One per wallet</span>
+                    <span className="text-sm font-semibold text-white/45">One per wallet</span>
                   </div>
 
                 </div>
               )}
 
-              {/* ── Wallet info strip ──────────────────────────── */}
+              {/* Wallet info strip */}
               {wallet.isConnected && wallet.address && phase !== "success" && (
-                <div className="flex items-center gap-2 rounded-[12px] px-3 py-2.5 mb-5"
-                  style={{ background: "rgba(0,188,132,0.06)", border: "1px solid rgba(0,188,132,0.15)" }}>
-                  <div className="w-6 h-6 rounded-full flex-none flex items-center justify-center"
-                    style={{ background: "rgba(0,188,132,0.18)" }}>
-                    <Wallet size={11} className="text-[#00bc84]" />
+                <div className="flex items-center gap-2 rounded-lg px-3 py-2.5 mb-5"
+                  style={{ background: "rgba(0,188,132,0.05)", border: "1px solid rgba(0,188,132,0.12)" }}>
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(0,188,132,0.15)" }}>
+                    <Wallet size={10} className="text-[#00bc84]" />
                   </div>
-                  <span className="text-[12px] font-mono text-white/60 flex-1">{shortAddr(wallet.address)}</span>
+                  <span className="text-xs font-mono text-white/50 flex-1">{shortAddr(wallet.address)}</span>
                   {rewardUser && (
-                    <span className="text-[11px] font-bold text-[#ffd25a]">
+                    <span className="text-xs font-semibold text-[#ffd25a]">
                       {rewardUser.xp.toLocaleString()} XP
                     </span>
                   )}
                   {wallet.isWrongNetwork && (
-                    <span className="text-[10px] font-bold text-[#f97316] flex items-center gap-1">
-                      <AlertTriangle size={10} /> Wrong network
+                    <span className="text-xs font-semibold text-[#f97316] flex items-center gap-1">
+                      <AlertTriangle size={9} /> Wrong network
                     </span>
                   )}
                 </div>
               )}
 
-              {/* ── Phase: not connected ─────────────────────── */}
+              {/* Not connected */}
               {!wallet.isConnected && (
                 <div className="flex flex-col items-center gap-4 py-4">
-                  <p className="text-[14px] text-white/40 text-center">Connect your wallet to check eligibility and claim</p>
+                  <p className="text-sm text-white/40 text-center">Connect wallet to check eligibility and claim</p>
                   <button
                     onClick={wallet.connect}
                     disabled={wallet.isConnecting}
-                    className="w-full h-[52px] rounded-[14px] text-[15px] font-bold text-white flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01] active:scale-[0.99]"
-                    style={{ background: "linear-gradient(135deg,#00bc84,#00a372)", boxShadow: "0 8px 32px -8px rgba(0,188,132,0.5)" }}
-                    data-testid="button-connect-wallet">
-                    {wallet.isConnecting ? <Loader2 size={18} className="animate-spin" /> : <Wallet size={18} />}
-                    {wallet.isConnecting ? "Connecting…" : "Connect Wallet"}
+                    className="w-full h-12 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ background: "#00bc84", boxShadow: "0 4px 12px rgba(0,188,132,0.25)" }}>
+                    {wallet.isConnecting ? <Loader2 size={17} className="animate-spin" /> : <Wallet size={17} />}
+                    {wallet.isConnecting ? "Connecting..." : "Connect Wallet"}
                   </button>
                 </div>
               )}
 
-              {/* ── Phase: checking ──────────────────────────── */}
+              {/* Checking */}
               {wallet.isConnected && phase === "checking" && (
                 <div className="flex flex-col items-center gap-3 py-6">
-                  <Loader2 size={32} className="text-[#00bc84] animate-spin" />
-                  <p className="text-[14px] text-white/40">Checking claim status on Base…</p>
+                  <Loader2 size={30} className="text-[#00bc84] animate-spin" />
+                  <p className="text-sm text-white/40">Checking claim status on Base...</p>
                 </div>
               )}
 
-              {/* ── Phase: wrong network ─────────────────────── */}
+              {/* Wrong network */}
               {wallet.isConnected && wallet.isWrongNetwork && phase === "ready" && (
                 <div className="flex flex-col items-center gap-4 py-4">
-                  <div className="flex items-center gap-2 rounded-[12px] px-4 py-2.5 w-full"
-                    style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)" }}>
-                    <AlertTriangle size={14} className="text-[#f97316] flex-none" />
-                    <p className="text-[13px] text-[#f97316]">Switch to Base mainnet to claim</p>
+                  <div className="flex items-center gap-2 rounded-lg px-4 py-2 w-full"
+                    style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.15)" }}>
+                    <AlertTriangle size={13} className="text-[#f97316]" />
+                    <p className="text-sm text-[#f97316]">Switch to Base mainnet to claim</p>
                   </div>
                   <button
                     onClick={wallet.switchToBase}
-                    className="w-full h-[52px] rounded-[14px] text-[15px] font-bold text-white flex items-center justify-center gap-2"
-                    style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}
-                    data-testid="button-switch-network">
+                    className="w-full h-12 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2"
+                    style={{ background: "#f97316" }}>
                     Switch to Base
                   </button>
                 </div>
               )}
 
-              {/* ── Phase: already claimed ─────────────────── */}
+              {/* Already claimed */}
               {phase === "already_claimed" && (
-                <div className="flex flex-col items-center gap-4 py-4" style={{ animation: "floatUp 0.4s ease-out" }}>
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(0,188,132,0.1)", border: "2px solid rgba(0,188,132,0.3)" }}>
-                    <CheckCircle size={32} className="text-[#00bc84]" />
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(0,188,132,0.1)", border: "2px solid rgba(0,188,132,0.25)" }}>
+                    <CheckCircle size={30} className="text-[#00bc84]" />
                   </div>
                   <div className="text-center">
-                    <p className="text-[17px] font-bold text-white mb-1">XP Already Claimed</p>
-                    <p className="text-[13px] text-white/40">This wallet has already claimed 10,000 XP on Base</p>
+                    <p className="text-lg font-semibold text-white mb-1">XP Already Claimed</p>
+                    <p className="text-sm text-white/40">This wallet has claimed 10,000 XP on Base</p>
                   </div>
-                  <div className="w-full rounded-[14px] divide-y divide-white/6"
-                    style={{ background: "rgba(0,188,132,0.05)", border: "1px solid rgba(0,188,132,0.15)" }}>
-                    <div className="flex items-center justify-between px-4 py-3">
-                      <span className="text-[13px] text-white/40">XP Token Balance</span>
-                      <span className="text-[13px] font-bold text-[#ffd25a]">
-                        {(Number(tokenBalance / BigInt(10 ** 18)) || 0).toLocaleString()} XP
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between px-4 py-3">
-                      <span className="text-[13px] text-white/40">Total XP (DB)</span>
-                      <span className="text-[13px] font-bold text-[#00bc84]">{dbXp.toLocaleString()} XP</span>
+                  <div className="w-full rounded-lg divide-y divide-white/5"
+                    style={{ background: "rgba(0,188,132,0.04)", border: "1px solid rgba(0,188,132,0.12)" }}>
+                    <div className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-sm text-white/40">Total XP (DB)</span>
+                      <span className="text-sm font-semibold text-[#00bc84]">{dbXp.toLocaleStream()} XP</span>
                     </div>
                   </div>
-                  <button disabled className="w-full h-[52px] rounded-[14px] text-[15px] font-bold text-white/30 cursor-not-allowed"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-                    data-testid="button-already-claimed">
+                  <button disabled className="w-full h-12 rounded-lg text-sm font-semibold text-white/30 cursor-not-allowed"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
                     XP Already Claimed ✓
                   </button>
                 </div>
               )}
 
-              {/* ── Phase: ready to claim ─────────────────── */}
+              {/* Ready to claim */}
               {wallet.isConnected && !wallet.isWrongNetwork && phase === "ready" && (
                 <button
                   onClick={handleClaim}
-                  className="w-full h-[56px] rounded-[14px] text-[16px] font-bold text-white flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01] active:scale-[0.99]"
-                  style={{
-                    background: "linear-gradient(135deg,#00bc84,#00a372)",
-                    boxShadow: "0 8px 40px -8px rgba(0,188,132,0.55), 0 0 0 1px rgba(0,188,132,0.2) inset",
-                  }}
-                  data-testid="button-claim-xp">
-                  <Zap size={20} fill="currentColor" />
+                  className="w-full h-16 rounded-xl text-base font-bold text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  style={{ 
+                    background: "linear-gradient(135deg, #00bc84, #00a372)", 
+                    boxShadow: "0 8px 24px rgba(0,188,132,0.35), 0 0 0 1px rgba(0,188,132,0.2) inset" 
+                  }}>
+                  <Zap size={22} fill="currentColor" />
                   Claim 10,000 XP
                 </button>
               )}
 
-              {/* ── Phase: sending TX ─────────────────────── */}
+              {/* Sending TX */}
               {(phase === "sending") && (
                 <div className="flex flex-col items-center gap-4 py-6">
-                  <div className="relative">
-                    <div className="w-16 h-16 rounded-full flex items-center justify-center"
-                      style={{ background: "rgba(0,188,132,0.1)", border: "2px solid rgba(0,188,132,0.3)" }}>
-                      <Loader2 size={28} className="text-[#00bc84] animate-spin" />
-                    </div>
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(0,188,132,0.1)", border: "2px solid rgba(0,188,132,0.25)" }}>
+                    <Loader2 size={26} className="text-[#00bc84] animate-spin" />
                   </div>
                   <div className="text-center">
-                    <p className="text-[15px] font-semibold text-white mb-1">Check Your Wallet</p>
-                    <p className="text-[13px] text-white/40">Approve the transaction in MetaMask…</p>
+                    <p className="text-base font-semibold text-white mb-1">Check Your Wallet</p>
+                    <p className="text-sm text-white/40">Approve transaction in MetaMask...</p>
                   </div>
                 </div>
               )}
 
-              {/* ── Phase: waiting for receipt ───────────── */}
+              {/* Waiting for receipt */}
               {phase === "pending_receipt" && (
                 <div className="flex flex-col items-center gap-4 py-4">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(0,82,255,0.1)", border: "2px solid rgba(0,82,255,0.3)" }}>
-                    <Loader2 size={28} className="text-[#5aa9ff] animate-spin" />
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(0,82,255,0.1)", border: "2px solid rgba(0,82,255,0.25)" }}>
+                    <Loader2 size={26} className="text-[#5aa9ff] animate-spin" />
                   </div>
                   <div className="text-center">
-                    <p className="text-[15px] font-semibold text-white mb-1">Confirming on Base…</p>
-                    <p className="text-[13px] text-white/40 mb-3">Waiting for block confirmation</p>
+                    <p className="text-base font-semibold text-white mb-1">Confirming on Base...</p>
+                    <p className="text-sm text-white/40 mb-3">Waiting for block confirmation</p>
                   </div>
                   {txHash && (
                     <a href={`${BASE_SCAN}/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-[12px] text-[#5aa9ff] hover:text-white transition-colors"
-                      data-testid="link-basescan-pending">
-                      <ExternalLink size={11} />
+                      className="flex items-center gap-1 text-xs text-[#5aa9ff] hover:text-white transition-colors">
+                      <ExternalLink size={10} />
                       View on BaseScan
                     </a>
                   )}
                 </div>
               )}
 
-              {/* ── Phase: awarding XP ──────────────────── */}
+              {/* Awarding XP */}
               {phase === "awarding" && (
                 <div className="flex flex-col items-center gap-3 py-6">
-                  <Loader2 size={28} className="text-[#ffd25a] animate-spin" />
-                  <p className="text-[14px] text-white/50">Recording your XP…</p>
+                  <Loader2 size={26} className="text-[#ffd25a] animate-spin" />
+                  <p className="text-sm text-white/50">Recording your XP...</p>
                 </div>
               )}
 
-              {/* ── Phase: success ────────────────────── */}
+              {/* Success */}
               {phase === "success" && (
-                <div className="flex flex-col items-center gap-6 py-4" style={{ animation: "floatUp 0.5s ease-out" }}>
-                  {/* Badge */}
-                  <div className="w-20 h-20 rounded-full flex items-center justify-center"
-                    style={{
-                      background: "radial-gradient(circle,rgba(0,188,132,0.25),rgba(0,188,132,0.05))",
-                      border: "2px solid rgba(0,188,132,0.5)",
-                      boxShadow: "0 0 48px rgba(0,188,132,0.3)",
-                      animation: "badgePop 0.5s cubic-bezier(0.34,1.56,0.64,1) both",
+                <div className="flex flex-col items-center gap-5 py-4">
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center"
+                    style={{ 
+                      background: "rgba(0,188,132,0.15)", 
+                      border: "2px solid rgba(0,188,132,0.4)",
+                      boxShadow: "0 0 32px rgba(0,188,132,0.2)" 
                     }}>
-                    <CheckCircle size={40} className="text-[#00bc84]" />
+                    <CheckCircle size={36} className="text-[#00bc84]" />
                   </div>
 
                   <div className="text-center">
-                    <p className="text-[22px] font-extrabold text-white mb-1">XP Successfully Claimed!</p>
-                    <p className="text-[13px] text-white/40">Congratulations — your XP has been recorded</p>
+                    <p className="text-xl font-bold text-white mb-1">XP Successfully Claimed!</p>
+                    <p className="text-sm text-white/40">Your XP has been recorded</p>
                   </div>
 
-                  {/* XP counter */}
-                  <div className="flex items-center gap-3 py-4">
-                    <Zap size={36} className="text-[#ffd25a]" fill="#ffd25a" />
-                    <span className="text-[56px] font-extrabold leading-none tabular-nums"
-                      style={{ color: "#ffd25a", textShadow: "0 0 48px #ffd25a88" }}>
+                  <div className="flex items-center gap-3 py-3">
+                    <Zap size={32} className="text-[#ffd25a]" />
+                    <span className="text-4xl font-bold leading-none tabular-nums text-[#ffd25a]">
                       +<AnimatedCounter to={XP_REWARD} />
                     </span>
                   </div>
 
-                  {/* Stats */}
-                  <div className="w-full rounded-[16px] divide-y divide-white/6"
-                    style={{ background: "rgba(0,188,132,0.05)", border: "1px solid rgba(0,188,132,0.18)" }}>
-                    <div className="flex items-center justify-between px-4 py-3">
-                      <span className="text-[13px] text-white/40">XP Token Balance</span>
-                      <span className="text-[13px] font-bold text-[#ffd25a]">
-                        {(Number(tokenBalance / BigInt(10 ** 18)) || 0).toLocaleString()} XP
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between px-4 py-3">
-                      <span className="text-[13px] text-white/40">Total XP (Platform)</span>
-                      <span className="text-[13px] font-bold text-[#00bc84]">
+                  <div className="w-full rounded-lg divide-y divide-white/5"
+                    style={{ background: "rgba(0,188,132,0.04)", border: "1px solid rgba(0,188,132,0.12)" }}>
+                    <div className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-sm text-white/40">Total XP (Platform)</span>
+                      <span className="text-sm font-semibold text-[#00bc84]">
                         {(rewardUser?.xp ?? displayXp).toLocaleString()} XP
                       </span>
                     </div>
                     {txHash && (
-                      <div className="flex items-center justify-between px-4 py-3">
-                        <span className="text-[13px] text-white/40">Transaction</span>
+                      <div className="flex items-center justify-between px-4 py-2.5">
+                        <span className="text-sm text-white/40">Transaction</span>
                         <button
                           onClick={() => { navigator.clipboard.writeText(txHash); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-                          className="flex items-center gap-1.5 text-[12px] font-mono text-white/50 hover:text-white/80 transition-colors"
-                          data-testid="button-copy-txhash">
-                          {shortAddr(txHash)} {copied ? <CheckCircle size={11} className="text-[#00bc84]" /> : <Copy size={11} />}
+                          className="flex items-center gap-1 text-xs font-mono text-white/45 hover:text-white/70 transition-colors">
+                          {shortAddr(txHash)} {copied ? <CheckCircle size={10} className="text-[#00bc84]" /> : <Copy size={10} />}
                         </button>
                       </div>
                     )}
                   </div>
 
-                  {/* BaseScan link */}
                   {txHash && (
                     <a href={`${BASE_SCAN}/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-2 h-11 px-6 rounded-[12px] text-[13px] font-semibold text-white/70 hover:text-white transition-colors"
-                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-                      data-testid="link-basescan-success">
-                      <ExternalLink size={14} />
+                      className="flex items-center gap-1.5 h-10 px-5 rounded-lg text-xs font-semibold text-white/60 hover:text-white transition-colors"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <ExternalLink size={12} />
                       View on BaseScan
                     </a>
                   )}
                 </div>
               )}
 
-              {/* ── Phase: error ──────────────────────── */}
+              {/* Error */}
               {phase === "error" && (
                 <div className="flex flex-col items-center gap-4 py-4">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(239,68,68,0.1)", border: "2px solid rgba(239,68,68,0.3)" }}>
-                    <XCircle size={32} className="text-red-500" />
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(239,68,68,0.1)", border: "2px solid rgba(239,68,68,0.25)" }}>
+                    <XCircle size={30} className="text-red-500" />
                   </div>
                   <div className="text-center">
-                    <p className="text-[16px] font-bold text-white mb-1">Transaction Failed</p>
-                    <p className="text-[12px] text-white/40 max-w-[280px]">{errorMsg || "An unexpected error occurred"}</p>
+                    <p className="text-base font-bold text-white mb-1">Transaction Failed</p>
+                    <p className="text-xs text-white/40 max-w-[260px]">{errorMsg || "An unexpected error occurred"}</p>
                   </div>
                   <button
                     onClick={() => setPhase("ready")}
-                    className="h-11 px-8 rounded-[12px] text-[14px] font-semibold text-white"
-                    style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
-                    data-testid="button-retry">
+                    className="h-10 px-7 rounded-lg text-sm font-semibold text-white"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}>
                     Try Again
                   </button>
                 </div>
@@ -735,66 +587,62 @@ export function EarnPage() {
 
             </div>
 
-            {/* Bottom gradient line */}
-            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
           </div>
 
-          {/* Info chips below card */}
-          <div className="flex items-center justify-center gap-5 mt-5 flex-wrap">
-            <div className="flex items-center gap-1.5 text-[11px] text-white/30">
-              <Lock size={11} className="opacity-60" />
+          {/* Info chips */}
+          <div className="flex items-center justify-center gap-4 mt-5 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs text-white/25">
+              <AlertTriangle size={10} className="opacity-50" />
               <span>On-chain verified</span>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-white/30">
-              <Layers size={11} className="opacity-60" />
+            <div className="flex items-center gap-1.5 text-xs text-white/25">
+              <Wallet size={10} className="opacity-50" />
               <span>Base mainnet</span>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-white/30">
-              <Gift size={11} className="opacity-60" />
+            <div className="flex items-center gap-1.5 text-xs text-white/25">
+              <Zap size={10} className="opacity-50" />
               <span>TGE allocation</span>
             </div>
           </div>
         </div>
 
-        {/* XP balance display when connected */}
+        {/* XP balance display - Premium Glassy Cards */}
         {wallet.isConnected && wallet.address && phase !== "success" && (
-          <div className="relative z-10 w-full max-w-[500px] mt-6" style={{ animation: "floatUp 0.7s ease-out" }}>
-            <div className="rounded-[20px] p-5"
-              style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/30 mb-3">Your XP Overview</p>
+          <div className="relative z-10 w-full max-w-[480px] mt-6">
+            <div className="rounded-2xl p-5"
+              style={{ 
+                background: "linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))", 
+                border: "1px solid rgba(255,255,255,0.08)",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05) inset"
+              }}>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-white/25 mb-4">Your XP Overview</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  {
-                    label: "Platform XP",
-                    value: (rewardUser?.xp ?? 0).toLocaleString(),
-                    unit: "XP",
-                    color: "#00bc84",
+                  { label: "Platform XP", value: (rewardUser?.xp ?? 0).toLocaleString(), unit: "XP", color: "#00bc84" },
+                  { label: "Weekly XP", value: (rewardUser?.weekly_xp ?? 0).toLocaleString(), unit: "this week", color: "#5aa9ff" },
+                  { 
+                    label: "Tier", 
+                    value: rewardUser?.tier ?? "—", 
+                    unit: "", 
+                    color: rewardUser?.tier === "Diamond" ? "#7df9ff" : rewardUser?.tier === "Gold" ? "#f5c518" : rewardUser?.tier === "Silver" ? "#9aa0ad" : "#cd7f32" 
                   },
                   {
-                    label: "XP Token Balance",
-                    value: (Number(tokenBalance / BigInt(10 ** 18)) || 0).toLocaleString(),
-                    unit: "XP",
-                    color: "#ffd25a",
-                  },
-                  {
-                    label: "Weekly XP",
-                    value: (rewardUser?.weekly_xp ?? 0).toLocaleString(),
-                    unit: "this week",
-                    color: "#5aa9ff",
-                  },
-                  {
-                    label: "Tier",
-                    value: rewardUser?.tier ?? "—",
+                    label: "Status",
+                    value: onChainClaimed ? "Claimed" : "Available",
                     unit: "",
-                    color: rewardUser?.tier === "Diamond" ? "#7df9ff" : rewardUser?.tier === "Gold" ? "#f5c518" : rewardUser?.tier === "Silver" ? "#9aa0ad" : "#cd7f32",
+                    color: onChainClaimed ? "#00bc84" : "#ffd25a"
                   },
                 ].map(stat => (
-                  <div key={stat.label} className="rounded-[14px] p-3"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                    <p className="text-[11px] text-white/30 mb-1">{stat.label}</p>
+                  <div key={stat.label} className="rounded-xl p-3.5"
+                    style={{ 
+                      background: "linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))", 
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.2)"
+                    }}>
+                    <p className="text-xs text-white/25 mb-1.5">{stat.label}</p>
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-[18px] font-bold leading-none" style={{ color: stat.color }}>{stat.value}</span>
-                      {stat.unit && <span className="text-[10px] text-white/25">{stat.unit}</span>}
+                      <span className="text-xl font-bold leading-none" style={{ color: stat.color }}>{stat.value}</span>
+                      {stat.unit && <span className="text-xs text-white/20">{stat.unit}</span>}
                     </div>
                   </div>
                 ))}
@@ -803,7 +651,6 @@ export function EarnPage() {
           </div>
         )}
       </div>
-
     </>
   );
 }

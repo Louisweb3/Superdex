@@ -22,6 +22,18 @@ import {
   type PopularToken,
 } from "@shared/schema";
 
+// ─── In-memory TTL cache for daily quests ─────────────────────────────────────────────────────
+const _questsCache = new Map<string, { data: any[]; expiresAt: number }>();
+function _questsCacheGet(key: string): any[] | null {
+  const e = _questsCache.get(key);
+  if (!e || Date.now() > e.expiresAt) { _questsCache.delete(key); return null; }
+  return e.data;
+}
+function _questsCacheSet(key: string, data: any[], ttlMs = 45_000) {
+  _questsCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+}
+function _questsCacheInvalidate(wallet: string) { _questsCache.delete(wallet.toLowerCase()); }
+
 // ─── Base user storage (keep for auth compat) ────────────────────────────────────────────────
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -449,16 +461,8 @@ export class RewardsStorage {
       );
     }
 
-    // Update quest progress
-    await this.updateQuestProgressDB(key, today, "swaps", 1);
-    await this.updateQuestProgressDB(key, today, "volume", volumeUsd);
-    await this.updateQuestProgressDB(key, today, "volume_500", volumeUsd);
-    await this.updateQuestProgressDB(key, today, "volume_1k", volumeUsd);
-    await this.updateQuestProgressDB(key, today, "volume_2500", volumeUsd);
-    await this.updateQuestProgressDB(key, today, "volume_5k", volumeUsd);
-    await this.updateQuestProgressDB(key, today, "volume_10k", volumeUsd);
-    await this.updateQuestProgressDB(key, today, "volume_25k", volumeUsd);
-    await this.updateQuestProgressDB(key, today, "volume_100k", volumeUsd);
+    // Update quest progress — single batched UPDATE for all volume/swap quests
+    await this.updateQuestProgressBatch(key, today, volumeUsd);
 
     // ── Referral XP: award 35% of xpEarned to referrer, + 500 XP milestone ──
     const [userRow] = await db.select().from(rewardUsers).where(eq(rewardUsers.wallet_address, key)).limit(1);
@@ -563,9 +567,45 @@ export class RewardsStorage {
       .where(eq(dailyQuests.id, existing.id));
   }
 
+  /** Batch-update all swap/volume quests in a single SQL UPDATE (replaces 9 sequential calls). */
+  private async updateQuestProgressBatch(wallet: string, date: string, volumeUsd: number) {
+    // One UPDATE that increments progress for every non-completed quest today.
+    // The CASE expression applies the right delta per quest_type:
+    //   swaps → +1, everything else → +volumeUsd, capped at target.
+    await db.execute(sql`
+      UPDATE daily_quests
+      SET
+        progress = LEAST(
+          target::numeric,
+          progress::numeric + CASE
+            WHEN quest_type = 'swaps' THEN 1
+            ELSE ${volumeUsd}
+          END
+        ),
+        completed = LEAST(
+          target::numeric,
+          progress::numeric + CASE
+            WHEN quest_type = 'swaps' THEN 1
+            ELSE ${volumeUsd}
+          END
+        ) >= target::numeric
+      WHERE
+        wallet_address = ${wallet}
+        AND date = ${date}
+        AND completed = false
+        AND quest_type IN (
+          'swaps','volume','volume_500','volume_1k',
+          'volume_2500','volume_5k','volume_10k','volume_25k','volume_100k'
+        )
+    `);
+  }
+
   async getDailyQuests(wallet: string): Promise<DailyQuest[]> {
     const key = wallet.toLowerCase();
     const today = todayUTC();
+    const cacheKey = `${key}:${today}`;
+    const cached = _questsCacheGet(cacheKey);
+    if (cached) return cached as DailyQuest[];
     const types: DailyQuest["quest_type"][] = [
       "login", "swaps", "volume",
       "volume_500", "volume_1k", "volume_2500",
@@ -581,67 +621,81 @@ export class RewardsStorage {
       volume_500: 400, volume_1k: 1000, volume_2500: 3000,
       volume_5k: 6000, volume_10k: 12500, volume_25k: 30000, volume_100k: 125000,
     };
-    const results: DailyQuest[] = [];
 
-    for (const type of types) {
-      let [q] = await db
-        .select()
-        .from(dailyQuests)
-        .where(
-          and(
-            eq(dailyQuests.wallet_address, key),
-            eq(dailyQuests.date, today),
-            eq(dailyQuests.quest_type, type)
-          )
+    // ── 1. Fetch all existing quests for today in a single query ──────────────
+    const existing = await db
+      .select()
+      .from(dailyQuests)
+      .where(
+        and(
+          eq(dailyQuests.wallet_address, key),
+          eq(dailyQuests.date, today)
         )
-        .limit(1);
+      );
+    const existingByType = new Map(existing.map(q => [q.quest_type, q]));
 
-      if (!q) {
-        const progress = type === "login" ? 1 : 0;
-        const completed = type === "login";
-        const [inserted] = await db
-          .insert(dailyQuests)
-          .values({
-            id: randomUUID(),
-            wallet_address: key,
-            date: today,
-            quest_type: type,
-            target: targets[type],
-            progress: String(progress),
-            completed,
-            xp_reward: rewards[type],
-            claimed: false,
-          })
-          .returning();
-        q = inserted;
+    // ── 2. Determine missing types and batch-insert them ──────────────────────
+    const missingTypes = types.filter(t => !existingByType.has(t));
+    let needsLoginXp = false;
 
-        // Award login XP immediately
-        if (type === "login") {
-          await this.ensureUser(key);
-          await db
-            .update(rewardUsers)
-            .set({
-              xp: sql`${rewardUsers.xp} + ${rewards.login}`,
-              tier: sql`CASE WHEN ${rewardUsers.xp} + ${rewards.login} >= 5000 THEN 'Diamond' WHEN ${rewardUsers.xp} + ${rewards.login} >= 2000 THEN 'Gold' WHEN ${rewardUsers.xp} + ${rewards.login} >= 500 THEN 'Silver' ELSE 'Bronze' END`,
-              level: sql`GREATEST(1, FLOOR((${rewardUsers.xp} + ${rewards.login}) / 100) + 1)`,
-            })
-            .where(eq(rewardUsers.wallet_address, key));
-        }
+    if (missingTypes.length > 0) {
+      const toInsert = missingTypes.map(type => ({
+        id: randomUUID(),
+        wallet_address: key,
+        date: today,
+        quest_type: type,
+        target: targets[type],
+        progress: String(type === "login" ? 1 : 0),
+        completed: type === "login",
+        xp_reward: rewards[type],
+        claimed: false,
+      }));
+
+      const inserted = await db
+        .insert(dailyQuests)
+        .values(toInsert)
+        .onConflictDoNothing()
+        .returning();
+
+      for (const row of inserted) {
+        existingByType.set(row.quest_type, row);
       }
 
-      results.push({
-        id: q.id,
-        wallet_address: q.wallet_address,
-        date: q.date,
-        quest_type: q.quest_type as DailyQuest["quest_type"],
-        target: q.target,
-        progress: Number(q.progress),
-        completed: q.completed,
-        xp_reward: q.xp_reward,
-        claimed: q.claimed,
-      });
+      needsLoginXp = missingTypes.includes("login");
     }
-    return results;
+
+    // ── 3. Award login XP once if the login quest was just created ────────────
+    if (needsLoginXp) {
+      await this.ensureUser(key);
+      await db
+        .update(rewardUsers)
+        .set({
+          xp: sql`${rewardUsers.xp} + ${rewards.login}`,
+          tier: sql`CASE WHEN ${rewardUsers.xp} + ${rewards.login} >= 5000 THEN 'Diamond' WHEN ${rewardUsers.xp} + ${rewards.login} >= 2000 THEN 'Gold' WHEN ${rewardUsers.xp} + ${rewards.login} >= 500 THEN 'Silver' ELSE 'Bronze' END`,
+          level: sql`GREATEST(1, FLOOR((${rewardUsers.xp} + ${rewards.login}) / 100) + 1)`,
+        })
+        .where(eq(rewardUsers.wallet_address, key));
+    }
+
+    // ── 4. Return in canonical order ──────────────────────────────────────────
+    const result = types
+      .filter(t => existingByType.has(t))
+      .map(t => {
+        const q = existingByType.get(t)!;
+        return {
+          id: q.id,
+          wallet_address: q.wallet_address,
+          date: q.date,
+          quest_type: q.quest_type as DailyQuest["quest_type"],
+          target: q.target,
+          progress: Number(q.progress),
+          completed: q.completed,
+          xp_reward: q.xp_reward,
+          claimed: q.claimed,
+        };
+      });
+    _questsCacheSet(cacheKey, result);
+    return result;
   }
 
   async claimQuest(wallet: string, questType: DailyQuest["quest_type"]): Promise<{ xpAwarded: number } | null> {
@@ -675,6 +729,7 @@ export class RewardsStorage {
       })
       .where(eq(rewardUsers.wallet_address, key));
 
+    _questsCacheInvalidate(key);
     return { xpAwarded: q.xp_reward };
   }
 
