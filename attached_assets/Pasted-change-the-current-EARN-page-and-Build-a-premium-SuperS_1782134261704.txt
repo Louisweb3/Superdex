@@ -1,0 +1,106 @@
+change the current EARN page and Build a premium SuperSwap XP Claim page for Base.
+
+FLOW:
+
+1. User visits the XP page.
+2. User connects their wallet.
+3. Display:
+
+   * Claim Reward: 10,000 XP
+   * Network: Base
+   * Claim Fee: 0.000040 ETH
+   * One claim per wallet
+4. On wallet connection, check the claim contract:
+
+   * Call `claimed(walletAddress)`
+   * If true, show "XP Already Claimed" and disable claiming.
+   * If false, allow claiming.
+
+UI:
+
+* Dark futuristic SuperSwap theme
+* Premium glassmorphism cards
+* Animated XP counter
+* Gradient borders
+* Mobile responsive
+* Smooth hover animations
+* Display connected wallet address
+* Display user's XP token balance using `balanceOf(address)` + their total xp from the database across the website. when users claim XP it must add to their total XP in database.
+
+CLAIM PROCESS:
+
+When user clicks "Claim 10,000 XP":
+
+1. Open confirmation modal.
+2. Show:
+
+   * Reward: 10,000 XP
+   * gas: 0.000040 ETH
+   * Network: Base
+3. User confirms.
+4. Execute contract transaction:
+
+```ts
+claim()
+value: 0.000040 ETH
+```
+
+5. Wait for transaction confirmation.
+6. Show loading state with progress animation.
+7. After success:
+
+   * Display confetti animation
+   * Display chest opening animation
+   * Show "Congratulations! You claimed 10,000 XP"
+   * Refresh XP balance
+   * Mark wallet as claimed
+
+ERROR HANDLING:
+
+* Wallet not connected
+* Wrong network
+* Insufficient ETH
+* Transaction rejected
+* Contract reverted
+* Already claimed
+
+SUCCESS SCREEN:
+
+Title:
+"XP Successfully Claimed"
+
+Content:
+
+* +10,000 XP Earned
+* Transaction Hash
+* Current XP Balance
+* View on BaseScan button
+
+CONTRACT INTEGRATION:
+
+Read Functions:
+
+* claimed(address)
+* balanceOf(address)
+
+Write Function:
+
+* claim()
+
+CONTRACT ADDRESS:
+0xe1408047F2811fB213c305199cc51B68e7043cf6
+
+XP TOKEN ADDRESS:
+0xAE3aE4734D03C26E6614fbEdd1d7EF5C30F68741
+
+TECH STACK:
+
+* Next.js App Router
+* TypeScript
+* Tailwind CSS
+* wagmi
+* viem
+* RainbowKit
+* Framer Motion
+
+Design should match the existing SuperSwap branding and feel like a high-quality Season 1 rewards campaign page with gamified claiming experience.

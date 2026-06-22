@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { eq, and, desc, sql, gt, gte } from "drizzle-orm";
+import { eq, and, asc, desc, sql, gt, gte } from "drizzle-orm";
 import { db } from "./db";
 import {
   users,
@@ -231,6 +231,21 @@ export class RewardsStorage {
       weekly_xp: 0,
       last_weekly_reset: currentWeek,
     };
+  }
+
+  /** Award 10,000 XP to a wallet after on-chain XP claim. Idempotent — checks xp_claimed flag. */
+  async awardXpClaim(wallet: string): Promise<{ ok: boolean; alreadyClaimed: boolean; xp: number }> {
+    const key = wallet.toLowerCase();
+    const [existing] = await db.select().from(rewardUsers).where(eq(rewardUsers.wallet_address, key)).limit(1);
+    if (existing?.xp_claimed) {
+      return { ok: true, alreadyClaimed: true, xp: existing.xp };
+    }
+    const user = existing ?? await this.ensureUser(key);
+    const newXp = (user.xp ?? 0) + 10_000;
+    await db.update(rewardUsers)
+      .set({ xp: newXp, xp_claimed: true })
+      .where(eq(rewardUsers.wallet_address, key));
+    return { ok: true, alreadyClaimed: false, xp: newXp };
   }
 
   /** Proactively flush stale weekly cashback for ALL users whose week has rolled over.
@@ -1032,7 +1047,6 @@ export class RewardsStorage {
 export const rewardsStorage = new RewardsStorage();
 
 // ─── Earn System Storage ────────────────────────────────────────────────────────────────
-import { asc, gte } from "drizzle-orm";
 
 export class EarnStorage {
   async getTasks(type?: string): Promise<EarnTask[]> {

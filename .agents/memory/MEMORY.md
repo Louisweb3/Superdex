@@ -2,3 +2,4 @@
 - [drizzle-kit push interactive prompt](drizzle-push-interactive.md) — db:push rename prompt ignores piped stdin; create new tables via direct psql instead.
 - [Community Chest Campaign](community-chest-campaign.md) — campaign uses chestId="campaign" (not in CHEST_DEFS); special-cased in storage completeSocial/verifyWallet/openChest; named export EarnPage must be preserved.
 - [Supabase migration approach](supabase-migration.md) — extract via json_agg/executeSql, restore via Node pg Pool; psql fails on Supabase passwords with special chars
+- [XP on-chain claim feature](xp-claim-feature.md) — EarnPage replaced with Season 1 XP claim; contract 0xe1408047…, uses viem encodeFunctionData + raw window.ethereum; xp_claimed bool added to reward_users; POST /api/xp-claim verifies receipt on Base RPC before awarding.

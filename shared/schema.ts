@@ -47,6 +47,7 @@ export const rewardUsers = pgTable("reward_users", {
   referred_by: varchar("referred_by", { length: 42 }).default(""),
   referral_bonus_xp: integer("referral_bonus_xp").notNull().default(0),
   referral_milestone_paid: boolean("referral_milestone_paid").notNull().default(false),
+  xp_claimed: boolean("xp_claimed").notNull().default(false),
   created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 

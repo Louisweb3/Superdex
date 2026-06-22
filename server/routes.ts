@@ -728,6 +728,38 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── XP On-chain Claim ────────────────────────────────────────────────────────
+  app.post("/api/xp-claim", async (req, res) => {
+    try {
+      const { wallet, txHash } = req.body;
+      if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
+
+      const CLAIM_CONTRACT = "0xe1408047f2811fb213c305199cc51b68e7043cf6";
+
+      if (txHash) {
+        const rpcRes = await fetch("https://mainnet.base.org", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0", id: 1, method: "eth_getTransactionReceipt",
+            params: [txHash],
+          }),
+        });
+        const { result: receipt } = await rpcRes.json() as any;
+        if (!receipt) return res.status(400).json({ error: "Transaction not found or still pending" });
+        if (receipt.status !== "0x1") return res.status(400).json({ error: "Transaction failed on-chain" });
+        if (receipt.to?.toLowerCase() !== CLAIM_CONTRACT) return res.status(400).json({ error: "Wrong contract" });
+        if (receipt.from?.toLowerCase() !== wallet.toLowerCase()) return res.status(400).json({ error: "Transaction sender mismatch" });
+      }
+
+      const result = await rewardsStorage.awardXpClaim(wallet);
+      return res.json(result);
+    } catch (err: any) {
+      console.error("xp-claim error:", err);
+      return res.status(500).json({ error: err.message ?? "Internal error" });
+    }
+  });
+
   // ── Mini App webhook stub (required by manifest) ────────────────────────────────────────────────────────────────────
   app.post("/api/webhook", async (req, res) => {
     const { event } = req.body || {};
