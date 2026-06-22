@@ -133,6 +133,13 @@ export function EarnPage() {
   // ── Claim flow ────────────────────────────────────────────────────────────
   const handleClaim = useCallback(async () => {
     if (!wallet.address) return;
+
+    // Guard: prevent double-claim attempts
+    if (onChainClaimed || rewardUser?.xp_claimed) {
+      setPhase("already_claimed");
+      return;
+    }
+
     setPhase("sending");
 
     try {

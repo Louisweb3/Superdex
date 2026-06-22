@@ -79,6 +79,7 @@ export interface RewardUser {
   referred_by?: string;
   referral_bonus_xp?: number;
   referral_milestone_paid?: boolean;
+  xp_claimed?: boolean;
   created_at: number;
 }
 

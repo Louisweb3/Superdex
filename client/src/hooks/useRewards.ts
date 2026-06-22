@@ -8,6 +8,7 @@ export interface RewardUser {
   cashback_usd: number;
   weekly_cashback_usd: number;
   pending_cashback_usd: number;
+  last_week_cashback_usd?: number;
   total_swaps: number;
   streak: number;
   last_activity_date: string;
@@ -19,6 +20,8 @@ export interface RewardUser {
   referral_code?: string;
   referred_by?: string;
   referral_bonus_xp?: number;
+  xp_claimed?: boolean;
+  referral_milestone_paid?: boolean;
   created_at: number;
 }
 
