@@ -9,10 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 
 // ─── Contract constants ────────────────────────────────────────────────────────
 
-const CLAIM_CONTRACT = "0xe1408047F2811fB213c305199cc51B68e7043cf6" as `0x${string}`;
+const CLAIM_CONTRACT = "0xBA77bF8f8119F8604090e2419b64a0a0e6D78907" as `0x${string}`;
 const XP_TOKEN      = "0xAE3aE4734D03C26E6614fbEdd1d7EF5C30F68741" as `0x${string}`;
-const CLAIM_FEE_ETH = "0.000040";
-const CLAIM_FEE_WEI = BigInt("40000000000000");
+const CLAIM_FEE_ETH = "0.000038";
+const CLAIM_FEE_WEI = BigInt("38000000000000");
 const XP_REWARD     = 10_000;
 const BASE_RPC      = "https://mainnet.base.org";
 const BASE_SCAN     = "https://basescan.org";
@@ -570,7 +570,7 @@ export function EarnPage() {
               {/* ── Phase: ready to claim ─────────────────── */}
               {wallet.isConnected && !wallet.isWrongNetwork && phase === "ready" && (
                 <button
-                  onClick={() => setPhase("confirming")}
+                  onClick={handleClaim}
                   className="w-full h-[56px] rounded-[14px] text-[16px] font-bold text-white flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01] active:scale-[0.99]"
                   style={{
                     background: "linear-gradient(135deg,#00bc84,#00a372)",
@@ -787,14 +787,6 @@ export function EarnPage() {
         )}
       </div>
 
-      {/* Confirm modal */}
-      {phase === "confirming" && (
-        <ConfirmModal
-          onConfirm={handleClaim}
-          onClose={() => setPhase("ready")}
-          isLoading={isBusy}
-        />
-      )}
     </>
   );
 }

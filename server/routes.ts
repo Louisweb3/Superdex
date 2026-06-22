@@ -734,7 +734,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { wallet, txHash } = req.body;
       if (!wallet || wallet.length < 10) return res.status(400).json({ error: "Invalid wallet" });
 
-      const CLAIM_CONTRACT = "0xe1408047f2811fb213c305199cc51b68e7043cf6";
+      const CLAIM_CONTRACT = "0xba77bf8f8119f8604090e2419b64a0a0e6d78907";
 
       if (txHash) {
         const rpcRes = await fetch("https://mainnet.base.org", {
