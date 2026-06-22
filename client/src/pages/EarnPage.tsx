@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 // ─── Contract constants ────────────────────────────────────────────────────────
 
 const CLAIM_CONTRACT = "0x1D39749fE726e47a66A0bC5D1B7D5316Ff4c5E75" as `0x${string}`;
-const XP_TOKEN      = "0xAE3aE4734D03C26E6614fbEdd1d7EF5C30F68741" as `0x${string}`;
 const CLAIM_FEE_ETH = "0.000038";
 const CLAIM_FEE_WEI = BigInt("38000000000000");
 const XP_REWARD     = 10_000;
@@ -32,16 +31,6 @@ const CLAIM_ABI = [
     stateMutability: "payable",
     inputs:  [],
     outputs: [],
-  },
-] as const;
-
-const TOKEN_ABI = [
-  {
-    name: "balanceOf",
-    type: "function",
-    stateMutability: "view",
-    inputs:  [{ name: "account", type: "address" }],
-    outputs: [{ name: "", type: "uint256" }],
   },
 ] as const;
 
@@ -80,14 +69,6 @@ async function readClaimed(address: string): Promise<boolean> {
   return val;
 }
 
-async function readBalance(address: string): Promise<bigint> {
-  const data = encodeFunctionData({ abi: TOKEN_ABI, functionName: "balanceOf", args: [address as `0x${string}`] });
-  const raw = await ethCall(XP_TOKEN, data);
-  if (!raw || raw === "0x") return 0n;
-  const [val] = decodeFunctionResult({ abi: TOKEN_ABI, functionName: "balanceOf", data: raw as `0x${string}` }) as [bigint];
-  return val;
-}
-
 // ─── Animated counter ─────────────────────────────────────────────────────────
 
 function AnimatedCounter({ to, duration = 1600 }: { to: number; duration?: number }) {
@@ -105,60 +86,6 @@ function AnimatedCounter({ to, duration = 1600 }: { to: number; duration?: numbe
     return () => cancelAnimationFrame(raf);
   }, [to, duration]);
   return <>{val.toLocaleString()}</>;
-}
-
-// ─── Confirm modal ────────────────────────────────────────────────────────────
-
-function ConfirmModal({ onConfirm, onClose, isLoading }: {
-  onConfirm: () => void;
-  onClose: () => void;
-  isLoading: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-[380px] mx-4 mb-4 sm:mb-0 rounded-2xl overflow-hidden shadow-2xl"
-        style={{ background: "#0a0f14", border: "1px solid rgba(255,255,255,0.08)" }}>
-        <div className="p-6">
-          <div className="flex items-center justify-center w-12 h-12 rounded-xl mx-auto mb-4"
-            style={{ background: "rgba(0,188,132,0.12)", border: "1px solid rgba(0,188,132,0.25)" }}>
-            <Zap size={22} className="text-[#00bc84]" />
-          </div>
-
-          <h2 className="text-center text-lg font-semibold text-white mb-1">Confirm XP Claim</h2>
-          <p className="text-center text-sm text-white/40 mb-6">Review details before confirming</p>
-
-          <div className="rounded-lg divide-y divide-white/5 mb-6"
-            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
-            {[
-              { label: "Reward",   value: "10,000 XP",     color: "#ffd25a" },
-              { label: "Network",  value: "Base",           color: "#0052ff" },
-              { label: "Limit",    value: "One per wallet", color: "#6b7280" },
-            ].map(row => (
-              <div key={row.label} className="flex items-center justify-between px-4 py-2.5">
-                <span className="text-sm text-white/40">{row.label}</span>
-                <span className="text-sm font-medium" style={{ color: row.color }}>{row.value}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex gap-3">
-            <button onClick={onClose} disabled={isLoading}
-              className="flex-1 h-10 rounded-lg text-sm font-medium text-white/50 hover:text-white/70 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              Cancel
-            </button>
-            <button onClick={onConfirm} disabled={isLoading}
-              className="flex-1 h-10 rounded-lg text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2 transition-all disabled:cursor-not-allowed"
-              style={{ background: "#00bc84", boxShadow: isLoading ? "none" : "0 4px 12px rgba(0,188,132,0.25)" }}>
-              {isLoading ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
-              {isLoading ? "Sending..." : "Confirm & Claim"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ─── Phase label helper ───────────────────────────────────────────────────────
@@ -182,7 +109,6 @@ export function EarnPage() {
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [onChainClaimed, setOnChainClaimed] = useState(false);
-  const [tokenBalance, setTokenBalance] = useState<bigint>(0n);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [copied, setCopied] = useState(false);
@@ -194,13 +120,9 @@ export function EarnPage() {
     if (!wallet.address) { setPhase("idle"); return; }
     let cancelled = false;
     setPhase("checking");
-    Promise.all([
-      readClaimed(wallet.address),
-      readBalance(wallet.address),
-    ]).then(([claimed, bal]) => {
+    readClaimed(wallet.address).then((claimed) => {
       if (cancelled) return;
       setOnChainClaimed(claimed);
-      setTokenBalance(bal);
       setPhase(claimed ? "already_claimed" : "ready");
     }).catch(() => {
       if (!cancelled) setPhase("ready");
@@ -443,7 +365,7 @@ export function EarnPage() {
                     style={{ background: "rgba(0,188,132,0.04)", border: "1px solid rgba(0,188,132,0.12)" }}>
                     <div className="flex items-center justify-between px-4 py-2.5">
                       <span className="text-sm text-white/40">Total XP (DB)</span>
-                      <span className="text-sm font-semibold text-[#00bc84]">{dbXp.toLocaleStream()} XP</span>
+                      <span className="text-sm font-semibold text-[#00bc84]">{dbXp.toLocaleString()} XP</span>
                     </div>
                   </div>
                   <button disabled className="w-full h-12 rounded-lg text-sm font-semibold text-white/30 cursor-not-allowed"

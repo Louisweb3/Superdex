@@ -1031,7 +1031,7 @@ export async function registerRoutes(
             .json({ error: "Transaction not found or still pending" });
         if (receipt.status !== "0x1")
           return res.status(400).json({ error: "Transaction failed on-chain" });
-        if (receipt.to?.toLowerCase() !== CLAIM_CONTRACT)
+        if (receipt.to?.toLowerCase() !== CLAIM_CONTRACT.toLowerCase())
           return res.status(400).json({ error: "Wrong contract" });
         if (receipt.from?.toLowerCase() !== wallet.toLowerCase())
           return res.status(400).json({ error: "Transaction sender mismatch" });
