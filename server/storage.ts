@@ -66,6 +66,7 @@ export interface RewardUser {
   cashback_usd: number;
   weekly_cashback_usd?: number;
   pending_cashback_usd?: number;
+  last_week_cashback_usd?: number;
   total_swaps: number;
   streak: number;
   last_activity_date: string;
@@ -222,13 +223,14 @@ export class RewardsStorage {
     const currentWeek = weekStartUTC();
     if (user.last_weekly_reset === currentWeek) return user;
 
-    // New week: flush weekly_cashback into pending (it becomes claimable)
-    const flushToPending = (user.weekly_cashback_usd ?? 0);
-    const newPending = (user.pending_cashback_usd ?? 0) + flushToPending;
+    // New week: save last week's earnings, flush weekly → pending, reset counters
+    const lastWeekCashback = (user.weekly_cashback_usd ?? 0);
+    const newPending = (user.pending_cashback_usd ?? 0) + lastWeekCashback;
 
     await db
       .update(rewardUsers)
       .set({
+        last_week_cashback_usd: String(lastWeekCashback),
         weekly_cashback_usd: "0",
         pending_cashback_usd: String(newPending),
         weekly_xp: 0,
@@ -238,6 +240,7 @@ export class RewardsStorage {
 
     return {
       ...user,
+      last_week_cashback_usd: lastWeekCashback,
       weekly_cashback_usd: 0,
       pending_cashback_usd: newPending,
       weekly_xp: 0,
@@ -267,10 +270,11 @@ export class RewardsStorage {
     const result = await db.execute(sql`
       UPDATE reward_users
       SET
-        pending_cashback_usd = (pending_cashback_usd::numeric + weekly_cashback_usd::numeric),
-        weekly_cashback_usd  = 0,
-        weekly_xp            = 0,
-        last_weekly_reset    = ${currentWeek}
+        last_week_cashback_usd = weekly_cashback_usd,
+        pending_cashback_usd   = (pending_cashback_usd::numeric + weekly_cashback_usd::numeric),
+        weekly_cashback_usd    = 0,
+        weekly_xp              = 0,
+        last_weekly_reset      = ${currentWeek}
       WHERE last_weekly_reset != ${currentWeek}
         AND weekly_cashback_usd::numeric > 0
     `);

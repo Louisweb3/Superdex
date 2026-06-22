@@ -35,6 +35,7 @@ export const rewardUsers = pgTable("reward_users", {
   cashback_usd: numeric("cashback_usd", { precision: 24, scale: 8 }).notNull().default("0"),         // lifetime claimed cashback
   weekly_cashback_usd: numeric("weekly_cashback_usd", { precision: 24, scale: 8 }).notNull().default("0"), // current week earned (unclaimed)
   pending_cashback_usd: numeric("pending_cashback_usd", { precision: 24, scale: 8 }).notNull().default("0"), // total unverified/unclaimed
+  last_week_cashback_usd: numeric("last_week_cashback_usd", { precision: 24, scale: 8 }).notNull().default("0"), // previous week's earned cashback (shown after Sunday reset)
   total_swaps: integer("total_swaps").notNull().default(0),
   streak: integer("streak").notNull().default(0),
   last_activity_date: varchar("last_activity_date", { length: 10 }).notNull().default(""),

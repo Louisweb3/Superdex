@@ -280,6 +280,13 @@ export function RewardsPage(): JSX.Element {
                         {fmtUsd(user.cashback_usd ?? 0)} lifetime
                       </div>
                     </div>
+                    {/* Last week earnings */}
+                    <div className="mt-3 rounded-[12px] border border-[#1a2a1a] bg-[#0a1510] px-3 py-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-[#5b6b5e]">Last Week</span>
+                        <span className="text-[12px] font-bold text-[#3acd5b]">+{fmtUsd(user.last_week_cashback_usd ?? 0)}</span>
+                      </div>
+                    </div>
                     <button
                       onClick={() => setShowClaimModal(true)}
                       data-testid="button-claim-cashback"
