@@ -3,7 +3,7 @@ import { encodeFunctionData, decodeFunctionResult } from "viem";
 import { useWalletContext } from "@/context/WalletContext";
 import { useRewardUser } from "@/hooks/useRewards";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, CheckCircle, XCircle, ExternalLink, Wallet, Zap, Copy, AlertTriangle, Gem, ShieldCheck } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, ExternalLink, Wallet, Zap, Copy, AlertTriangle, Gem, ShieldCheck, Lock, Layers, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -441,13 +441,15 @@ export function EarnPage() {
                     <span className="text-[14px] font-bold text-[#ffd25a]">10,000 XP</span>
                   </div>
 
-                  {/* Network row — Base logo inline SVG */}
+                  {/* Network row — Base logo */}
                   <div className="flex items-center gap-4 px-4 py-3.5">
-                    {/* Full Base round-logo SVG: circle + "b" path at display size */}
-                    <svg width="36" height="36" viewBox="0 0 111 111" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 12, flexShrink: 0 }}>
-                      <circle cx="55.5" cy="55.5" r="55.5" fill="#0052FF"/>
-                      <path d="M54.921 110.034C85.2133 110.034 109.741 85.5053 109.741 55.2131C109.741 24.9208 85.2133 0.39209 54.921 0.39209C26.1782 0.39209 2.50775 22.4604 0.232422 50.6542H72.8533V59.7719H0.232422C2.50775 87.9658 26.1782 110.034 54.921 110.034Z" fill="white"/>
-                    </svg>
+                    <img
+                      src="/base-logo.svg"
+                      alt="Base"
+                      width={36}
+                      height={36}
+                      style={{ borderRadius: 10, flexShrink: 0 }}
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] text-white/40">Network</p>
                       <p className="text-[11px] text-white/20 mt-0.5">Chain ID 8453</p>
@@ -738,17 +740,19 @@ export function EarnPage() {
           </div>
 
           {/* Info chips below card */}
-          <div className="flex items-center justify-center gap-4 mt-5 flex-wrap">
-            {[
-              { icon: "🔒", text: "On-chain verified" },
-              { icon: "⛓️", text: "Base mainnet" },
-              { icon: "🪂", text: "TGE allocation" },
-            ].map(chip => (
-              <div key={chip.text} className="flex items-center gap-1.5 text-[11px] text-white/30">
-                <span>{chip.icon}</span>
-                <span>{chip.text}</span>
-              </div>
-            ))}
+          <div className="flex items-center justify-center gap-5 mt-5 flex-wrap">
+            <div className="flex items-center gap-1.5 text-[11px] text-white/30">
+              <Lock size={11} className="opacity-60" />
+              <span>On-chain verified</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-white/30">
+              <Layers size={11} className="opacity-60" />
+              <span>Base mainnet</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-white/30">
+              <Gift size={11} className="opacity-60" />
+              <span>TGE allocation</span>
+            </div>
           </div>
         </div>
 
