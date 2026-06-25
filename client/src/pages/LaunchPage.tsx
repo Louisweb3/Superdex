@@ -365,17 +365,17 @@ export function LaunchPage() {
         <div className="flex-1 flex flex-col min-w-0">
 
           {/* Top bar */}
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#101823] bg-black">
-            <div className="flex items-center gap-3">
-              <span className="text-white font-semibold text-sm">B20 Token Launcher</span>
+          <div className="flex items-center justify-between px-3 sm:px-5 py-3 sm:py-3.5 border-b border-[#101823] bg-black">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-white font-semibold text-xs sm:text-sm">B20 Token Launcher</span>
               <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20">B20</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {/* Network */}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#101823] bg-[#060e1a] cursor-pointer">
-                <div className="w-3 h-3 rounded-full bg-[#22c55e]" />
+              <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border border-[#101823] bg-[#060e1a] cursor-pointer">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" />
                 <span className="text-[#a0a8b2] text-xs">Base</span>
-                <span className="text-[#3a4452] text-[10px]">Chain ID:8453</span>
+                <span className="hidden sm:inline text-[#3a4452] text-[10px]">Chain ID:8453</span>
                 <ChevronDown size={10} className="text-[#3a4452]" />
               </div>
               {/* Wallet */}
@@ -398,7 +398,7 @@ export function LaunchPage() {
           </div>
 
           {/* Page body */}
-          <div className="flex-1 overflow-auto p-5">
+          <div className="flex-1 overflow-auto p-3 sm:p-5">
 
             {!wallet.address ? (
               /* Connect wallet prompt */
@@ -421,7 +421,7 @@ export function LaunchPage() {
             ) : (
               <>
                 {/* Two-column layout */}
-                <div className="flex gap-4 mb-5">
+                <div className="flex flex-col lg:flex-row gap-4 mb-5">
 
                   {/* LEFT: Form */}
                   <div className="flex-1 min-w-0 bg-[#020c19] border border-[#101823] rounded-xl p-5">
@@ -618,7 +618,7 @@ export function LaunchPage() {
                   </div>
 
                   {/* RIGHT: Preview + Status */}
-                  <div className="w-[280px] flex-shrink-0 flex flex-col gap-4">
+                  <div className="w-full lg:w-[280px] lg:flex-shrink-0 flex flex-col gap-4">
 
                     {/* Token Preview */}
                     <div className="bg-[#020c19] border border-[#101823] rounded-xl p-4">
@@ -729,17 +729,36 @@ export function LaunchPage() {
                 </div>
 
                 {/* How it works */}
-                <div className="bg-[#020c19] border border-[#101823] rounded-xl p-5 mb-5">
+                <div className="bg-[#020c19] border border-[#101823] rounded-xl p-4 sm:p-5 mb-4 sm:mb-5">
                   <h3 className="text-white font-semibold text-sm mb-4">How it works</h3>
-                  <div className="flex items-start gap-0">
+                  {/* Mobile: 2×3 grid; Desktop: single row with arrows */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:hidden gap-4">
+                    {HOW_IT_WORKS.map(({ n, label, desc }) => (
+                      <div key={n} className="flex flex-col items-center text-center">
+                        <div className="w-7 h-7 rounded-full border border-[#22c55e]/30 flex items-center justify-center mb-2">
+                          <span className="text-[#22c55e] text-xs font-bold">{n}</span>
+                        </div>
+                        <div className="w-9 h-9 rounded-xl bg-[#040d1b] border border-[#101823] flex items-center justify-center mb-1.5">
+                          {n === 1 && <Settings size={16} className="text-[#22c55e]" />}
+                          {n === 2 && <FileText size={16} className="text-[#22c55e]" />}
+                          {n === 3 && <Zap size={16} className="text-[#22c55e]" />}
+                          {n === 4 && <LayoutGrid size={16} className="text-[#22c55e]" />}
+                          {n === 5 && <Search size={16} className="text-[#22c55e]" />}
+                          {n === 6 && <Rocket size={16} className="text-[#22c55e]" />}
+                        </div>
+                        <div className="text-[#a0a8b2] text-[11px] font-medium mb-0.5">{label}</div>
+                        <div className="text-[#3a4452] text-[10px] leading-tight">{desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Desktop: original horizontal row with arrows */}
+                  <div className="hidden lg:flex items-start gap-0">
                     {HOW_IT_WORKS.map(({ n, label, desc }, i) => (
                       <div key={n} className="flex items-start flex-1 min-w-0">
                         <div className="flex flex-col items-center flex-1 min-w-0 px-1">
-                          {/* Number badge */}
                           <div className="w-8 h-8 rounded-full border border-[#22c55e]/30 bg-[#22c55e]/05 flex items-center justify-center mb-2 flex-shrink-0">
                             <span className="text-[#22c55e] text-xs font-bold">{n}</span>
                           </div>
-                          {/* Icon */}
                           <div className="w-10 h-10 rounded-xl bg-[#040d1b] border border-[#101823] flex items-center justify-center mb-2">
                             {n === 1 && <Settings size={18} className="text-[#22c55e]" />}
                             {n === 2 && <FileText size={18} className="text-[#22c55e]" />}
@@ -762,7 +781,7 @@ export function LaunchPage() {
                 </div>
 
                 {/* Bottom stats bar */}
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {[
                     { label: "Estimated Deployment", value: "15 sec", sub: "Average time", icon: Clock },
                     { label: "Network Fee", value: "0.00013ETH", sub: "~$0.28USD", icon: Zap },
