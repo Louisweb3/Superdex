@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useMarketPrices, type MarketPrice } from "@/hooks/useRewards";
-import { Grid3x3, User, BookOpen, BarChart2, X } from "lucide-react";
+import { Grid3x3, User, BookOpen, BarChart2, X, Rocket } from "lucide-react";
 import earnIcon from "@assets/token_logo_1779819572574.png";
 
 const FALLBACK_PRICES: MarketPrice[] = [
@@ -31,9 +31,10 @@ const iconSizes: Record<string, string> = {
 };
 
 const MORE_ITEMS = [
-  { value: "profile",   label: "Profile",   icon: User,     color: "#2dae50",  desc: "Rewards, referrals & X" },
-  { value: "docs",      label: "Docs",      icon: BookOpen, color: "#4d8ab8",  desc: "Guides & documentation" },
+  { value: "launch",    label: "Launch",    icon: Rocket,   color: "#2dae50",  desc: "Deploy B20 tokens" },
+  { value: "profile",   label: "Profile",   icon: User,     color: "#5aa9ff",  desc: "Rewards, referrals & X" },
   { value: "analytics", label: "Analytics", icon: null,     iconSrc: "/figmaAssets/image.png", color: "#a84dda", desc: "Trading analytics" },
+  { value: "docs",      label: "Docs",      icon: BookOpen, color: "#4d8ab8",  desc: "Guides & documentation" },
 ] as const;
 
 interface AssetTickerNavSectionProps {
@@ -51,7 +52,7 @@ export const AssetTickerNavSection = ({
   const tickerItems = [...tickerPrices, ...tickerPrices];
   const [showMore, setShowMore] = useState(false);
 
-  const moreActive = activeTab === "analytics" || activeTab === "profile";
+  const moreActive = activeTab === "analytics" || activeTab === "profile" || activeTab === "launch";
 
   const handleMoreItem = (value: string) => {
     setShowMore(false);

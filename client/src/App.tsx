@@ -21,6 +21,7 @@ function Router() {
       <Route path="/rewards" component={LandinHome} />
       <Route path="/vault" component={LandinHome} />
       <Route path="/earn" component={LandinHome} />
+      <Route path="/launch" component={LandinHome} />
       <Route path="/analytics" component={LandinHome} />
       <Route path="/profile" component={LandinHome} />
       <Route path="/admin" component={AdminPage} />

@@ -11,6 +11,7 @@ import { SwapPage } from "./SwapPage";
 import { RewardsPage } from "./RewardsPage";
 import { VaultPage } from "./VaultPage";
 import { EarnPage } from "./EarnPage";
+import { LaunchPage } from "./LaunchPage";
 import { AnalyticsPage } from "./AnalyticsPage";
 import { ProfilePage } from "./ProfilePage";
 
@@ -21,6 +22,7 @@ const PATH_TO_TAB: Record<string, string> = {
   "/rewards": "rewards",
   "/earn": "earn",
   "/vault": "vault",
+  "/launch": "launch",
   "/analytics": "analytics",
   "/profile": "profile",
 };
@@ -31,6 +33,7 @@ const TAB_TO_PATH: Record<string, string> = {
   rewards: "/rewards",
   earn: "/earn",
   vault: "/vault",
+  launch: "/launch",
   analytics: "/analytics",
   profile: "/profile",
 };
@@ -84,6 +87,7 @@ export const LandinHome = (): JSX.Element => {
   const isRewards = activeTab === "rewards";
   const isEarn = activeTab === "earn";
   const isVault = activeTab === "vault";
+  const isLaunch = activeTab === "launch";
   const isAnalytics = activeTab === "analytics";
   const isProfile = activeTab === "profile";
 
@@ -217,6 +221,12 @@ export const LandinHome = (): JSX.Element => {
               </section>
             )}
 
+            {isLaunch && (
+              <section className="w-full flex-1">
+                <LaunchPage />
+              </section>
+            )}
+
             {isAnalytics && (
               <section className="w-full flex-1">
                 <AnalyticsPage />
@@ -234,6 +244,7 @@ export const LandinHome = (): JSX.Element => {
               !isRewards &&
               !isEarn &&
               !isVault &&
+              !isLaunch &&
               !isAnalytics &&
               !isProfile && (
                 <section className="w-full flex-1 px-4">
