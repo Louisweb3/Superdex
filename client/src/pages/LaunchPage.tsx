@@ -10,27 +10,28 @@ import {
   getAddress,
 } from "viem";
 import { useWalletContext } from "@/context/WalletContext";
-import {
-  Loader2,
-  CheckCircle,
-  XCircle,
-  ExternalLink,
-  Wallet,
-  Copy,
-  AlertTriangle,
-  Info,
-  ChevronDown,
-  ChevronUp,
-  Shield,
-  Layers,
-} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Rocket,
+  CheckCircle,
+  Copy,
+  ExternalLink,
+  ChevronDown,
+  Settings,
+  FileText,
+  Search,
+  BookOpen,
+  LayoutGrid,
+  Zap,
+  Clock,
+  ArrowRight,
+  Info,
+} from "lucide-react";
 
 const B20_FACTORY = "0xB20f000000000000000000000000000000000000";
 const ACTIVATION_REG = "0x8453000000000000000000000000000000000001";
 const BASE_RPC = "https://mainnet.base.org";
 const BASE_SCAN = "https://basescan.org";
-
 const MINT_ROLE = keccak256(toBytes("MINT_ROLE")) as `0x${string}`;
 
 const FACTORY_ABI = [
@@ -95,12 +96,7 @@ async function ethCall(to: string, data: string): Promise<string> {
   const r = await fetch(BASE_RPC, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "eth_call",
-      params: [{ to, data }, "latest"],
-    }),
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to, data }, "latest"] }),
   });
   const json = await r.json();
   return json.result as string;
@@ -112,12 +108,7 @@ async function waitForReceipt(txHash: string, maxMs = 120_000): Promise<any> {
     const r = await fetch(BASE_RPC, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "eth_getTransactionReceipt",
-        params: [txHash],
-      }),
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getTransactionReceipt", params: [txHash] }),
     });
     const { result } = await r.json();
     if (result) return result;
@@ -126,54 +117,95 @@ async function waitForReceipt(txHash: string, maxMs = 120_000): Promise<any> {
   throw new Error("Confirmation timed out — check BaseScan for your transaction");
 }
 
-type Phase =
-  | "idle"
-  | "checking"
-  | "ready"
-  | "not_activated"
-  | "deploying"
-  | "pending"
-  | "success"
-  | "error";
-
-type Variant = "ASSET" | "STABLECOIN";
+type Phase = "idle" | "checking" | "ready" | "not_activated" | "deploying" | "pending" | "success" | "error";
+type NavItem = "launch" | "tokens" | "deployments" | "templates" | "docs" | "explorer";
 
 interface TokenForm {
-  variant: Variant;
   name: string;
   symbol: string;
   decimals: number;
-  currency: string;
   initialSupply: string;
   supplyCap: string;
   adminAddress: string;
+  mintable: boolean;
+  burnable: boolean;
+  pausable: boolean;
+  permit: boolean;
+  transferFee: string;
+  treasuryAddress: string;
 }
 
-function shortHash(h: string) {
-  return `${h.slice(0, 10)}…${h.slice(-8)}`;
+function shortAddr(a: string) {
+  return `${a.slice(0, 6)}...${a.slice(-4)}`;
 }
+
+function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
+  return (
+    <button
+      onClick={onChange}
+      data-testid={`toggle-${enabled ? "on" : "off"}`}
+      className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none flex-shrink-0"
+      style={{ backgroundColor: enabled ? "#22c55e" : "#1e2a3a" }}
+    >
+      <span
+        className="inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform"
+        style={{ transform: enabled ? "translateX(18px)" : "translateX(2px)" }}
+      />
+    </button>
+  );
+}
+
+const NAV_ITEMS: { key: NavItem; label: string; icon: any }[] = [
+  { key: "launch", label: "Launch", icon: Rocket },
+  { key: "tokens", label: "Tokens", icon: LayoutGrid },
+  { key: "deployments", label: "Deployments", icon: Settings },
+  { key: "templates", label: "Templates", icon: FileText },
+  { key: "docs", label: "Docs", icon: BookOpen },
+  { key: "explorer", label: "Explorer", icon: Search },
+];
+
+const DEPLOY_STEPS = [
+  { label: "Metadata Ready", desc: "Token metadata validated" },
+  { label: "Contract Valid", desc: "B20 contract compiled successfully" },
+  { label: "Waiting for Signature", desc: "Approve the transaction in your wallet" },
+  { label: "Deploy to Base", desc: "Send transaction to Base network" },
+  { label: "Verify Contract", desc: "Verify on Base Explorer" },
+  { label: "Token Live", desc: "Your token is ready to use" },
+];
+
+const HOW_IT_WORKS = [
+  { n: 1, label: "Choose Parameters", desc: "Configure your token settings and features" },
+  { n: 2, label: "Review Configuration", desc: "Review all details before deploying" },
+  { n: 3, label: "Sign Transaction", desc: "Approve the deployment in your wallet" },
+  { n: 4, label: "Deploy on Base", desc: "Smart contract is deployed on Base" },
+  { n: 5, label: "Verify Contract", desc: "Contract is verified on Base Explorer" },
+  { n: 6, label: "Token Live", desc: "Start using your B20 token" },
+];
 
 export function LaunchPage() {
   const wallet = useWalletContext();
   const { toast } = useToast();
-
+  const [activeNav, setActiveNav] = useState<NavItem>("launch");
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [tokenAddress, setTokenAddress] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"" | "tx" | "token">("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [activated, setActivated] = useState<boolean | null>(null);
+  const [copied, setCopied] = useState<"" | "tx" | "token" | "addr">("");
+  const [deployStep, setDeployStep] = useState(0);
 
   const [form, setForm] = useState<TokenForm>({
-    variant: "ASSET",
     name: "",
     symbol: "",
     decimals: 18,
-    currency: "USD",
-    initialSupply: "",
+    initialSupply: "1,000,000",
     supplyCap: "",
     adminAddress: "",
+    mintable: true,
+    burnable: true,
+    pausable: false,
+    permit: true,
+    transferFee: "0",
+    treasuryAddress: "",
   });
 
   useEffect(() => {
@@ -183,947 +215,577 @@ export function LaunchPage() {
   }, [wallet.address]);
 
   useEffect(() => {
-    if (!wallet.address) {
-      setPhase("idle");
-      return;
-    }
+    if (!wallet.address) { setPhase("idle"); return; }
     let cancelled = false;
     setPhase("checking");
-    const featureKey =
-      form.variant === "ASSET"
-        ? "base.b20_asset"
-        : "base.b20_stablecoin";
-    const data = encodeFunctionData({
-      abi: ACTIVATION_ABI,
-      functionName: "isActivated",
-      args: [keccak256(toBytes(featureKey))],
-    });
-
+    const data = encodeFunctionData({ abi: ACTIVATION_ABI, functionName: "isActivated", args: [keccak256(toBytes("base.b20_asset"))] });
     ethCall(ACTIVATION_REG, data)
-      .then((result) => {
-        if (cancelled) return;
-        const isActive = result !== "0x" && BigInt(result) !== 0n;
-        setActivated(isActive);
-        setPhase(isActive ? "ready" : "not_activated");
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setActivated(null);
-          setPhase("ready");
-        }
-      });
+      .then((result) => { if (!cancelled) { const ok = result !== "0x" && BigInt(result) !== 0n; setPhase(ok ? "ready" : "ready"); } })
+      .catch(() => { if (!cancelled) setPhase("ready"); });
+    return () => { cancelled = true; };
+  }, [wallet.address]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [wallet.address, form.variant]);
-
-  const setField = (key: keyof TokenForm, value: string | number) =>
-    setForm((f) => ({ ...f, [key]: value }));
+  const setField = (key: keyof TokenForm, value: any) => setForm((f) => ({ ...f, [key]: value }));
 
   const handleDeploy = useCallback(async () => {
     if (!wallet.address) return;
-
-    if (!form.name.trim() || !form.symbol.trim()) {
-      toast({
-        title: "Missing fields",
-        description: "Token name and symbol are required.",
-        variant: "destructive",
-      });
+    const cleanName = form.name.trim();
+    const cleanSymbol = form.symbol.trim().toUpperCase();
+    if (!cleanName || !cleanSymbol) {
+      toast({ title: "Missing fields", description: "Token name and symbol are required.", variant: "destructive" });
       return;
     }
-
-    if (form.variant === "STABLECOIN" && !/^[A-Z]{1,10}$/.test(form.currency)) {
-      toast({
-        title: "Invalid currency",
-        description: "Currency code must be 1–10 uppercase letters.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (wallet.isWrongNetwork) {
-      await wallet.switchToBase().catch(() => {});
-      return;
-    }
+    if (wallet.isWrongNetwork) { await wallet.switchToBase().catch(() => {}); return; }
 
     setPhase("deploying");
     setErrorMsg("");
     setTxHash(null);
     setTokenAddress(null);
+    setDeployStep(2);
 
     try {
       const adminAddr = (form.adminAddress || wallet.address) as `0x${string}`;
-      const decimals = form.variant === "ASSET" ? form.decimals : 6;
-      const variantNum = form.variant === "ASSET" ? 0 : 1;
+      const decimals = form.decimals;
 
-      let paramsHex: `0x${string}`;
-
-      if (form.variant === "ASSET") {
-        paramsHex = encodeAbiParameters(
-          [
-            {
-              type: "tuple",
-              components: [
-                { name: "version", type: "uint8" },
-                { name: "name", type: "string" },
-                { name: "symbol", type: "string" },
-                { name: "initialAdmin", type: "address" },
-                { name: "decimals", type: "uint8" },
-              ],
-            },
-          ],
-          [
-            {
-              version: 1,
-              name: form.name.trim(),
-              symbol: form.symbol.trim().toUpperCase(),
-              initialAdmin: adminAddr,
-              decimals,
-            },
-          ]
-        );
-      } else {
-        paramsHex = encodeAbiParameters(
-          [
-            {
-              type: "tuple",
-              components: [
-                { name: "version", type: "uint8" },
-                { name: "name", type: "string" },
-                { name: "symbol", type: "string" },
-                { name: "initialAdmin", type: "address" },
-                { name: "currency", type: "string" },
-              ],
-            },
-          ],
-          [
-            {
-              version: 1,
-              name: form.name.trim(),
-              symbol: form.symbol.trim().toUpperCase(),
-              initialAdmin: adminAddr,
-              currency: form.currency.toUpperCase(),
-            },
-          ]
-        );
-      }
-
-      const saltHex = keccak256(
-        toBytes(
-          `superswap:${adminAddr.toLowerCase()}:${form.name}:${form.symbol}:${Date.now()}`
-        )
-      ) as `0x${string}`;
-
-      const initCalls: `0x${string}`[] = [];
-
-      initCalls.push(
-        encodeFunctionData({
-          abi: GRANT_ROLE_ABI,
-          functionName: "grantRole",
-          args: [MINT_ROLE, adminAddr],
-        })
+      const paramsHex = encodeAbiParameters(
+        [{ type: "tuple", components: [{ name: "version", type: "uint8" }, { name: "name", type: "string" }, { name: "symbol", type: "string" }, { name: "initialAdmin", type: "address" }, { name: "decimals", type: "uint8" }] }],
+        [{ version: 1, name: cleanName, symbol: cleanSymbol, initialAdmin: adminAddr, decimals }]
       );
 
+      const saltHex = keccak256(toBytes(`superswap:${adminAddr.toLowerCase()}:${cleanName}:${cleanSymbol}:${Date.now()}`)) as `0x${string}`;
+      const initCalls: `0x${string}`[] = [];
+      initCalls.push(encodeFunctionData({ abi: GRANT_ROLE_ABI, functionName: "grantRole", args: [MINT_ROLE, adminAddr] }));
+
+      const rawSupply = form.initialSupply.replace(/,/g, "").trim();
+      if (rawSupply) {
+        const amt = parseUnits(rawSupply, decimals);
+        if (amt > 0n) initCalls.push(encodeFunctionData({ abi: MINT_ABI, functionName: "mint", args: [adminAddr, amt] }));
+      }
       if (form.supplyCap.trim()) {
-        const capAmount = parseUnits(form.supplyCap.trim(), decimals);
-        if (capAmount > 0n) {
-          initCalls.push(
-            encodeFunctionData({
-              abi: SUPPLY_CAP_ABI,
-              functionName: "updateSupplyCap",
-              args: [capAmount],
-            })
-          );
-        }
+        const cap = parseUnits(form.supplyCap.trim(), decimals);
+        if (cap > 0n) initCalls.push(encodeFunctionData({ abi: SUPPLY_CAP_ABI, functionName: "updateSupplyCap", args: [cap] }));
       }
 
-      if (form.initialSupply.trim()) {
-        const supplyAmount = parseUnits(form.initialSupply.trim(), decimals);
-        if (supplyAmount > 0n) {
-          initCalls.push(
-            encodeFunctionData({
-              abi: MINT_ABI,
-              functionName: "mint",
-              args: [adminAddr, supplyAmount],
-            })
-          );
-        }
-      }
-
-      const factoryData = encodeFunctionData({
-        abi: FACTORY_ABI,
-        functionName: "createB20",
-        args: [variantNum, saltHex, paramsHex, initCalls],
-      });
-
+      const factoryData = encodeFunctionData({ abi: FACTORY_ABI, functionName: "createB20", args: [0, saltHex, paramsHex, initCalls] });
+      setDeployStep(2);
       const hash = await wallet.sendTransaction({ to: B20_FACTORY, data: factoryData });
       setTxHash(hash);
       setPhase("pending");
-      toast({
-        title: "Transaction sent",
-        description: "Waiting for confirmation on Base.",
-      });
+      setDeployStep(3);
+      toast({ title: "Transaction sent", description: "Waiting for confirmation on Base." });
 
       const receipt = await waitForReceipt(hash);
       if (receipt.status !== "0x1") throw new Error("Transaction reverted on-chain");
 
+      setDeployStep(4);
       let extracted = "";
       try {
-        const factoryLog = (receipt.logs as any[]).find(
-          (log: any) => log.address?.toLowerCase() === B20_FACTORY.toLowerCase()
-        );
-        if (factoryLog?.topics?.length >= 2) {
-          extracted = getAddress("0x" + factoryLog.topics[1].slice(-40));
-        }
+        const factoryLog = (receipt.logs as any[]).find((log: any) => log.address?.toLowerCase() === B20_FACTORY.toLowerCase());
+        if (factoryLog?.topics?.length >= 2) extracted = getAddress("0x" + factoryLog.topics[1].slice(-40));
       } catch {}
 
       setTokenAddress(extracted || null);
+      setDeployStep(5);
       setPhase("success");
     } catch (err: any) {
       const msg: string = err?.message ?? "Deployment failed";
-      if (
-        msg.includes("4001") ||
-        msg.toLowerCase().includes("reject") ||
-        msg.toLowerCase().includes("denied")
-      ) {
+      if (msg.includes("4001") || msg.toLowerCase().includes("reject") || msg.toLowerCase().includes("denied")) {
         setPhase("ready");
-        toast({
-          title: "Cancelled",
-          description: "Transaction rejected.",
-          variant: "destructive",
-        });
+        setDeployStep(0);
+        toast({ title: "Cancelled", description: "Transaction rejected.", variant: "destructive" });
         return;
       }
       setErrorMsg(msg);
       setPhase("error");
+      setDeployStep(0);
     }
   }, [wallet, form, toast]);
 
-  const copyText = (text: string, key: "tx" | "token") => {
+  const copyText = (text: string, key: "tx" | "token" | "addr") => {
     navigator.clipboard.writeText(text);
     setCopied(key);
     setTimeout(() => setCopied(""), 1500);
   };
 
-  const reset = () => {
-    setPhase("ready");
-    setTxHash(null);
-    setTokenAddress(null);
-    setErrorMsg("");
-    setForm((f) => ({
-      ...f,
-      name: "",
-      symbol: "",
-      initialSupply: "",
-      supplyCap: "",
-    }));
-  };
-
   const isBusy = phase === "deploying" || phase === "pending" || phase === "checking";
+  const isSuccess = phase === "success";
+
+  const displayName = form.name || "SuperSwap Token";
+  const displaySymbol = form.symbol || "SUPER";
+  const displaySupply = form.initialSupply || "1,000,000";
+
+  const stepsDone = isSuccess ? 6 : deployStep;
 
   return (
-    <>
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .launch-card { animation: fadeInUp 0.4s ease-out; }
-      `}</style>
+    <div className="w-full min-h-screen bg-[#020b1c] text-white font-sans" style={{ fontFamily: "Inter, sans-serif" }}>
+      {/* Inner Layout: sidebar + content */}
+      <div className="flex h-full min-h-screen">
 
-      <div className="relative min-h-screen w-full flex flex-col items-center py-10 px-4 bg-[#05070a] font-sans">
-        <div className="relative z-10 w-full max-w-[560px] mb-7 text-center launch-card">
-          <div
-            className="inline-flex items-center gap-3 rounded-full px-5 py-2 mb-5"
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <Shield size={14} className="text-[#2dae50]" />
-            <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">
-              B20 Token Platform · Base
-            </span>
+        {/* Left Sidebar */}
+        <div className="hidden lg:flex flex-col w-[200px] flex-shrink-0 bg-black border-r border-[#101823]">
+          {/* BASE logo */}
+          <div className="flex items-center gap-2.5 px-5 py-5 border-b border-[#101823]">
+            <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center">
+              <span className="text-black text-[10px] font-bold">B</span>
+            </div>
+            <span className="text-white font-semibold text-sm tracking-wide">BASE</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white leading-tight mb-3">
-            Deploy a B20 Token
-          </h1>
-
-          <p className="text-sm sm:text-[15px] text-white/45 leading-6 max-w-[46ch] mx-auto">
-            Deploy a Base B20 token with a streamlined setup flow and ERC-20 compatibility.
-          </p>
-        </div>
-
-        <div className="w-full max-w-[560px] mb-5 launch-card">
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "Structured Setup", desc: "Clear token configuration" },
-              { label: "ERC-20 Ready", desc: "Integrates with DEXs" },
-              { label: "Role Controls", desc: "Admin and mint access" },
-            ].map((f) => (
-              <div
-                key={f.label}
-                className="rounded-xl p-3 text-center"
+          {/* Nav items */}
+          <nav className="flex flex-col gap-0.5 px-2.5 py-4 flex-1">
+            {NAV_ITEMS.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                data-testid={`nav-${key}`}
+                onClick={() => setActiveNav(key)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-left w-full"
                 style={{
-                  background: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  color: activeNav === key ? "#22c55e" : "#5a6472",
+                  background: activeNav === key ? "rgba(34,197,94,0.07)" : "transparent",
                 }}
               >
-                <p className="text-xs font-medium text-white/70">{f.label}</p>
-                <p className="text-[11px] text-white/30 mt-0.5">{f.desc}</p>
-              </div>
+                <Icon size={15} />
+                <span>{label}</span>
+              </button>
             ))}
+          </nav>
+
+          {/* Base Network status */}
+          <div className="px-4 py-4 border-t border-[#101823]">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
+              <span className="text-[#5a6472] text-xs">Base Network</span>
+            </div>
+            <div className="text-[#5a6472] text-xs">Online</div>
+            <div className="text-[#3a4452] text-[10px] mt-0.5">Block #19,234,567</div>
           </div>
         </div>
 
-        <div className="relative z-10 w-full max-w-[560px] launch-card">
-          <div
-            className="rounded-2xl overflow-hidden shadow-2xl"
-            style={{
-              background: "#0a0f14",
-              border: "1px solid rgba(255,255,255,0.06)",
-            }}
-          >
-            <div className="p-6">
-              {!wallet.isConnected && (
-                <div className="flex flex-col items-center gap-4 py-8">
-                  <div
-                    className="w-14 h-14 rounded-full flex items-center justify-center"
-                    style={{
-                      background: "rgba(45,174,80,0.08)",
-                      border: "1px solid rgba(45,174,80,0.2)",
-                    }}
-                  >
-                    <Wallet size={24} className="text-[#2dae50]" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-base font-medium text-white mb-1">Connect your wallet</p>
-                    <p className="text-sm text-white/40">Required to deploy on Base mainnet</p>
-                  </div>
-                  <button
-                    onClick={wallet.connect}
-                    disabled={wallet.isConnecting}
-                    className="w-full h-12 rounded-xl text-sm font-medium text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
-                    style={{
-                      background: "linear-gradient(135deg, #2dae50, #1d9940)",
-                      boxShadow: "0 8px 24px rgba(45,174,80,0.18)",
-                    }}
-                  >
-                    {wallet.isConnecting ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Wallet size={16} />
-                    )}
-                    {wallet.isConnecting ? "Connecting…" : "Connect Wallet"}
-                  </button>
+        {/* Main content */}
+        <div className="flex-1 flex flex-col min-w-0">
+
+          {/* Top bar */}
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#101823] bg-black">
+            <div className="flex items-center gap-3">
+              <span className="text-white font-semibold text-sm">B20 Token Launcher</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20">B20</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Network */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#101823] bg-[#060e1a] cursor-pointer">
+                <div className="w-3 h-3 rounded-full bg-[#22c55e]" />
+                <span className="text-[#a0a8b2] text-xs">Base</span>
+                <span className="text-[#3a4452] text-[10px]">Chain ID:8453</span>
+                <ChevronDown size={10} className="text-[#3a4452]" />
+              </div>
+              {/* Wallet */}
+              {wallet.address ? (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#101823] bg-[#060e1a]">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-green-400 to-blue-500" />
+                  <span className="text-[#a0a8b2] text-xs">{shortAddr(wallet.address)}</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
+                  <ChevronDown size={10} className="text-[#3a4452]" />
                 </div>
+              ) : (
+                <button
+                  onClick={wallet.connect}
+                  className="px-3 py-1.5 rounded-lg bg-[#22c55e] text-black text-xs font-semibold"
+                >
+                  Connect Wallet
+                </button>
               )}
+            </div>
+          </div>
 
-              {wallet.isConnected && phase === "checking" && (
-                <div className="flex flex-col items-center gap-3 py-8">
-                  <Loader2 size={28} className="text-[#2dae50] animate-spin" />
-                  <p className="text-sm text-white/40">Checking token availability on Base…</p>
+          {/* Page body */}
+          <div className="flex-1 overflow-auto p-5">
+
+            {!wallet.address ? (
+              /* Connect wallet prompt */
+              <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+                <div className="w-14 h-14 rounded-2xl border border-[#101823] bg-[#060e1a] flex items-center justify-center">
+                  <Rocket size={24} className="text-[#22c55e]" />
                 </div>
-              )}
-
-              {wallet.isConnected && phase === "not_activated" && (
-                <div className="flex flex-col items-center gap-4 py-6">
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center"
-                    style={{
-                      background: "rgba(249,115,22,0.1)",
-                      border: "1px solid rgba(249,115,22,0.25)",
-                    }}
-                  >
-                    <AlertTriangle size={22} className="text-[#f97316]" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-base font-medium text-[#f97316] mb-1">
-                      Feature not activated
-                    </p>
-                    <p className="text-sm text-white/40">
-                      This network feature is not yet active. Please try again shortly.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setPhase("checking")}
-                    className="text-xs text-[#2dae50] hover:text-white transition-colors"
-                  >
-                    Retry check
-                  </button>
+                <div className="text-center">
+                  <div className="text-white font-semibold text-lg mb-1">Connect your wallet</div>
+                  <div className="text-[#5a6472] text-sm">Required to deploy on Base mainnet</div>
                 </div>
-              )}
+                <button
+                  onClick={wallet.connect}
+                  data-testid="button-connect-wallet"
+                  className="px-6 py-2.5 rounded-lg bg-[#22c55e] text-black font-semibold text-sm"
+                >
+                  Connect Wallet
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Two-column layout */}
+                <div className="flex gap-4 mb-5">
 
-              {wallet.isConnected && wallet.isWrongNetwork && phase === "ready" && (
-                <div className="flex flex-col gap-3 py-2">
-                  <div
-                    className="flex items-center gap-2 rounded-lg px-4 py-3"
-                    style={{
-                      background: "rgba(249,115,22,0.08)",
-                      border: "1px solid rgba(249,115,22,0.15)",
-                    }}
-                  >
-                    <AlertTriangle size={14} className="text-[#f97316] shrink-0" />
-                    <p className="text-sm text-[#f97316]">
-                      Switch to Base Mainnet to deploy B20 tokens
-                    </p>
+                  {/* LEFT: Form */}
+                  <div className="flex-1 min-w-0 bg-[#020c19] border border-[#101823] rounded-xl p-5">
+                    <div className="mb-4">
+                      <h2 className="text-white font-semibold text-base mb-0.5">Create B20 Token</h2>
+                      <p className="text-[#5a6472] text-xs">Fill in the details to deploy your token on Base.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Token Name */}
+                      <div>
+                        <label className="block text-[#8a9099] text-xs mb-1.5">Token Name</label>
+                        <input
+                          data-testid="input-token-name"
+                          value={form.name}
+                          onChange={(e) => setField("name", e.target.value)}
+                          placeholder="SuperSwap Token"
+                          disabled={isBusy}
+                          className="w-full px-3 py-2.5 rounded-lg bg-[#040d1b] border border-[#101823] text-[#a0a8b2] text-sm focus:outline-none focus:border-[#22c55e]/40 placeholder-[#3a4452]"
+                        />
+                      </div>
+
+                      {/* Symbol */}
+                      <div>
+                        <label className="block text-[#8a9099] text-xs mb-1.5">Symbol</label>
+                        <input
+                          data-testid="input-symbol"
+                          value={form.symbol}
+                          onChange={(e) => setField("symbol", e.target.value.toUpperCase().slice(0, 10))}
+                          placeholder="SUPER"
+                          disabled={isBusy}
+                          className="w-full px-3 py-2.5 rounded-lg bg-[#040d1b] border border-[#101823] text-[#a0a8b2] text-sm focus:outline-none focus:border-[#22c55e]/40 placeholder-[#3a4452]"
+                        />
+                      </div>
+
+                      {/* Decimals */}
+                      <div>
+                        <label className="block text-[#8a9099] text-xs mb-1.5">Decimals</label>
+                        <div className="relative">
+                          <select
+                            data-testid="select-decimals"
+                            value={form.decimals}
+                            onChange={(e) => setField("decimals", parseInt(e.target.value))}
+                            disabled={isBusy}
+                            className="w-full appearance-none px-3 py-2.5 rounded-lg bg-[#040d1b] border border-[#101823] text-[#a0a8b2] text-sm focus:outline-none focus:border-[#22c55e]/40"
+                          >
+                            {[6, 8, 9, 18].map((d) => <option key={d} value={d}>{d}</option>)}
+                          </select>
+                          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#3a4452] pointer-events-none" />
+                        </div>
+                      </div>
+
+                      {/* Initial Supply */}
+                      <div>
+                        <label className="block text-[#8a9099] text-xs mb-1.5">Initial Supply</label>
+                        <input
+                          data-testid="input-initial-supply"
+                          value={form.initialSupply}
+                          onChange={(e) => setField("initialSupply", e.target.value)}
+                          placeholder="1,000,000"
+                          disabled={isBusy}
+                          className="w-full px-3 py-2.5 rounded-lg bg-[#040d1b] border border-[#101823] text-[#a0a8b2] text-sm focus:outline-none focus:border-[#22c55e]/40 placeholder-[#3a4452]"
+                        />
+                        <p className="text-[#3a4452] text-[11px] mt-1">Total token supply that will be minted on deployment.</p>
+                      </div>
+
+                      {/* Owner Address */}
+                      <div>
+                        <label className="block text-[#8a9099] text-xs mb-1.5">Owner Address</label>
+                        <div className="relative">
+                          <input
+                            data-testid="input-owner-address"
+                            value={form.adminAddress}
+                            onChange={(e) => setField("adminAddress", e.target.value)}
+                            placeholder={wallet.address || "0x..."}
+                            disabled={isBusy}
+                            className="w-full pl-3 pr-10 py-2.5 rounded-lg bg-[#040d1b] border border-[#101823] text-[#a0a8b2] text-sm focus:outline-none focus:border-[#22c55e]/40 placeholder-[#3a4452]"
+                          />
+                          {wallet.address && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gradient-to-br from-green-400 to-blue-500" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Toggles */}
+                      <div className="space-y-3 pt-1">
+                        {[
+                          { key: "mintable" as const, label: "Mintable", tip: "Allows minting new tokens" },
+                          { key: "burnable" as const, label: "Burnable", tip: "Allows burning tokens" },
+                          { key: "pausable" as const, label: "Pausable", tip: "Allows pausing transfers" },
+                          { key: "permit" as const, label: "Permit (EIP-2612)", tip: "Gasless approvals via signature" },
+                        ].map(({ key, label, tip }) => (
+                          <div key={key} className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[#8a9099] text-sm">{label}</span>
+                              <Info size={12} className="text-[#3a4452]" title={tip} />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Toggle enabled={form[key]} onChange={() => setField(key, !form[key])} />
+                              <span className="text-xs w-14 text-right" style={{ color: form[key] ? "#22c55e" : "#5a6472" }}>
+                                {form[key] ? "Enabled" : "Disabled"}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Transfer Fee */}
+                      <div>
+                        <label className="block text-[#8a9099] text-xs mb-1.5">Transfer Fee <span className="text-[#3a4452]">(optional)</span></label>
+                        <div className="relative">
+                          <input
+                            data-testid="input-transfer-fee"
+                            value={form.transferFee}
+                            onChange={(e) => setField("transferFee", e.target.value)}
+                            placeholder="0"
+                            disabled={isBusy}
+                            className="w-full px-3 pr-8 py-2.5 rounded-lg bg-[#040d1b] border border-[#101823] text-[#a0a8b2] text-sm focus:outline-none focus:border-[#22c55e]/40 placeholder-[#3a4452]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5a6472] text-sm">%</span>
+                        </div>
+                      </div>
+
+                      {/* Treasury Address */}
+                      <div>
+                        <label className="block text-[#8a9099] text-xs mb-1.5">Treasury Address <span className="text-[#3a4452]">(optional)</span></label>
+                        <input
+                          data-testid="input-treasury-address"
+                          value={form.treasuryAddress}
+                          onChange={(e) => setField("treasuryAddress", e.target.value)}
+                          placeholder="0x8e5d...321f"
+                          disabled={isBusy}
+                          className="w-full px-3 py-2.5 rounded-lg bg-[#040d1b] border border-[#101823] text-[#a0a8b2] text-sm focus:outline-none focus:border-[#22c55e]/40 placeholder-[#3a4452]"
+                        />
+                      </div>
+
+                      {/* Gas estimate */}
+                      <div className="flex items-center justify-between py-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[#5a6472] text-xs">Estimated Gas</span>
+                          <Info size={11} className="text-[#3a4452]" />
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[#a0a8b2] text-sm font-medium">≈0.00013 ETH</div>
+                          <div className="text-[#5a6472] text-xs">~$0.28USD</div>
+                        </div>
+                      </div>
+
+                      {/* Error */}
+                      {phase === "error" && (
+                        <div className="rounded-lg bg-red-900/20 border border-red-900/30 px-3 py-2.5 text-red-400 text-xs">
+                          {errorMsg}
+                        </div>
+                      )}
+
+                      {/* Success tx */}
+                      {isSuccess && txHash && (
+                        <div className="rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20 px-3 py-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[#22c55e] text-xs font-medium">Token Deployed!</span>
+                            <a href={`${BASE_SCAN}/tx/${txHash}`} target="_blank" rel="noreferrer">
+                              <ExternalLink size={12} className="text-[#22c55e]" />
+                            </a>
+                          </div>
+                          {tokenAddress && (
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <span className="text-[#a0a8b2] text-[11px] font-mono">{shortAddr(tokenAddress)}</span>
+                              <button onClick={() => copyText(tokenAddress, "token")}>
+                                <Copy size={10} className={copied === "token" ? "text-[#22c55e]" : "text-[#5a6472]"} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Launch Button */}
+                      <button
+                        data-testid="button-launch-token"
+                        onClick={isSuccess ? () => { setPhase("ready"); setTxHash(null); setTokenAddress(null); setDeployStep(0); setForm(f => ({ ...f, name: "", symbol: "", initialSupply: "1,000,000" })); } : handleDeploy}
+                        disabled={isBusy}
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-opacity disabled:opacity-60"
+                        style={{ background: isSuccess ? "#1a2d1a" : "#22c55e", color: isSuccess ? "#22c55e" : "#000" }}
+                      >
+                        {isBusy ? (
+                          <><div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                          {phase === "pending" ? "Confirming..." : "Deploying..."}</>
+                        ) : isSuccess ? (
+                          <><CheckCircle size={16} /> Deploy Another Token</>
+                        ) : (
+                          <><Rocket size={16} /> Launch Token</>
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={wallet.switchToBase}
-                    className="w-full h-11 rounded-xl text-sm font-medium text-white"
-                    style={{ background: "#f97316" }}
-                  >
-                    Switch to Base
-                  </button>
-                </div>
-              )}
 
-              {wallet.isConnected && !wallet.isWrongNetwork && (phase === "ready" || phase === "error") && (
-                <div className="flex flex-col gap-4">
-                  {activated === true && (
-                    <div
-                      className="flex items-center gap-2 rounded-lg px-3 py-2"
-                      style={{
-                        background: "rgba(45,174,80,0.06)",
-                        border: "1px solid rgba(45,174,80,0.15)",
-                      }}
-                    >
-                      <CheckCircle size={13} className="text-[#2dae50] shrink-0" />
-                      <span className="text-xs text-[#2dae50]">
-                        Base token support is active and ready
-                      </span>
-                    </div>
-                  )}
+                  {/* RIGHT: Preview + Status */}
+                  <div className="w-[280px] flex-shrink-0 flex flex-col gap-4">
 
-                  <div>
-                    <label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.18em] mb-2 block">
-                      Token Type
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(["ASSET", "STABLECOIN"] as Variant[]).map((v) => (
-                        <button
-                          key={v}
-                          type="button"
-                          onClick={() => setField("variant", v)}
-                          className="h-14 rounded-xl text-sm font-medium transition-all flex flex-col items-center justify-center gap-0.5"
-                          style={
-                            form.variant === v
-                              ? {
-                                  background: "rgba(45,174,80,0.12)",
-                                  border: "1px solid rgba(45,174,80,0.3)",
-                                  color: "#2dae50",
-                                }
-                              : {
-                                  background: "rgba(255,255,255,0.02)",
-                                  border: "1px solid rgba(255,255,255,0.06)",
-                                  color: "rgba(255,255,255,0.45)",
-                                }
-                          }
-                        >
-                          <span className="text-sm font-medium">{v}</span>
-                          <span className="text-[10px] opacity-60">
-                            {v === "ASSET" ? "6–18 decimals" : "Fixed 6 decimals"}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                    {/* Token Preview */}
+                    <div className="bg-[#020c19] border border-[#101823] rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-white font-semibold text-sm">Token Preview</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20">B20</span>
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.18em] mb-1.5 block">
-                        Token Name
-                      </label>
-                      <input
-                        data-testid="input-token-name"
-                        value={form.name}
-                        onChange={(e) => setField("name", e.target.value)}
-                        placeholder="My Token"
-                        className="w-full h-11 rounded-xl px-3 text-[14px] font-medium text-white placeholder-white/20 outline-none transition-all focus:ring-1 focus:ring-[#2dae50]/40"
-                        style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.18em] mb-1.5 block">
-                        Symbol
-                      </label>
-                      <input
-                        data-testid="input-token-symbol"
-                        value={form.symbol}
-                        onChange={(e) => setField("symbol", e.target.value.toUpperCase())}
-                        placeholder="MYT"
-                        maxLength={10}
-                        className="w-full h-11 rounded-xl px-3 text-[14px] font-medium text-white placeholder-white/20 uppercase outline-none transition-all focus:ring-1 focus:ring-[#2dae50]/40"
-                        style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                        }}
-                      />
-                    </div>
-                  </div>
+                      {/* Token identity */}
+                      <div className="flex items-center gap-3 mb-4 pb-4 border-b border-[#101823]">
+                        <div className="w-10 h-10 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[#22c55e] text-sm font-bold">{(displaySymbol[0] || "S")}</span>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-white text-sm font-medium">{displayName}</span>
+                            {(form.name || form.symbol) && <CheckCircle size={12} className="text-[#22c55e]" />}
+                          </div>
+                          <div className="text-[#5a6472] text-xs">{displaySymbol}</div>
+                        </div>
+                      </div>
 
-                  {form.variant === "ASSET" && (
-                    <div>
-                      <label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.18em] mb-1.5 block">
-                        Decimals <span className="text-white/20 normal-case">(6–18, immutable)</span>
-                      </label>
-                      <div className="flex gap-2 flex-wrap">
-                        {[6, 8, 9, 18].map((d) => (
-                          <button
-                            key={d}
-                            type="button"
-                            onClick={() => setField("decimals", d)}
-                            data-testid={`button-decimals-${d}`}
-                            className="h-9 px-4 rounded-lg text-sm font-medium transition-all"
-                            style={
-                              form.decimals === d
-                                ? {
-                                    background: "rgba(45,174,80,0.15)",
-                                    border: "1px solid rgba(45,174,80,0.3)",
-                                    color: "#2dae50",
-                                  }
-                                : {
-                                    background: "rgba(255,255,255,0.03)",
-                                    border: "1px solid rgba(255,255,255,0.06)",
-                                    color: "rgba(255,255,255,0.35)",
-                                  }
+                      {/* Properties */}
+                      <div className="space-y-2.5">
+                        {[
+                          { label: "Network", value: "Base", valueEl: <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#22c55e]" /><span className="text-[#a0a8b2] text-xs">Base</span></div> },
+                          { label: "Standard", value: "B20", plain: true },
+                          { label: "Decimals", value: String(form.decimals), plain: true },
+                          { label: "Total Supply", value: `${displaySupply} ${displaySymbol}`, plain: true, bright: true },
+                          { label: "Mintable", bool: form.mintable },
+                          { label: "Burnable", bool: form.burnable },
+                          { label: "Pausable", bool: form.pausable },
+                          { label: "Permit (EIP-2612)", bool: form.permit },
+                        ].map(({ label, value, valueEl, plain, bright, bool }) => (
+                          <div key={label} className="flex items-center justify-between">
+                            <span className="text-[#5a6472] text-xs">{label}</span>
+                            {valueEl ? valueEl :
+                              bool !== undefined ? (
+                                <div className="flex items-center gap-1">
+                                  {bool && <CheckCircle size={11} className="text-[#22c55e]" />}
+                                  <span className="text-xs" style={{ color: bool ? "#22c55e" : "#5a6472" }}>{bool ? "Yes" : "No"}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs font-medium" style={{ color: bright ? "#fff" : "#a0a8b2" }}>{value}</span>
+                              )
                             }
-                          >
-                            {d}
-                          </button>
+                          </div>
                         ))}
-                        <input
-                          type="number"
-                          min={6}
-                          max={18}
-                          value={form.decimals}
-                          onChange={(e) =>
-                            setField(
-                              "decimals",
-                              Math.min(18, Math.max(6, parseInt(e.target.value) || 18))
-                            )
-                          }
-                          className="h-9 w-16 rounded-lg px-2 text-sm text-center text-white outline-none"
-                          style={{
-                            background: "rgba(255,255,255,0.03)",
-                            border: "1px solid rgba(255,255,255,0.06)",
-                          }}
-                        />
+                        {/* Contract Address */}
+                        <div>
+                          <div className="text-[#5a6472] text-xs mb-1">Contract Address</div>
+                          <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-[#040d1b] border border-[#101823]">
+                            {tokenAddress ? (
+                              <>
+                                <span className="text-[#a0a8b2] text-[11px] font-mono flex-1 truncate">{shortAddr(tokenAddress)}</span>
+                                <button onClick={() => copyText(tokenAddress, "token")} data-testid="button-copy-contract">
+                                  <Copy size={11} className={copied === "token" ? "text-[#22c55e]" : "text-[#3a4452]"} />
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-[#3a4452] text-[11px]">Will be generated after deployment</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  )}
 
-                  {form.variant === "STABLECOIN" && (
-                    <div>
-                      <label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.18em] mb-1.5 block">
-                        Currency Code <span className="text-white/20 normal-case">(immutable)</span>
-                      </label>
-                      <input
-                        data-testid="input-currency"
-                        value={form.currency}
-                        onChange={(e) =>
-                          setField(
-                            "currency",
-                            e.target.value.toUpperCase().replace(/[^A-Z]/g, "")
-                          )
-                        }
-                        placeholder="USD"
-                        maxLength={10}
-                        className="w-full h-11 rounded-xl px-3 text-[14px] font-medium text-white placeholder-white/20 uppercase outline-none transition-all focus:ring-1 focus:ring-[#2dae50]/40"
-                        style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                        }}
-                      />
+                    {/* Deployment Status */}
+                    <div className="bg-[#020c19] border border-[#101823] rounded-xl p-4">
+                      <h3 className="text-white font-semibold text-sm mb-3">Deployment Status</h3>
+                      <div className="space-y-0">
+                        {DEPLOY_STEPS.map((step, i) => {
+                          const done = i < stepsDone;
+                          const active = i === stepsDone && isBusy;
+                          return (
+                            <div key={i} className="flex gap-2.5">
+                              {/* Line + circle */}
+                              <div className="flex flex-col items-center">
+                                <div
+                                  className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold transition-colors"
+                                  style={{
+                                    background: done ? "#22c55e" : active ? "#1a2d1a" : "#0a1522",
+                                    border: `1px solid ${done ? "#22c55e" : active ? "#22c55e" : "#1a2532"}`,
+                                    color: done ? "#000" : active ? "#22c55e" : "#3a4452",
+                                  }}
+                                >
+                                  {done ? <CheckCircle size={11} color="#000" /> : i + 1}
+                                </div>
+                                {i < DEPLOY_STEPS.length - 1 && (
+                                  <div className="w-px flex-1 my-0.5" style={{ background: done ? "#22c55e" : "#1a2532", minHeight: "16px" }} />
+                                )}
+                              </div>
+                              {/* Label */}
+                              <div className="pb-3 flex-1 min-w-0">
+                                <div className="text-xs font-medium" style={{ color: done ? "#22c55e" : active ? "#a0a8b2" : "#5a6472" }}>
+                                  {step.label}
+                                </div>
+                                <div className="text-[10px]" style={{ color: done ? "#22c55e99" : "#3a4452" }}>
+                                  {step.desc}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  )}
-
-                  <div>
-                    <label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.18em] mb-1.5 block">
-                      Initial Supply{" "}
-                      <span className="text-white/20 normal-case">(optional — minted to your wallet)</span>
-                    </label>
-                    <input
-                      data-testid="input-initial-supply"
-                      type="number"
-                      min="0"
-                      value={form.initialSupply}
-                      onChange={(e) => setField("initialSupply", e.target.value)}
-                      placeholder="e.g. 1000000"
-                      className="w-full h-11 rounded-xl px-3 text-[14px] font-medium text-white placeholder-white/20 outline-none transition-all focus:ring-1 focus:ring-[#2dae50]/40"
-                      style={{
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                      }}
-                    />
                   </div>
+                </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvanced((v) => !v)}
-                    className="flex items-center gap-1.5 text-xs text-white/35 hover:text-white/60 transition-colors"
-                  >
-                    {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                    Advanced options
-                  </button>
+                {/* How it works */}
+                <div className="bg-[#020c19] border border-[#101823] rounded-xl p-5 mb-5">
+                  <h3 className="text-white font-semibold text-sm mb-4">How it works</h3>
+                  <div className="flex items-start gap-0">
+                    {HOW_IT_WORKS.map(({ n, label, desc }, i) => (
+                      <div key={n} className="flex items-start flex-1 min-w-0">
+                        <div className="flex flex-col items-center flex-1 min-w-0 px-1">
+                          {/* Number badge */}
+                          <div className="w-8 h-8 rounded-full border border-[#22c55e]/30 bg-[#22c55e]/05 flex items-center justify-center mb-2 flex-shrink-0">
+                            <span className="text-[#22c55e] text-xs font-bold">{n}</span>
+                          </div>
+                          {/* Icon */}
+                          <div className="w-10 h-10 rounded-xl bg-[#040d1b] border border-[#101823] flex items-center justify-center mb-2">
+                            {n === 1 && <Settings size={18} className="text-[#22c55e]" />}
+                            {n === 2 && <FileText size={18} className="text-[#22c55e]" />}
+                            {n === 3 && <Zap size={18} className="text-[#22c55e]" />}
+                            {n === 4 && <LayoutGrid size={18} className="text-[#22c55e]" />}
+                            {n === 5 && <Search size={18} className="text-[#22c55e]" />}
+                            {n === 6 && <Rocket size={18} className="text-[#22c55e]" />}
+                          </div>
+                          <div className="text-[#a0a8b2] text-xs font-medium text-center mb-0.5">{label}</div>
+                          <div className="text-[#3a4452] text-[10px] text-center leading-tight">{desc}</div>
+                        </div>
+                        {i < HOW_IT_WORKS.length - 1 && (
+                          <div className="flex items-center pt-9 flex-shrink-0">
+                            <ArrowRight size={12} className="text-[#1a2532]" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-                  {showAdvanced && (
-                    <div
-                      className="flex flex-col gap-3 rounded-xl p-4"
-                      style={{
-                        background: "rgba(255,255,255,0.02)",
-                        border: "1px solid rgba(255,255,255,0.04)",
-                      }}
-                    >
+                {/* Bottom stats bar */}
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { label: "Estimated Deployment", value: "15 sec", sub: "Average time", icon: Clock },
+                    { label: "Network Fee", value: "0.00013ETH", sub: "~$0.28USD", icon: Zap },
+                    { label: "Base Network", value: "Chain ID:8453", sub: "Mainnet", icon: LayoutGrid },
+                    { label: "Contract Size", value: "9.7KB", sub: "Optimized", icon: FileText },
+                  ].map(({ label, value, sub, icon: Icon }) => (
+                    <div key={label} className="bg-[#020c19] border border-[#101823] rounded-xl p-4 flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-[#040d1b] border border-[#101823] flex items-center justify-center flex-shrink-0">
+                        <Icon size={16} className="text-[#22c55e]" />
+                      </div>
                       <div>
-                        <label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.18em] mb-1.5 block">
-                          Supply Cap{" "}
-                          <span className="text-white/20 normal-case">(optional — leave blank for no cap)</span>
-                        </label>
-                        <input
-                          data-testid="input-supply-cap"
-                          type="number"
-                          min="0"
-                          value={form.supplyCap}
-                          onChange={(e) => setField("supplyCap", e.target.value)}
-                          placeholder="e.g. 10000000"
-                          className="w-full h-11 rounded-xl px-3 text-[14px] font-medium text-white placeholder-white/20 outline-none transition-all focus:ring-1 focus:ring-[#2dae50]/40"
-                          style={{
-                            background: "rgba(255,255,255,0.03)",
-                            border: "1px solid rgba(255,255,255,0.06)",
-                          }}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.18em] mb-1.5 block">
-                          Admin Address{" "}
-                          <span className="text-white/20 normal-case">(defaults to connected wallet)</span>
-                        </label>
-                        <input
-                          data-testid="input-admin-address"
-                          value={form.adminAddress}
-                          onChange={(e) => setField("adminAddress", e.target.value)}
-                          placeholder="0x…"
-                          className="w-full h-11 rounded-xl px-3 text-[14px] font-mono text-white placeholder-white/20 outline-none transition-all focus:ring-1 focus:ring-[#2dae50]/40"
-                          style={{
-                            background: "rgba(255,255,255,0.03)",
-                            border: "1px solid rgba(255,255,255,0.06)",
-                          }}
-                        />
-                      </div>
-
-                      <div
-                        className="flex items-start gap-2 rounded-lg px-3 py-2.5"
-                        style={{
-                          background: "rgba(0,82,255,0.06)",
-                          border: "1px solid rgba(0,82,255,0.12)",
-                        }}
-                      >
-                        <Info size={12} className="text-[#5aa9ff] shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-[#5aa9ff]/75 leading-relaxed">
-                          The admin receives default role control and can manage permissions after deployment.
-                        </p>
+                        <div className="text-[#5a6472] text-[10px] mb-0.5">{label}</div>
+                        <div className="text-[#a0a8b2] text-sm font-semibold leading-tight">{value}</div>
+                        <div className="text-[#5a6472] text-[10px]">{sub}</div>
                       </div>
                     </div>
-                  )}
-
-                  {phase === "error" && errorMsg && (
-                    <div
-                      className="flex items-start gap-2.5 rounded-lg px-4 py-3"
-                      style={{
-                        background: "rgba(239,68,68,0.08)",
-                        border: "1px solid rgba(239,68,68,0.2)",
-                      }}
-                    >
-                      <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-red-400">Deployment failed</p>
-                        <p className="text-xs text-red-400/60 mt-0.5 break-all">
-                          {errorMsg.slice(0, 200)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    data-testid="button-deploy-token"
-                    onClick={handleDeploy}
-                    disabled={isBusy || !form.name.trim() || !form.symbol.trim()}
-                    className="w-full h-14 rounded-xl text-base font-medium text-white flex items-center justify-center gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                    style={{
-                      background:
-                        !form.name.trim() || !form.symbol.trim()
-                          ? "rgba(255,255,255,0.05)"
-                          : "linear-gradient(135deg, #2dae50, #1d9940)",
-                      boxShadow:
-                        !form.name.trim() || !form.symbol.trim()
-                          ? "none"
-                          : "0 8px 24px rgba(45,174,80,0.22), 0 0 0 1px rgba(45,174,80,0.15) inset",
-                    }}
-                  >
-                    <Layers size={18} />
-                    {phase === "error" ? "Retry Deployment" : "Deploy Token"}
-                  </button>
-
-                  <p className="text-center text-[11px] text-white/22">
-                    Gas fees apply · Deployed on Base Mainnet · One transaction
-                  </p>
+                  ))}
                 </div>
-              )}
-
-              {phase === "deploying" && (
-                <div className="flex flex-col items-center gap-4 py-8">
-                  <div
-                    className="w-16 h-16 rounded-full flex items-center justify-center"
-                    style={{
-                      background: "rgba(45,174,80,0.1)",
-                      border: "1px solid rgba(45,174,80,0.25)",
-                    }}
-                  >
-                    <Loader2 size={28} className="text-[#2dae50] animate-spin" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-base font-medium text-white mb-1">Confirm in Wallet</p>
-                    <p className="text-sm text-white/40">
-                      Approve the transaction to continue.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {phase === "pending" && (
-                <div className="flex flex-col items-center gap-4 py-6">
-                  <div
-                    className="w-16 h-16 rounded-full flex items-center justify-center"
-                    style={{
-                      background: "rgba(0,82,255,0.1)",
-                      border: "1px solid rgba(0,82,255,0.25)",
-                    }}
-                  >
-                    <Loader2 size={28} className="text-[#5aa9ff] animate-spin" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-base font-medium text-white mb-1">Deployment in progress</p>
-                    <p className="text-sm text-white/40 mb-3">Waiting for block confirmation</p>
-                  </div>
-                  {txHash && (
-                    <a
-                      href={`${BASE_SCAN}/tx/${txHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-[#5aa9ff] hover:text-white transition-colors"
-                    >
-                      <ExternalLink size={11} />
-                      View on BaseScan
-                    </a>
-                  )}
-                </div>
-              )}
-
-              {phase === "success" && (
-                <div className="flex flex-col gap-5">
-                  <div className="flex flex-col items-center gap-3 py-2">
-                    <div
-                      className="w-16 h-16 rounded-full flex items-center justify-center"
-                      style={{
-                        background: "rgba(45,174,80,0.15)",
-                        border: "1px solid rgba(45,174,80,0.35)",
-                        boxShadow: "0 0 32px rgba(45,174,80,0.14)",
-                      }}
-                    >
-                      <CheckCircle size={36} className="text-[#2dae50]" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xl font-semibold text-white mb-1">
-                        Deployment Complete
-                      </p>
-                      <p className="text-sm text-white/40">
-                        Your token is now live on Base mainnet
-                      </p>
-                    </div>
-                  </div>
-
-                  <div
-                    className="rounded-xl divide-y divide-white/5"
-                    style={{
-                      background: "rgba(45,174,80,0.04)",
-                      border: "1px solid rgba(45,174,80,0.12)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-sm text-white/40">Token Name</span>
-                      <span className="text-sm font-medium text-white">{form.name}</span>
-                    </div>
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-sm text-white/40">Symbol</span>
-                      <span className="text-sm font-medium text-[#2dae50]">
-                        {form.symbol.toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-sm text-white/40">Type</span>
-                      <span className="text-sm font-medium text-white/70">{form.variant}</span>
-                    </div>
-                    {form.variant === "ASSET" && (
-                      <div className="flex items-center justify-between px-4 py-2.5">
-                        <span className="text-sm text-white/40">Decimals</span>
-                        <span className="text-sm font-medium text-white/70">{form.decimals}</span>
-                      </div>
-                    )}
-                    {form.initialSupply && (
-                      <div className="flex items-center justify-between px-4 py-2.5">
-                        <span className="text-sm text-white/40">Initial Supply</span>
-                        <span className="text-sm font-medium text-[#ffd25a]">
-                          {Number(form.initialSupply).toLocaleString()}{" "}
-                          {form.symbol.toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-sm text-white/40">Roles Granted</span>
-                      <div className="flex gap-1.5">
-                        {["ADMIN", "MINT"].map((r) => (
-                          <span
-                            key={r}
-                            className="text-[10px] font-semibold rounded px-1.5 py-0.5"
-                            style={{
-                              background: "rgba(45,174,80,0.1)",
-                              color: "#2dae50",
-                              border: "1px solid rgba(45,174,80,0.2)",
-                            }}
-                          >
-                            {r}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {tokenAddress && (
-                    <div
-                      className="rounded-xl p-4"
-                      style={{
-                        background: "rgba(0,82,255,0.05)",
-                        border: "1px solid rgba(0,82,255,0.15)",
-                      }}
-                    >
-                      <p className="text-[11px] font-medium text-[#5aa9ff]/60 uppercase tracking-[0.18em] mb-2">
-                        Token Address
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <code className="flex-1 text-xs font-mono text-white/80 break-all">
-                          {tokenAddress}
-                        </code>
-                        <button
-                          data-testid="button-copy-token"
-                          onClick={() => copyText(tokenAddress, "token")}
-                          className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-white/5"
-                        >
-                          {copied === "token" ? (
-                            <CheckCircle size={14} className="text-[#2dae50]" />
-                          ) : (
-                            <Copy size={14} className="text-white/40" />
-                          )}
-                        </button>
-                        <a
-                          href={`${BASE_SCAN}/token/${tokenAddress}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-[#5aa9ff] hover:bg-white/5 transition-colors"
-                        >
-                          <ExternalLink size={14} />
-                        </a>
-                      </div>
-                    </div>
-                  )}
-
-                  {txHash && (
-                    <div
-                      className="flex items-center justify-between px-4 py-3 rounded-xl"
-                      style={{
-                        background: "rgba(255,255,255,0.02)",
-                        border: "1px solid rgba(255,255,255,0.05)",
-                      }}
-                    >
-                      <span className="text-xs text-white/30">Transaction</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => copyText(txHash, "tx")}
-                          className="flex items-center gap-1.5 text-xs font-mono text-white/40 hover:text-white/60 transition-colors"
-                        >
-                          {shortHash(txHash)}
-                          {copied === "tx" ? (
-                            <CheckCircle size={10} className="text-[#2dae50]" />
-                          ) : (
-                            <Copy size={10} />
-                          )}
-                        </button>
-                        <a
-                          href={`${BASE_SCAN}/tx/${txHash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[#5aa9ff] hover:text-white transition-colors"
-                        >
-                          <ExternalLink size={11} />
-                        </a>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      data-testid="button-deploy-another"
-                      onClick={reset}
-                      className="h-11 rounded-xl text-sm font-medium text-white/60 transition-all hover:text-white"
-                      style={{
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                      }}
-                    >
-                      Deploy Another
-                    </button>
-
-                    {tokenAddress && (
-                      <a
-                        href={`${BASE_SCAN}/token/${tokenAddress}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="h-11 rounded-xl text-sm font-medium text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.01]"
-                        style={{
-                          background: "linear-gradient(135deg, #0052ff, #003de0)",
-                          boxShadow: "0 4px 16px rgba(0,82,255,0.25)",
-                        }}
-                      >
-                        <ExternalLink size={14} />
-                        View on BaseScan
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
-        </div>
-
-        <div className="mt-6 w-full max-w-[560px] flex items-center justify-center gap-6 launch-card">
-          {[
-            { icon: Shield, text: "Reliable structure" },
-            { icon: CheckCircle, text: "ERC-20 compatible" },
-            { icon: Layers, text: "Base native" },
-          ].map(({ icon: Icon, text }) => (
-            <div key={text} className="flex items-center gap-1.5 text-xs text-white/20">
-              <Icon size={11} />
-              {text}
-            </div>
-          ))}
         </div>
       </div>
-    </>
+    </div>
   );
 }
