@@ -1,469 +1,414 @@
 import { useState } from "react";
 import { useWalletContext } from "@/context/WalletContext";
-import {
-  Shield,
-  Lock,
-  TrendingUp,
-  ChevronDown,
-  Zap,
-  Info,
-  Wallet,
-  Home,
-} from "lucide-react";
-
+import { Info, Calendar, ChevronRight, ArrowDownToLine, Coins, ArrowUpFromLine, RefreshCw } from "lucide-react";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function shortWallet(addr: string) {
-  return addr.slice(0, 6) + "…" + addr.slice(-4);
-}
+// ─── Token icon paths ──────────────────────────────────────────────────────────
+const ICONS = {
+  eth:        "/vaultAssets/icon-eth.png",
+  usdc:       "/vaultAssets/icon-usdc.png",
+  super:      "/vaultAssets/icon-super.png",
+  ethUsdcLp:  "/vaultAssets/icon-eth-usdc-lp.png",
+  vault:      "/vaultAssets/icon-vault.png",
+  deposits:   "/vaultAssets/icon-deposits.png",
+  sparkline:  "/vaultAssets/icon-sparkline.png",
+};
 
-function fmtUsd(n: number) {
-  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
-  if (n >= 1_000) return "$" + (n / 1_000).toFixed(2) + "k";
-  return "$" + n.toFixed(2);
-}
-
-function fmtPct(n: number) {
-  return n.toFixed(2) + "%";
-}
-
-// ─── Mock vault pools ──────────────────────────────────────────────────────────
+// ─── Data ─────────────────────────────────────────────────────────────────────
 interface VaultPool {
   id: string;
   name: string;
-  symbol: string;
+  badge: "Core" | "Premium";
+  description: string;
   icon: string;
+  isLP?: boolean;
   apy: number;
+  apyChange: number;
   tvl: number;
-  userStaked: number;
-  userEarned: number;
+  yourDeposit: number;
+  yourDepositSymbol: string;
+  yourDepositUsd: number;
+  yourEarned: number;
+  yourEarnedSymbol: string;
+  yourEarnedUsd: number;
   lockDays: number;
-  tokenAddress: string;
 }
 
 const VAULT_POOLS: VaultPool[] = [
   {
-    id: "super-eth",
-    name: "Super ETH",
-    symbol: "sETH",
-    icon: "/figmaAssets/eth-token.png",
-    apy: 8.42,
-    tvl: 2_340_500,
-    userStaked: 0,
-    userEarned: 0,
+    id: "eth",
+    name: "ETH Vault",
+    badge: "Core",
+    description: "Stake ETH and earn competitive rewards.",
+    icon: ICONS.eth,
+    apy: 6.82,
+    apyChange: 1.25,
+    tvl: 8_450_000,
+    yourDeposit: 1.25,
+    yourDepositSymbol: "ETH",
+    yourDepositUsd: 2158.73,
+    yourEarned: 0.0452,
+    yourEarnedSymbol: "ETH",
+    yourEarnedUsd: 78.23,
     lockDays: 0,
-    tokenAddress: "0x4200000000000000000000000000000000000006",
   },
   {
-    id: "super-usdc",
-    name: "Super USDC",
-    symbol: "sUSDC",
-    icon: "/figmaAssets/image-5.png",
-    apy: 12.15,
-    tvl: 4_120_800,
-    userStaked: 0,
-    userEarned: 0,
-    lockDays: 7,
-    tokenAddress: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    id: "usdc",
+    name: "USDC Vault",
+    badge: "Core",
+    description: "Stake USDC and earn stable rewards.",
+    icon: ICONS.usdc,
+    apy: 9.42,
+    apyChange: 1.32,
+    tvl: 7_320_000,
+    yourDeposit: 1200,
+    yourDepositSymbol: "USDC",
+    yourDepositUsd: 1200,
+    yourEarned: 18.45,
+    yourEarnedSymbol: "USDC",
+    yourEarnedUsd: 18.45,
+    lockDays: 0,
   },
   {
-    id: "super-cbtc",
-    name: "Super cbBTC",
-    symbol: "scbBTC",
-    icon: "/figmaAssets/image-6.png",
-    apy: 5.78,
-    tvl: 890_200,
-    userStaked: 0,
-    userEarned: 0,
-    lockDays: 14,
-    tokenAddress: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
-  },
-  {
-    id: "super-super",
-    name: "Super Token",
-    symbol: "SUPER",
-    icon: "/figmaAssets/super-coin.png",
-    apy: 24.6,
-    tvl: 1_560_000,
-    userStaked: 0,
-    userEarned: 0,
+    id: "super",
+    name: "SUPER Vault",
+    badge: "Premium",
+    description: "Stake $SUPER and earn boosted rewards.",
+    icon: ICONS.super,
+    apy: 24.85,
+    apyChange: 2.85,
+    tvl: 5_210_000,
+    yourDeposit: 2500,
+    yourDepositSymbol: "SUPER",
+    yourDepositUsd: 1381.25,
+    yourEarned: 152.35,
+    yourEarnedSymbol: "SUPER",
+    yourEarnedUsd: 84.12,
     lockDays: 30,
-    tokenAddress: "0x0000000000000000000000000000000000000000",
+  },
+  {
+    id: "eth-usdc-lp",
+    name: "ETH/USDC LP",
+    badge: "Core",
+    description: "Provide liquidity and earn higher APY.",
+    icon: ICONS.ethUsdcLp,
+    isLP: true,
+    apy: 12.34,
+    apyChange: 1.57,
+    tvl: 3_580_000,
+    yourDeposit: 1250,
+    yourDepositSymbol: "LP",
+    yourDepositUsd: 2340.5,
+    yourEarned: 45.32,
+    yourEarnedSymbol: "USDC",
+    yourEarnedUsd: 45.32,
+    lockDays: 0,
   },
 ];
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({
-  label,
-  value,
-  sub,
-  icon,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <article className="rounded-[24px] border border-white/[0.06] bg-[#0B1118] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
-      <div className="flex items-center gap-2">
-        <span className="text-cyan-300">{icon}</span>
+const STATS = [
+  { label: "Total Value Locked",    value: "$24.56M",    change: "+12.45%", icon: ICONS.vault    },
+  { label: "Total Earned (All Time)",value: "$1,248,721", change: "+9.32%",  icon: ICONS.vault    },
+  { label: "Your Deposits",         value: "$2,740.35",  change: null,       icon: ICONS.deposits },
+  { label: "Your Earnings",         value: "$124.58",    change: "+6.21%",   icon: ICONS.super    },
+];
 
-        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#64748B]">
-          {label}
-        </span>
-      </div>
+const HOW_IT_WORKS = [
+  { icon: ArrowDownToLine, label: "Deposit",  desc: "Deposit ETH, USDC or $SUPER into the vault of your choice." },
+  { icon: Coins,           label: "Earn",     desc: "Earn attractive APY rewards that are compounded daily." },
+  { icon: ArrowUpFromLine, label: "Withdraw", desc: "Withdraw anytime or at the end of the lock-up period." },
+  { icon: RefreshCw,       label: "Repeat",   desc: "Compound your earnings and grow your holdings." },
+];
 
-      <p className="mt-4 text-[28px] font-black tracking-[-0.04em] text-white">
-        {value}
-      </p>
+const PRICES = [
+  { symbol: "ETH",   price: "$3,452.21", change: "+1.23%", icon: ICONS.eth   },
+  { symbol: "USDC",  price: "$1.00",     change: "+0.01%", icon: ICONS.usdc  },
+  { symbol: "SUPER", price: "$0.552",    change: "+3.45%", icon: ICONS.super },
+];
 
-      {sub && (
-        <p className="mt-2 text-[13px] text-[#94A3B8]">
-          {sub}
-        </p>
-      )}
-    </article>
-  );
+function fmtTvl(n: number) {
+  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
+  if (n >= 1_000)     return "$" + (n / 1_000).toFixed(2) + "K";
+  return "$" + n.toFixed(2);
 }
 
-// ─── Pool Card ────────────────────────────────────────────────────────────────
-function PoolCard({
-  pool,
-  connected,
-}: {
+// ─── Vault Row Card ────────────────────────────────────────────────────────────
+function VaultRow({ pool, connected, onConnectRequest }: {
   pool: VaultPool;
   connected: boolean;
+  onConnectRequest: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const [amount, setAmount] = useState("");
-  const [tab, setTab] = useState<"stake" | "unstake">("stake");
-
   return (
-    <div className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-[#0B1118] transition-all duration-300 hover:border-cyan-400/20">
+    <div className="border border-[#0e1a14] rounded-[10px] bg-[#010d06] mb-3 overflow-hidden">
 
-      {/* HEADER */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-4 px-5 py-5 text-left"
-      >
-        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#111827]">
+      {/* Main content row */}
+      <div className="flex flex-col lg:flex-row lg:items-center gap-0">
 
-          <img
-            src={pool.icon}
-            alt={pool.symbol}
-            className="h-8 w-8 rounded-full object-cover"
-          />
-
-          <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-emerald-400/20 bg-emerald-400/10">
-            <Lock className="h-3 w-3 text-emerald-300" />
+        {/* Token info – always visible */}
+        <div className="flex items-start gap-3 px-4 pt-4 pb-3 lg:py-4 lg:w-[260px] lg:flex-shrink-0">
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-[#0a1a0e] border border-[#1a2e1e] flex items-center justify-center flex-shrink-0">
+            <img src={pool.icon} className="w-7 h-7 object-contain" alt={pool.name} />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <span className="text-[#c8cace] font-semibold text-[14px]">{pool.name}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                pool.badge === "Premium"
+                  ? "bg-purple-900/30 text-purple-400 border border-purple-800/30"
+                  : "bg-[#0a2010] text-[#22c55e] border border-[#0e3018]"
+              }`}>
+                {pool.badge}
+              </span>
+            </div>
+            <p className="text-[#4a5260] text-[11px] leading-tight">{pool.description}</p>
           </div>
         </div>
 
-        <div className="min-w-0 flex-1">
+        {/* Stats columns – shown as 2×2 grid on mobile, row on desktop */}
+        <div className="flex-1 grid grid-cols-2 lg:flex lg:flex-row px-4 pb-4 lg:px-0 lg:pb-0 gap-3 lg:gap-0">
 
-          <div className="flex items-center justify-between gap-3">
-
-            <div>
-
-              <p className="text-[18px] font-bold text-white">
-                {pool.name}
-              </p>
-
-              <p className="mt-1 text-[13px] text-[#94A3B8]">
-                {pool.lockDays > 0
-                  ? `${pool.lockDays}-day lock`
-                  : "No lock"} · TVL {fmtUsd(pool.tvl)}
-              </p>
-            </div>
-
-            <div className="text-right">
-
-              <p className="text-[24px] font-black tracking-[-0.04em] text-emerald-300">
-                {fmtPct(pool.apy)}
-              </p>
-
-              <p className="text-[11px] uppercase tracking-[0.15em] text-[#64748B]">
-                APY
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <ChevronDown
-          className={`h-5 w-5 text-[#64748B] transition-transform duration-300 ${
-            expanded ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-
-      {expanded && (
-        <div className="border-t border-white/[0.05] px-5 pb-5 pt-5">
-
-          <div className="mb-5 grid grid-cols-2 gap-3">
-
-            <button
-              onClick={() => setTab("stake")}
-              className={`rounded-[16px] py-3 text-[14px] font-bold transition-all ${
-                tab === "stake"
-                  ? "bg-cyan-400 text-black"
-                  : "bg-[#111827] text-[#94A3B8]"
-              }`}
-            >
-              Stake
-            </button>
-
-            <button
-              onClick={() => setTab("unstake")}
-              className={`rounded-[16px] py-3 text-[14px] font-bold transition-all ${
-                tab === "unstake"
-                  ? "bg-red-400 text-black"
-                  : "bg-[#111827] text-[#94A3B8]"
-              }`}
-            >
-              Unstake
-            </button>
+          {/* APY */}
+          <div className="lg:flex-1 lg:px-4 lg:py-4 lg:border-l lg:border-[#0a1510]">
+            <div className="lg:hidden text-[#5a6270] text-[10px] uppercase tracking-wider mb-1">APY</div>
+            <div className="text-[#c8cace] font-bold text-[18px] leading-tight">{pool.apy.toFixed(2)}%</div>
+            <div className="text-[#22c55e] text-[11px]">+{pool.apyChange.toFixed(2)}%</div>
           </div>
 
-          {!connected && (
-            <div className="flex flex-col items-center gap-4 py-8">
+          {/* TVL */}
+          <div className="lg:flex-1 lg:px-4 lg:py-4 lg:border-l lg:border-[#0a1510]">
+            <div className="lg:hidden text-[#5a6270] text-[10px] uppercase tracking-wider mb-1">TVL</div>
+            <div className="text-[#c8cace] font-semibold text-[14px]">{fmtTvl(pool.tvl)}</div>
+          </div>
 
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#111827]">
-                <Wallet className="h-7 w-7 text-cyan-300" />
-              </div>
-
-              <p className="text-[14px] text-[#94A3B8]">
-                Connect wallet to continue
-              </p>
-            </div>
-          )}
-
-          {connected && (
-            <div className="flex flex-col gap-4">
-
-              <div className="rounded-[20px] border border-white/[0.06] bg-[#111827] p-5">
-
-                <div className="mb-3 flex items-center justify-between">
-
-                  <span className="text-[12px] text-[#64748B]">
-                    Amount
-                  </span>
-
-                  <span className="text-[12px] text-[#64748B]">
-                    Balance: —
-                  </span>
+          {/* Your Deposit */}
+          <div className="lg:flex-1 lg:px-4 lg:py-4 lg:border-l lg:border-[#0a1510]">
+            <div className="lg:hidden text-[#5a6270] text-[10px] uppercase tracking-wider mb-1">Your Deposit</div>
+            {connected ? (
+              <>
+                <div className="text-[#c8cace] font-semibold text-[13px]">
+                  {pool.yourDeposit.toLocaleString()} {pool.yourDepositSymbol}
                 </div>
-
-                <div className="flex items-center gap-3">
-
-                  <input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0.0"
-                    className="w-full bg-transparent text-[32px] font-black tracking-[-0.04em] text-white outline-none placeholder:text-[#334155]"
-                  />
-
-                  <span className="text-[14px] font-bold text-[#94A3B8]">
-                    {pool.symbol}
-                  </span>
+                <div className="text-[#4a5260] text-[11px]">
+                  ${pool.yourDepositUsd.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </div>
-              </div>
+              </>
+            ) : (
+              <div className="text-[#3a4250] text-[13px]">—</div>
+            )}
+          </div>
 
-              <div className="flex items-start gap-2 rounded-[16px] border border-white/[0.05] bg-[#111827] px-4 py-3">
-
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
-
-                <span className="text-[13px] leading-relaxed text-[#94A3B8]">
-                  {tab === "stake"
-                    ? `Estimated yearly return: ${
-                        amount
-                          ? fmtUsd((Number(amount) * pool.apy) / 100)
-                          : "$0.00"
-                      }`
-                    : pool.lockDays > 0
-                    ? `Unstaking available after ${pool.lockDays} days`
-                    : "Instant unstake available"}
-                </span>
-              </div>
-
-              <button
-                disabled={!amount || Number(amount) <= 0}
-                className="rounded-[18px] bg-white py-4 text-[15px] font-bold text-black transition-all hover:bg-zinc-200 disabled:opacity-40"
-              >
-                {tab === "stake"
-                  ? "Confirm Stake"
-                  : "Confirm Unstake"}
-              </button>
-            </div>
-          )}
+          {/* Your Earned */}
+          <div className="lg:flex-1 lg:px-4 lg:py-4 lg:border-l lg:border-[#0a1510]">
+            <div className="lg:hidden text-[#5a6270] text-[10px] uppercase tracking-wider mb-1">Your Earned</div>
+            {connected ? (
+              <>
+                <div className="text-[#22c55e] font-semibold text-[13px]">
+                  {pool.yourEarned} {pool.yourEarnedSymbol}
+                </div>
+                <div className="text-[#4a5260] text-[11px]">${pool.yourEarnedUsd.toFixed(2)}</div>
+              </>
+            ) : (
+              <div className="text-[#3a4250] text-[13px]">—</div>
+            )}
+          </div>
         </div>
-      )}
+
+        {/* Action buttons */}
+        <div className="flex flex-row lg:flex-col gap-2 px-4 pb-4 lg:px-4 lg:py-4 lg:border-l lg:border-[#0a1510] lg:w-[110px] lg:flex-shrink-0">
+          <button
+            onClick={() => !connected && onConnectRequest()}
+            data-testid={`btn-deposit-${pool.id}`}
+            className="flex-1 lg:flex-none px-3 py-2 rounded-lg bg-[#22c55e] text-black font-semibold text-[12px] hover:bg-[#16a34a] active:scale-95 transition-all"
+          >
+            Deposit
+          </button>
+          <button
+            onClick={() => !connected && onConnectRequest()}
+            data-testid={`btn-withdraw-${pool.id}`}
+            className="flex-1 lg:flex-none px-3 py-2 rounded-lg bg-[#0a1a0e] border border-[#1a2e1e] text-[#7a8290] font-semibold text-[12px] hover:border-[#22c55e]/40 transition-colors"
+          >
+            Withdraw
+          </button>
+        </div>
+      </div>
+
+      {/* Footer row */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-t border-[#0a1510] bg-[#010805]">
+        <div className="flex items-center gap-1">
+          <span className="text-[#3a4250] text-[11px]">Lock-up:</span>
+          <span className="text-[#5a6270] text-[11px] font-medium ml-1">
+            {pool.lockDays > 0 ? `${pool.lockDays} days` : "No lock-up"}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[#3a4250] text-[11px]">Payout:</span>
+          <span className="text-[#5a6270] text-[11px] font-medium">Daily</span>
+          <Calendar size={11} className="text-[#3a4250]" />
+        </div>
+        <button className="text-[#22c55e] text-[11px] font-medium flex items-center gap-0.5 hover:text-[#16a34a] transition-colors">
+          Details <ChevronRight size={11} />
+        </button>
+      </div>
     </div>
   );
 }
 
-// ─── MAIN PAGE ────────────────────────────────────────────────────────────────
+// ─── Main Page ─────────────────────────────────────────────────────────────────
 export function VaultPage(): JSX.Element {
   const wallet = useWalletContext();
-
   const [walletOpen, setWalletOpen] = useState(false);
-
-  const [showVaultPopup] = useState(true);
-
-  const addr = wallet.isConnected ? wallet.address : null;
+  const connected = wallet.isConnected;
 
   return (
-    <>
-      {/* FORCED POPUP */}
-      {showVaultPopup && (
-        <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/95 backdrop-blur-xl">
+    <div
+      className="min-h-[calc(100vh-64px)] bg-[#00040b] text-white overflow-y-auto"
+      style={{ fontFamily: "Inter, sans-serif" }}
+    >
+      {/* ── Hero header ─────────────────────────────────────────────────────── */}
+      <div className="border-b border-[#0a1510] px-5 sm:px-8 py-5">
+        <div className="max-w-[1200px] mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
-          {/* glow */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.12),transparent_55%)]" />
-
-          {/* CENTER */}
-          <div className="flex h-full w-full flex-col items-center justify-center gap-5 px-5">
-
-            {/* popup */}
-            <div className="relative w-full max-w-[540px] overflow-hidden rounded-[34px] border border-white/[0.08] bg-[#070B11] shadow-[0_30px_120px_rgba(0,0,0,0.75)]">
-
-              {/* image */}
-              <img
-                src="https://i.ibb.co/xSTdr3nh/Chat-GPT-Image-May-25-2026-06-22-11-PM.png"
-                alt="Vault"
-                className="block w-full object-cover"
-              />
-            </div>
-
-            {/* GLASSY HOME BUTTON */}
-            <button
-              onClick={() => {
-                window.location.href = "/";
-              }}
-              className="
-                group
-                flex items-center gap-3
-                rounded-2xl
-                border border-white/10
-                bg-white/5
-                backdrop-blur-xl
-                px-6 py-3
-                text-white
-                shadow-[0_10px_40px_rgba(0,0,0,0.45)]
-                transition-all duration-300
-                hover:scale-105
-                hover:border-cyan-400/30
-                hover:bg-white/10
-              "
-            >
-              <Home className="h-5 w-5 text-cyan-300 transition-transform duration-300 group-hover:rotate-6" />
-
-              <span className="text-[14px] font-semibold tracking-[0.02em]">
-                Back To Home
-              </span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* PAGE */}
-      <div className="h-[calc(100vh-76px)] overflow-y-auto bg-[#070B11] px-[16px] pb-[120px] pt-[18px]">
-
-        {/* HEADER */}
-        <div className="mb-6 flex items-center justify-between">
-
+          {/* Left: title + subtitle */}
           <div>
-
-            <h1 className="text-[34px] font-black tracking-[-0.05em] text-white">
-              Vault
+            <h1 className="text-[28px] sm:text-[32px] font-semibold text-[#c8cace] leading-tight">
+              Vaults
             </h1>
-
-            <p className="mt-2 text-[14px] text-[#94A3B8]">
-              Stake tokens and earn passive yield
+            <p className="text-[#6f727b] text-[13px] mt-0.5">
+              Stake your assets and earn high rewards.
             </p>
           </div>
 
-          {wallet.isConnected && addr && (
-            <div className="rounded-[18px] border border-white/[0.06] bg-[#0B1118] px-4 py-3">
-
-              <p className="text-[13px] font-semibold text-cyan-300">
-                {shortWallet(addr)}
-              </p>
-
-              <p className="mt-1 text-[11px] text-[#64748B]">
-                Base Mainnet
-              </p>
+          {/* Right: TVL + sparkline */}
+          <div className="flex items-end gap-3">
+            <div>
+              <div className="flex items-center gap-1.5 text-[#6f727b] text-[12px] mb-1">
+                <span>Total Value Locked</span>
+                <Info size={12} className="text-[#3a4250]" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[#c8cace] font-semibold text-[22px]">$24,562,721</span>
+                <span className="text-[#22c55e] text-[13px] font-medium">+12.45%</span>
+              </div>
             </div>
-          )}
-        </div>
-
-        {/* STATS */}
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-
-          <StatCard
-            label="TVL"
-            value={fmtUsd(
-              VAULT_POOLS.reduce((s, p) => s + p.tvl, 0)
-            )}
-            sub="Across all pools"
-            icon={<Shield className="h-4 w-4" />}
-          />
-
-          <StatCard
-            label="Average APY"
-            value={fmtPct(
-              VAULT_POOLS.reduce((s, p) => s + p.apy, 0) /
-                VAULT_POOLS.length
-            )}
-            sub="Weighted average"
-            icon={<TrendingUp className="h-4 w-4" />}
-          />
-
-          <StatCard
-            label="Your Staked"
-            value="$0.00"
-            sub="Connect wallet"
-            icon={<Lock className="h-4 w-4" />}
-          />
-
-          <StatCard
-            label="Rewards"
-            value="$0.00"
-            sub="Lifetime earnings"
-            icon={<Zap className="h-4 w-4" />}
-          />
-        </div>
-
-        {/* POOLS */}
-        <section>
-
-          <div className="mb-4 flex items-center justify-between">
-
-            <h2 className="text-[12px] font-bold uppercase tracking-[0.2em] text-[#64748B]">
-              Vault Pools
-            </h2>
-
-            <span className="text-[13px] text-[#94A3B8]">
-              {VAULT_POOLS.length} active pools
-            </span>
+            <img
+              src={ICONS.sparkline}
+              alt=""
+              className="w-[60px] h-[24px] object-contain mb-1 hidden sm:block"
+            />
           </div>
-
-          <div className="flex flex-col gap-4">
-
-            {VAULT_POOLS.map((pool) => (
-              <PoolCard
-                key={pool.id}
-                pool={pool}
-                connected={wallet.isConnected}
-              />
-            ))}
-          </div>
-        </section>
+        </div>
       </div>
 
-      {/* WALLET MODAL */}
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 py-6">
+
+        {/* ── Stats row ─────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+          {STATS.map(({ label, value, change, icon }) => (
+            <div
+              key={label}
+              className="bg-[#020c05] border border-[#0a1510] rounded-[10px] px-4 py-4"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-full bg-[#0a1a0e] border border-[#1a2e1e] flex items-center justify-center overflow-hidden">
+                  <img src={icon} className="w-4 h-4 object-contain" alt="" />
+                </div>
+                <span className="text-[#5a6270] text-[10px] leading-tight">{label}</span>
+              </div>
+              <div className="text-[#c8cace] font-semibold text-[18px] sm:text-[20px]">{value}</div>
+              {change && <div className="text-[#22c55e] text-[11px] mt-0.5">{change}</div>}
+            </div>
+          ))}
+        </div>
+
+        {/* ── Two-column: promo | vault list ────────────────────────────────── */}
+        <div className="flex flex-col lg:flex-row gap-6">
+
+          {/* Promo sidebar */}
+          <div className="lg:w-[190px] flex-shrink-0">
+            <div className="bg-[#010d07] border border-[#0e1a14] rounded-[14px] p-5 text-center lg:sticky lg:top-6">
+              <p className="text-[#7a8290] text-[12px] leading-snug mb-1">Boost your earnings with</p>
+              <p className="text-[#22c55e] font-bold text-[18px] mb-4">$SUPER</p>
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-[#0a1a0e] border border-[#1a2e1e] flex items-center justify-center overflow-hidden">
+                  <img src={ICONS.super} className="w-12 h-12 object-contain" alt="SUPER" />
+                </div>
+              </div>
+              <button className="flex items-center gap-1 mx-auto text-[#22c55e] text-[12px] font-medium border border-[#0e3018] bg-[#0a2010] px-3 py-1.5 rounded-lg hover:bg-[#0e2a14] transition-colors">
+                Learn More <ChevronRight size={12} />
+              </button>
+            </div>
+          </div>
+
+          {/* Vault list */}
+          <div className="flex-1 min-w-0">
+
+            {/* Section header */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[#8a9099] text-[13px] font-semibold">Available Vaults</span>
+              <span className="text-[#3a4250] text-[12px]">{VAULT_POOLS.length} vaults</span>
+            </div>
+
+            {/* Column headers (desktop only) */}
+            <div className="hidden lg:grid gap-0 mb-1 px-4" style={{ gridTemplateColumns: "260px 1fr 1fr 1fr 1fr 110px" }}>
+              {["", "APY", "TVL", "Your Deposit", "Your Earned", ""].map((h, i) => (
+                <div key={i} className={`text-[#3a4250] text-[10px] uppercase tracking-wider ${i > 0 ? "px-4" : ""}`}>
+                  {h}
+                </div>
+              ))}
+            </div>
+
+            {/* Vault rows */}
+            {VAULT_POOLS.map((pool) => (
+              <VaultRow
+                key={pool.id}
+                pool={pool}
+                connected={connected}
+                onConnectRequest={() => setWalletOpen(true)}
+              />
+            ))}
+
+            {/* ── How it works ─────────────────────────────────────────────── */}
+            <div className="mt-8">
+              <h3 className="text-[#8a9099] text-[13px] font-semibold mb-4">How it works</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {HOW_IT_WORKS.map(({ icon: Icon, label, desc }) => (
+                  <div
+                    key={label}
+                    className="bg-[#010d07] border border-[#0e1a14] rounded-[10px] p-4 text-center"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-[#0a2010] border border-[#0e3018] flex items-center justify-center mx-auto mb-3">
+                      <Icon size={18} className="text-[#22c55e]" />
+                    </div>
+                    <div className="text-[#c8cace] text-[12px] font-semibold mb-1">{label}</div>
+                    <div className="text-[#4a5260] text-[10px] leading-snug">{desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Bottom price ticker ───────────────────────────────────────────── */}
+        <div className="mt-8 pt-4 border-t border-[#0a1510] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-6">
+            {PRICES.map(({ symbol, price, change, icon }) => (
+              <div key={symbol} className="flex items-center gap-1.5">
+                <div className="w-5 h-5 rounded-full overflow-hidden bg-[#0a1a0e] flex items-center justify-center">
+                  <img src={icon} className="w-4 h-4 object-contain" alt={symbol} />
+                </div>
+                <span className="text-[#8a9099] text-[12px] font-medium">{symbol}</span>
+                <span className="text-[#c8cace] text-[12px]">{price}</span>
+                <span className="text-[#22c55e] text-[11px]">{change}</span>
+              </div>
+            ))}
+          </div>
+          <button className="text-[#22c55e] text-[12px] font-medium flex items-center gap-1 hover:text-[#16a34a] transition-colors whitespace-nowrap">
+            View All Markets <ChevronRight size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* Connect wallet modal */}
       <ConnectWalletModal
         open={walletOpen}
         onClose={() => setWalletOpen(false)}
@@ -472,6 +417,6 @@ export function VaultPage(): JSX.Element {
           await wallet.connect();
         }}
       />
-    </>
+    </div>
   );
 }
