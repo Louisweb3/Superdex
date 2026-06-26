@@ -23,6 +23,7 @@ function Router() {
       <Route path="/earn" component={LandinHome} />
       <Route path="/launch" component={LandinHome} />
       <Route path="/analytics" component={LandinHome} />
+      <Route path="/airdrop" component={LandinHome} />
       <Route path="/profile" component={LandinHome} />
       <Route path="/admin" component={AdminPage} />
       <Route path="/docs" component={DocsPage} />

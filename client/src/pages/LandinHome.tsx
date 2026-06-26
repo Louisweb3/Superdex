@@ -14,6 +14,7 @@ import { EarnPage } from "./EarnPage";
 import { LaunchPage } from "./LaunchPage";
 import { AnalyticsPage } from "./AnalyticsPage";
 import { ProfilePage } from "./ProfilePage";
+import { AirdropPage } from "./AirdropPage";
 
 // Map URL paths → tab names, and vice-versa
 const PATH_TO_TAB: Record<string, string> = {
@@ -24,6 +25,7 @@ const PATH_TO_TAB: Record<string, string> = {
   "/vault": "vault",
   "/launch": "launch",
   "/analytics": "analytics",
+  "/airdrop": "airdrop",
   "/profile": "profile",
 };
 
@@ -35,6 +37,7 @@ const TAB_TO_PATH: Record<string, string> = {
   vault: "/vault",
   launch: "/launch",
   analytics: "/analytics",
+  airdrop: "/airdrop",
   profile: "/profile",
 };
 
@@ -89,6 +92,7 @@ export const LandinHome = (): JSX.Element => {
   const isVault = activeTab === "vault";
   const isLaunch = activeTab === "launch";
   const isAnalytics = activeTab === "analytics";
+  const isAirdrop = activeTab === "airdrop";
   const isProfile = activeTab === "profile";
 
   return (
@@ -233,6 +237,12 @@ export const LandinHome = (): JSX.Element => {
               </section>
             )}
 
+            {isAirdrop && (
+              <section className="w-full flex-1">
+                <AirdropPage />
+              </section>
+            )}
+
             {isProfile && (
               <section className="w-full flex-1">
                 <ProfilePage />
@@ -246,6 +256,7 @@ export const LandinHome = (): JSX.Element => {
               !isVault &&
               !isLaunch &&
               !isAnalytics &&
+              !isAirdrop &&
               !isProfile && (
                 <section className="w-full flex-1 px-4">
                   <PlaceholderPage

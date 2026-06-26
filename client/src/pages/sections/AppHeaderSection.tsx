@@ -33,6 +33,7 @@ const DESKTOP_NAV = [
   { value: "rewards",   label: "Rewards" },
   { value: "earn",      label: "Earn" },
   { value: "vault",     label: "Vault" },
+  { value: "airdrop",   label: "Airdrop" },
   { value: "launch",    label: "Launch" },
   { value: "analytics", label: "Analytics" },
 ];
