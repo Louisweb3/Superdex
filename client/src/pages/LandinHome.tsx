@@ -171,6 +171,22 @@ export const LandinHome = (): JSX.Element => {
                   </div>
                 </section>
 
+                {/* SuperDEX PERP banner */}
+                <section className="w-full px-[14px] sm:px-[18px] pt-[10px] sm:pt-[12px]">
+                  <a
+                    href="https://dex.superswapfi.xyz"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <img
+                      src="/superdex-perp-banner.png"
+                      alt="Open SuperDEX PERP — Trade Perpetuals. Earn More."
+                      className="w-full max-w-[560px] h-auto rounded-[12px] hover:opacity-90 transition-opacity duration-200 shadow-[0_4px_24px_rgba(34,197,94,0.12)]"
+                    />
+                  </a>
+                </section>
+
                 <section className="w-full px-[14px] sm:px-[18px] pt-[10px] sm:pt-[12px]">
                   <RewardsOverviewSection />
                 </section>
