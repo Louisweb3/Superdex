@@ -18,6 +18,7 @@ import { AirdropPage } from "./AirdropPage";
 
 // Map URL paths → tab names, and vice-versa
 const PATH_TO_TAB: Record<string, string> = {
+  "/": "home",
   "/app": "home",
   "/swap": "swap",
   "/rewards": "rewards",

@@ -15,7 +15,7 @@ import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={LandingPage} />
+      <Route path="/" component={LandinHome} />
       <Route path="/app" component={LandinHome} />
       <Route path="/swap" component={LandinHome} />
       <Route path="/rewards" component={LandinHome} />
