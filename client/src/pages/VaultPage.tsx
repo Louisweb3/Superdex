@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useWalletContext } from "@/context/WalletContext";
 import { Info, Calendar, ChevronRight, ArrowDownToLine, Coins, ArrowUpFromLine, RefreshCw } from "lucide-react";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
+import { ComingSoonOverlay } from "@/components/ComingSoonOverlay";
 
 // ─── Token icon paths ──────────────────────────────────────────────────────────
 const ICONS = {
@@ -264,6 +265,13 @@ export function VaultPage(): JSX.Element {
       className="min-h-[calc(100vh-64px)] bg-[#00040b] text-white overflow-y-auto"
       style={{ fontFamily: "Inter, sans-serif" }}
     >
+      <ComingSoonOverlay
+        lines={[
+          "Super Vaults",
+          "is coming soon.",
+          "Wait for official announcements.",
+        ]}
+      />
       {/* ── Hero header ─────────────────────────────────────────────────────── */}
       <div className="border-b border-[#0a1510] px-5 sm:px-8 py-5">
         <div className="max-w-[1200px] mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

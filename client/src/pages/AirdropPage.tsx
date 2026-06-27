@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useWalletContext } from "@/context/WalletContext";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
+import { ComingSoonOverlay } from "@/components/ComingSoonOverlay";
 import {
   Wallet,
   Gift,
@@ -58,6 +59,12 @@ export function AirdropPage(): JSX.Element {
       className="min-h-[calc(100vh-64px)] bg-black text-white flex flex-col"
       style={{ fontFamily: "Inter, sans-serif" }}
     >
+      <ComingSoonOverlay
+        lines={[
+          "Airdrop is not live yet.",
+          "Wait for official announcements.",
+        ]}
+      />
       {/* Demo disclaimer banner */}
       <div className="mx-4 mt-4 flex items-start gap-3 rounded-[12px] border border-yellow-400/30 bg-yellow-400/5 px-4 py-3">
         <span className="text-yellow-400 text-[18px] leading-none mt-0.5">⚠️</span>
