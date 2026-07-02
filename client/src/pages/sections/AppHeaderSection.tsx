@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Sparkles,
   Check,
+  MoreHorizontal,
 } from "lucide-react";
 
 interface AppHeaderSectionProps {
@@ -30,7 +31,7 @@ function shortAddr(addr: string) {
   return addr.slice(0, 6) + "…" + addr.slice(-4);
 }
 
-const DESKTOP_NAV = [
+const DESKTOP_NAV_PRIMARY = [
   { value: "home",      label: "Home" },
   { value: "swap",      label: "Swap" },
   { value: "rewards",   label: "Rewards" },
@@ -38,8 +39,12 @@ const DESKTOP_NAV = [
   { value: "vault",     label: "Vault" },
   { value: "airdrop",   label: "Airdrop" },
   { value: "robinhood", label: "RH Playground" },
-  { value: "launch",    label: "Launch" },
-  { value: "analytics", label: "Analytics" },
+];
+
+const DESKTOP_NAV_MORE = [
+  { value: "launch",    label: "Launch",    href: null },
+  { value: "analytics", label: "Analytics", href: null },
+  { value: "docs",      label: "Docs",      href: "/docs" },
 ];
 
 const BASE_CHAIN_ID = 8453;
@@ -123,13 +128,13 @@ export const AppHeaderSection = ({
 
           {/* DESKTOP NAV */}
           <nav className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
-            {DESKTOP_NAV.map((item) => (
+            {DESKTOP_NAV_PRIMARY.map((item) => (
               <button
                 key={item.value}
                 type="button"
                 onClick={() => onNavSelect?.(item.value)}
                 data-testid={`button-desknav-${item.value}`}
-                className={`px-4 py-2 rounded-[14px] text-[14px] font-medium transition-all duration-200 whitespace-nowrap ${
+                className={`px-3 py-2 rounded-[14px] text-[13px] font-medium transition-all duration-200 whitespace-nowrap ${
                   activeTab === item.value
                     ? "bg-[#0d2218] text-[#2dae50] border border-[#1a3428]"
                     : "text-[#8b97aa] hover:text-white hover:bg-[#0a1520] border border-transparent"
@@ -138,13 +143,55 @@ export const AppHeaderSection = ({
                 {item.label}
               </button>
             ))}
-            <a
-              href="/docs"
-              data-testid="button-desknav-docs"
-              className="px-4 py-2 rounded-[14px] text-[14px] font-medium text-[#8b97aa] hover:text-white hover:bg-[#0a1520] border border-transparent transition-all duration-200 whitespace-nowrap"
-            >
-              Docs
-            </a>
+
+            {/* More dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  data-testid="button-desknav-more"
+                  className={`flex items-center gap-1 px-3 py-2 rounded-[14px] text-[13px] font-medium transition-all duration-200 whitespace-nowrap ${
+                    DESKTOP_NAV_MORE.some((m) => m.value === activeTab)
+                      ? "bg-[#0d2218] text-[#2dae50] border border-[#1a3428]"
+                      : "text-[#8b97aa] hover:text-white hover:bg-[#0a1520] border border-transparent"
+                  }`}
+                >
+                  More
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="center"
+                sideOffset={8}
+                className="w-[160px] overflow-hidden rounded-[16px] border border-white/[0.06] bg-[#070B11]/95 p-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
+              >
+                {DESKTOP_NAV_MORE.map((item) =>
+                  item.href ? (
+                    <DropdownMenuItem key={item.value} asChild>
+                      <a
+                        href={item.href}
+                        data-testid={`button-desknav-${item.value}`}
+                        className="flex items-center px-3 py-2 rounded-[10px] text-[13px] font-medium text-[#8b97aa] hover:text-white hover:bg-[#0a1520] cursor-pointer transition-all"
+                      >
+                        {item.label}
+                      </a>
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      key={item.value}
+                      onClick={() => onNavSelect?.(item.value)}
+                      data-testid={`button-desknav-${item.value}`}
+                      className={`flex items-center px-3 py-2 rounded-[10px] text-[13px] font-medium cursor-pointer transition-all ${
+                        activeTab === item.value
+                          ? "text-[#2dae50] bg-[#0d2218]"
+                          : "text-[#8b97aa] hover:text-white hover:bg-[#0a1520]"
+                      }`}
+                    >
+                      {item.label}
+                    </DropdownMenuItem>
+                  )
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
 
           {/* RIGHT — Network switcher + Wallet */}
