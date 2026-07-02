@@ -17,6 +17,9 @@ import {
   ChevronRight,
   Info,
   Flame,
+  ShieldCheck,
+  ShieldX,
+  Clock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -57,6 +60,77 @@ const ERC20_CONSTRUCTOR_ABI = [
   { type: "uint256", name: "_totalSupply" },
 ] as const;
 
+// ─── Solidity source (must match the compiled bytecode above exactly) ─────────
+const ERC20_SOURCE = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+contract Token {
+    string public name;
+    string public symbol;
+    uint8 public decimals = 18;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+    constructor(string memory _name, string memory _symbol, uint256 _supply) {
+        name = _name;
+        symbol = _symbol;
+        totalSupply = _supply;
+        balanceOf[msg.sender] = _supply;
+        emit Transfer(address(0), msg.sender, _supply);
+    }
+    function transfer(address to, uint256 value) external returns (bool) {
+        require(balanceOf[msg.sender] >= value, "ERC20: insufficient");
+        balanceOf[msg.sender] -= value;
+        balanceOf[to] += value;
+        emit Transfer(msg.sender, to, value);
+        return true;
+    }
+    function approve(address spender, uint256 value) external returns (bool) {
+        allowance[msg.sender][spender] = value;
+        emit Approval(msg.sender, spender, value);
+        return true;
+    }
+    function transferFrom(address from, address to, uint256 value) external returns (bool) {
+        require(allowance[from][msg.sender] >= value, "ERC20: allowance");
+        require(balanceOf[from] >= value, "ERC20: insufficient");
+        allowance[from][msg.sender] -= value;
+        balanceOf[from] -= value;
+        balanceOf[to] += value;
+        emit Transfer(from, to, value);
+        return true;
+    }
+}`;
+
+const BLOCKSCOUT_API = "https://robinhoodchain.blockscout.com/api/v2/smart-contracts";
+
+async function verifyOnBlockscout(
+  contractAddress: string,
+  constructorArgsHex: string,
+): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${BLOCKSCOUT_API}/${contractAddress}/verification/via/flattened-code`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          compiler_version: "v0.8.23+commit.f704f362",
+          source_code: ERC20_SOURCE,
+          is_optimization_enabled: true,
+          optimization_runs: 200,
+          contract_name: "Token",
+          evm_version: "default",
+          constructor_args: constructorArgsHex.replace(/^0x/, ""),
+        }),
+      },
+    );
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // ─── Local storage helpers ────────────────────────────────────────────────────
 const LS_CONTRACTS_KEY = "rh_playground_contracts";
 const LS_GM_KEY = "rh_playground_gm";
@@ -70,6 +144,7 @@ type DeployedToken = {
   txHash: string;
   deployedAt: number;
   network: string;
+  verifyStatus?: "pending" | "verified" | "failed";
 };
 
 function getStoredContracts(): DeployedToken[] {
@@ -210,6 +285,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         txHash,
         deployedAt: Date.now(),
         network: ACTIVE_NETWORK.chainName,
+        verifyStatus: "pending",
       };
       const updated = [token, ...deployedContracts];
       setDeployedContracts(updated);
@@ -217,6 +293,21 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       setTokenName(""); setTokenSymbol(""); setTokenSupply("1000000");
       setActiveTab("tokens");
       toast({ title: `✅ ${tokenName} deployed!`, description: contractAddress });
+
+      // Auto-verify on Blockscout (non-blocking)
+      verifyOnBlockscout(contractAddress, encodedArgs).then((ok) => {
+        const status = ok ? "verified" : "failed";
+        setDeployedContracts((prev) => {
+          const next = prev.map((t) =>
+            t.address === contractAddress ? { ...t, verifyStatus: status } : t,
+          ) as DeployedToken[];
+          saveContracts(next);
+          return next;
+        });
+        if (ok) {
+          toast({ title: "✅ Contract verified on Blockscout!", description: contractAddress });
+        }
+      });
     } catch (e: any) {
       toast({ title: "Deployment failed", description: e.message, variant: "destructive" });
     } finally {
@@ -559,6 +650,24 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {token.verifyStatus === "verified" && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-[#00C805] bg-[#00C805]/10 border border-[#00C805]/25 px-2 py-0.5 rounded-full">
+                            <ShieldCheck size={10} />
+                            Verified
+                          </span>
+                        )}
+                        {token.verifyStatus === "pending" && (
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-[#5a6a55] bg-[#0a1a0a] border border-[#1a2e1a] px-2 py-0.5 rounded-full">
+                            <Clock size={10} className="animate-pulse" />
+                            Verifying…
+                          </span>
+                        )}
+                        {token.verifyStatus === "failed" && (
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-[#e05555] bg-[#1a0a0a] border border-[#2e1a1a] px-2 py-0.5 rounded-full">
+                            <ShieldX size={10} />
+                            Unverified
+                          </span>
+                        )}
                         <span className="text-[11px] text-[#3a4a35] bg-[#0a1a0a] border border-[#1a2e1a] px-2 py-0.5 rounded-full">
                           {token.network}
                         </span>
@@ -584,14 +693,44 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                         </div>
                       ))}
                     </div>
-                    {/* Copy address */}
-                    <button
-                      onClick={() => { navigator.clipboard.writeText(token.address); toast({ title: "Address copied!" }); }}
-                      className="mt-3 flex items-center gap-1.5 text-[12px] text-[#5a6a55] hover:text-[#00C805] transition-colors"
-                    >
-                      <Copy size={11} />
-                      Copy contract address
-                    </button>
+                    <div className="mt-3 flex items-center gap-4">
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(token.address); toast({ title: "Address copied!" }); }}
+                        className="flex items-center gap-1.5 text-[12px] text-[#5a6a55] hover:text-[#00C805] transition-colors"
+                      >
+                        <Copy size={11} />
+                        Copy address
+                      </button>
+                      {token.verifyStatus === "failed" && (
+                        <button
+                          onClick={() => {
+                            const supply = parseUnits(token.supply, 18);
+                            const args = encodeAbiParameters(ERC20_CONSTRUCTOR_ABI, [token.name, token.symbol, supply]);
+                            setDeployedContracts((prev) => {
+                              const next = prev.map((t) =>
+                                t.address === token.address ? { ...t, verifyStatus: "pending" as const } : t,
+                              );
+                              saveContracts(next);
+                              return next;
+                            });
+                            verifyOnBlockscout(token.address, args).then((ok) => {
+                              setDeployedContracts((prev) => {
+                                const next = prev.map((t) =>
+                                  t.address === token.address ? { ...t, verifyStatus: (ok ? "verified" : "failed") as const } : t,
+                                );
+                                saveContracts(next);
+                                return next;
+                              });
+                              if (ok) toast({ title: "✅ Contract verified on Blockscout!" });
+                            });
+                          }}
+                          className="flex items-center gap-1.5 text-[12px] text-[#e05555] hover:text-red-300 transition-colors"
+                        >
+                          <RefreshCw size={11} />
+                          Retry verification
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
