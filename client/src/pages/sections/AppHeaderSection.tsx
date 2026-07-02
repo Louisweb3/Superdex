@@ -106,12 +106,12 @@ export const AppHeaderSection = ({
         {/* subtle glow */}
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent" />
 
-        <div className="relative flex min-h-[72px] sm:min-h-[84px] w-full items-center justify-between px-4 sm:px-6 md:px-8">
+        <div className="relative flex min-h-[72px] sm:min-h-[84px] w-full items-center px-4 sm:px-6 md:px-8 gap-3">
 
           {/* LOGO */}
           <button
             onClick={() => onNavSelect?.("home")}
-            className="flex items-center gap-2 sm:gap-3 focus:outline-none"
+            className="flex flex-shrink-0 items-center gap-2 sm:gap-3 focus:outline-none"
             aria-label="SuperSwap home"
             data-testid="link-home"
           >
@@ -126,8 +126,8 @@ export const AppHeaderSection = ({
             </span>
           </button>
 
-          {/* DESKTOP NAV */}
-          <nav className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+          {/* DESKTOP NAV — flex-1 so it fills space between logo and right controls */}
+          <nav className="hidden lg:flex flex-1 items-center justify-center gap-1 min-w-0 overflow-hidden">
             {DESKTOP_NAV_PRIMARY.map((item) => (
               <button
                 key={item.value}
@@ -195,7 +195,7 @@ export const AppHeaderSection = ({
           </nav>
 
           {/* RIGHT — Network switcher + Wallet */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-shrink-0 items-center gap-2">
 
             {/* ── Network Switcher ── */}
             <DropdownMenu>
