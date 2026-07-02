@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useMarketPrices, type MarketPrice } from "@/hooks/useRewards";
 import { Grid3x3, User, BookOpen, BarChart2, X, Rocket } from "lucide-react";
 import earnIcon from "@assets/token_logo_1779819572574.png";
+import rhLogoSrc from "@assets/unnamed_(4)_1782977968316.png";
 
 const FALLBACK_PRICES: MarketPrice[] = [
   { symbol: "ETH",   price: 0, change24h: 0, iconSrc: "/figmaAssets/image-7.png" },
@@ -32,6 +33,7 @@ const iconSizes: Record<string, string> = {
 
 const MORE_ITEMS = [
   { value: "launch",    label: "Launch",    icon: Rocket,   color: "#2dae50",  desc: "Deploy B20 tokens" },
+  { value: "robinhood", label: "RH Playground", icon: null, iconSrc: rhLogoSrc, color: "#d4f500", desc: "Deploy tokens on Robinhood Chain" },
   { value: "profile",   label: "Profile",   icon: User,     color: "#5aa9ff",  desc: "Rewards, referrals & X" },
   { value: "analytics", label: "Analytics", icon: null,     iconSrc: "/figmaAssets/image.png", color: "#a84dda", desc: "Trading analytics" },
   { value: "docs",      label: "Docs",      icon: BookOpen, color: "#4d8ab8",  desc: "Guides & documentation" },
@@ -52,11 +54,12 @@ export const AssetTickerNavSection = ({
   const tickerItems = [...tickerPrices, ...tickerPrices];
   const [showMore, setShowMore] = useState(false);
 
-  const moreActive = activeTab === "analytics" || activeTab === "profile" || activeTab === "launch";
+  const moreActive = activeTab === "analytics" || activeTab === "profile" || activeTab === "launch" || activeTab === "robinhood";
 
   const handleMoreItem = (value: string) => {
     setShowMore(false);
     if (value === "docs") { navigate("/docs"); return; }
+    if (value === "robinhood") { navigate("/robinhood"); return; }
     onTabChange(value);
   };
 
