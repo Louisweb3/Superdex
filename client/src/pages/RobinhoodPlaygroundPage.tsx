@@ -27,26 +27,17 @@ import { useToast } from "@/hooks/use-toast";
 
 // ─── Robinhood Chain config ────────────────────────────────────────────────────
 const RH_MAINNET = {
-  chainId: "0x1237" as const,       // 4663
+  chainId: "0x1237" as const, // 4663
   chainIdDecimal: 4663,
   chainName: "Robinhood Chain",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: ["https://rpc.mainnet.chain.robinhood.com"],
   blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
 };
-const RH_TESTNET = {
-  chainId: "0xB626" as const,       // 46630
-  chainIdDecimal: 46630,
-  chainName: "Robinhood Chain Testnet",
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: ["https://rpc.testnet.chain.robinhood.com"],
-  blockExplorerUrls: ["https://explorer.testnet.chain.robinhood.com"],
-};
-
 // Robinhood Chain Mainnet
 const ACTIVE_NETWORK = RH_MAINNET;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
-const FAUCET = "https://faucet.testnet.chain.robinhood.com";
+const RH_BRIDGE = "https://bridge.robinhoodchain.com";
 const RH_RPC = ACTIVE_NETWORK.rpcUrls[0];
 
 // ─── Minimal ERC-20 bytecode ──────────────────────────────────────────────────
@@ -123,14 +114,22 @@ async function fetchEthBalance(address: string, rpc: string): Promise<number> {
     const res = await fetch(rpc, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [address, "latest"] }),
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_getBalance",
+        params: [address, "latest"],
+      }),
     });
     const { result } = await res.json();
     return result ? parseInt(result, 16) / 1e18 : 0;
-  } catch { return 0; }
+  } catch {
+    return 0;
+  }
 }
 
-const BLOCKSCOUT_API = "https://robinhoodchain.blockscout.com/api/v2/smart-contracts";
+const BLOCKSCOUT_API =
+  "https://robinhoodchain.blockscout.com/api/v2/smart-contracts";
 
 async function verifyOnBlockscout(
   contractAddress: string,
@@ -176,36 +175,65 @@ type DeployedToken = {
 };
 
 function getStoredContracts(): DeployedToken[] {
-  try { return JSON.parse(localStorage.getItem(LS_CONTRACTS_KEY) || "[]"); } catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem(LS_CONTRACTS_KEY) || "[]");
+  } catch {
+    return [];
+  }
 }
 function saveContracts(list: DeployedToken[]) {
   localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(list));
 }
-function getTodayKey() { return new Date().toISOString().slice(0, 10); }
-function hasClaimedGmToday() { return localStorage.getItem(LS_GM_KEY) === getTodayKey(); }
-function markGmToday() { localStorage.setItem(LS_GM_KEY, getTodayKey()); }
-function hasClaimedXpToday() { return localStorage.getItem(LS_XP_KEY) === getTodayKey(); }
-function markXpToday() { localStorage.setItem(LS_XP_KEY, getTodayKey()); }
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+function hasClaimedGmToday() {
+  return localStorage.getItem(LS_GM_KEY) === getTodayKey();
+}
+function markGmToday() {
+  localStorage.setItem(LS_GM_KEY, getTodayKey());
+}
+function hasClaimedXpToday() {
+  return localStorage.getItem(LS_XP_KEY) === getTodayKey();
+}
+function markXpToday() {
+  localStorage.setItem(LS_XP_KEY, getTodayKey());
+}
 
 // ─── RH RPC call helper ───────────────────────────────────────────────────────
-async function waitForReceipt(txHash: string, rpc: string, maxMs = 60_000): Promise<any> {
+async function waitForReceipt(
+  txHash: string,
+  rpc: string,
+  maxMs = 60_000,
+): Promise<any> {
   const start = Date.now();
   while (Date.now() - start < maxMs) {
     const r = await fetch(rpc, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getTransactionReceipt", params: [txHash] }),
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_getTransactionReceipt",
+        params: [txHash],
+      }),
     });
     const { result } = await r.json();
     if (result) return result;
-    await new Promise(res => setTimeout(res, 2500));
+    await new Promise((res) => setTimeout(res, 2500));
   }
   throw new Error("Timed out waiting for receipt");
 }
 
 // ─── Robinhood logo ────────────────────────────────────────────────────────────
 const RobinhoodLogo = ({ size = 32 }: { size?: number }) => (
-  <img src={rhLogoSrc} width={size} height={size} alt="Robinhood" style={{ borderRadius: "50%", display: "block" }} />
+  <img
+    src={rhLogoSrc}
+    width={size}
+    height={size}
+    alt="Robinhood"
+    style={{ borderRadius: "50%", display: "block" }}
+  />
 );
 
 // ─── Tab types ────────────────────────────────────────────────────────────────
@@ -227,7 +255,8 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [tokenSupply, setTokenSupply] = useState("1000000");
   const [deploying, setDeploying] = useState(false);
-  const [deployedContracts, setDeployedContracts] = useState<DeployedToken[]>(getStoredContracts());
+  const [deployedContracts, setDeployedContracts] =
+    useState<DeployedToken[]>(getStoredContracts());
 
   // GM state
   const [sendingGm, setSendingGm] = useState(false);
@@ -249,21 +278,27 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
 
   // Check if on Robinhood Chain
   useEffect(() => {
-    if (!wallet.isConnected) { setIsOnRH(false); return; }
+    if (!wallet.isConnected) {
+      setIsOnRH(false);
+      return;
+    }
     const checkChain = async () => {
       try {
-        const chainId = await (window as any).ethereum.request({ method: "eth_chainId" });
+        const chainId = await (window as any).ethereum.request({
+          method: "eth_chainId",
+        });
         setIsOnRH(
           chainId === RH_MAINNET.chainId ||
-          chainId === RH_TESTNET.chainId ||
-          parseInt(chainId, 16) === RH_MAINNET.chainIdDecimal ||
-          parseInt(chainId, 16) === RH_TESTNET.chainIdDecimal
+            parseInt(chainId, 16) === RH_MAINNET.chainIdDecimal,
         );
-      } catch { setIsOnRH(false); }
+      } catch {
+        setIsOnRH(false);
+      }
     };
     checkChain();
     (window as any).ethereum?.on("chainChanged", checkChain);
-    return () => (window as any).ethereum?.removeListener("chainChanged", checkChain);
+    return () =>
+      (window as any).ethereum?.removeListener("chainChanged", checkChain);
   }, [wallet.isConnected]);
 
   // ─── Fetch LP balances + ETH price ──────────────────────────────────────────
@@ -279,7 +314,9 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       setBaseLPBal(base);
       setRhLPBal(rh);
       try {
-        const r = await fetch("https://api.coinbase.com/v2/prices/ETH-USD/spot");
+        const r = await fetch(
+          "https://api.coinbase.com/v2/prices/ETH-USD/spot",
+        );
         const d = await r.json();
         if (d.data?.amount && mounted) setEthPrice(parseFloat(d.data.amount));
       } catch {}
@@ -287,12 +324,18 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
     }
     load();
     const iv = setInterval(load, 30_000);
-    return () => { mounted = false; clearInterval(iv); };
+    return () => {
+      mounted = false;
+      clearInterval(iv);
+    };
   }, []);
 
   // ─── Contribute to LP ────────────────────────────────────────────────────────
   const contributeToLP = useCallback(async () => {
-    if (!wallet.isConnected) { setWalletOpen(true); return; }
+    if (!wallet.isConnected) {
+      setWalletOpen(true);
+      return;
+    }
     const ethAmount = contribUsd / ethPrice;
     const weiHex = "0x" + Math.floor(ethAmount * 1e18).toString(16);
     const targetNet = contribNetwork === "base" ? BASE_MAINNET : ACTIVE_NETWORK;
@@ -311,12 +354,17 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
           });
         } else throw sw;
       }
-      const accs = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
+      const accs = await (window as any).ethereum.request({
+        method: "eth_requestAccounts",
+      });
       const txHash = await (window as any).ethereum.request({
         method: "eth_sendTransaction",
         params: [{ from: accs[0], to: LP_ADDRESS, value: weiHex }],
       });
-      toast({ title: "🎉 Contribution sent!", description: `TX: ${String(txHash).slice(0, 20)}…` });
+      toast({
+        title: "🎉 Contribution sent!",
+        description: `TX: ${String(txHash).slice(0, 20)}…`,
+      });
       setTimeout(async () => {
         const [b, r] = await Promise.all([
           fetchEthBalance(LP_ADDRESS, BASE_RPC),
@@ -326,7 +374,11 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         setRhLPBal(r);
       }, 8000);
     } catch (e: any) {
-      toast({ title: "Contribution failed", description: e.message, variant: "destructive" });
+      toast({
+        title: "Contribution failed",
+        description: e.message,
+        variant: "destructive",
+      });
     } finally {
       setContributing(false);
     }
@@ -341,9 +393,13 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         params: [ACTIVE_NETWORK],
       });
       setIsOnRH(true);
-      toast({ title: "Connected to Robinhood Chain Testnet" });
+      toast({ title: "Connected to Robinhood Chain Mainnet" });
     } catch (e: any) {
-      toast({ title: "Failed to switch network", description: e.message, variant: "destructive" });
+      toast({
+        title: "Failed to switch network",
+        description: e.message,
+        variant: "destructive",
+      });
     } finally {
       setSwitchingNetwork(false);
     }
@@ -355,21 +411,31 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       toast({ title: "Fill all fields", variant: "destructive" });
       return;
     }
-    if (!wallet.isConnected) { setWalletOpen(true); return; }
-    if (!isOnRH) { await switchToRH(); return; }
+    if (!wallet.isConnected) {
+      setWalletOpen(true);
+      return;
+    }
+    if (!isOnRH) {
+      await switchToRH();
+      return;
+    }
     setDeploying(true);
     try {
       const supply = parseUnits(tokenSupply, 18);
-      const encodedArgs = encodeAbiParameters(
-        ERC20_CONSTRUCTOR_ABI,
-        [tokenName, tokenSymbol, supply]
-      );
+      const encodedArgs = encodeAbiParameters(ERC20_CONSTRUCTOR_ABI, [
+        tokenName,
+        tokenSymbol,
+        supply,
+      ]);
       const data = (ERC20_BYTECODE + encodedArgs.slice(2)) as `0x${string}`;
       const txHash = await (window as any).ethereum.request({
         method: "eth_sendTransaction",
         params: [{ from: wallet.address, data }],
       });
-      toast({ title: "Deployment tx submitted!", description: "Waiting for confirmation…" });
+      toast({
+        title: "Deployment tx submitted!",
+        description: "Waiting for confirmation…",
+      });
       const receipt = await waitForReceipt(txHash, RH_RPC);
       const contractAddress = receipt.contractAddress;
       const token: DeployedToken = {
@@ -385,9 +451,14 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       const updated = [token, ...deployedContracts];
       setDeployedContracts(updated);
       saveContracts(updated);
-      setTokenName(""); setTokenSymbol(""); setTokenSupply("1000000");
+      setTokenName("");
+      setTokenSymbol("");
+      setTokenSupply("1000000");
       setActiveTab("tokens");
-      toast({ title: `✅ ${tokenName} deployed!`, description: contractAddress });
+      toast({
+        title: `✅ ${tokenName} deployed!`,
+        description: contractAddress,
+      });
 
       // Auto-verify on Blockscout (non-blocking)
       verifyOnBlockscout(contractAddress, encodedArgs).then((ok) => {
@@ -400,39 +471,70 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
           return next;
         });
         if (ok) {
-          toast({ title: "✅ Contract verified on Blockscout!", description: contractAddress });
+          toast({
+            title: "✅ Contract verified on Blockscout!",
+            description: contractAddress,
+          });
         }
       });
     } catch (e: any) {
-      toast({ title: "Deployment failed", description: e.message, variant: "destructive" });
+      toast({
+        title: "Deployment failed",
+        description: e.message,
+        variant: "destructive",
+      });
     } finally {
       setDeploying(false);
     }
-  }, [tokenName, tokenSymbol, tokenSupply, wallet, isOnRH, switchToRH, deployedContracts, toast]);
+  }, [
+    tokenName,
+    tokenSymbol,
+    tokenSupply,
+    wallet,
+    isOnRH,
+    switchToRH,
+    deployedContracts,
+    toast,
+  ]);
 
   // ─── Send GM ────────────────────────────────────────────────────────────────
   const sendGm = useCallback(async () => {
-    if (!wallet.isConnected) { setWalletOpen(true); return; }
-    if (!isOnRH) { await switchToRH(); return; }
-    if (gmClaimed) { toast({ title: "Already sent GM today! Come back tomorrow." }); return; }
+    if (!wallet.isConnected) {
+      setWalletOpen(true);
+      return;
+    }
+    if (!isOnRH) {
+      await switchToRH();
+      return;
+    }
+    if (gmClaimed) {
+      toast({ title: "Already sent GM today! Come back tomorrow." });
+      return;
+    }
     setSendingGm(true);
     try {
       // Encode "GM" as UTF-8 hex data sent on-chain
       const txHash = await (window as any).ethereum.request({
         method: "eth_sendTransaction",
-        params: [{
-          from: wallet.address,
-          to: wallet.address,
-          value: "0x0",
-          data: "0x474d", // UTF-8 "GM"
-        }],
+        params: [
+          {
+            from: wallet.address,
+            to: wallet.address,
+            value: "0x0",
+            data: "0x474d", // UTF-8 "GM"
+          },
+        ],
       });
       setGmTxHash(txHash);
       markGmToday();
       setGmClaimed(true);
       toast({ title: "🌅 GM sent on Robinhood Chain!" });
     } catch (e: any) {
-      toast({ title: "GM failed", description: e.message, variant: "destructive" });
+      toast({
+        title: "GM failed",
+        description: e.message,
+        variant: "destructive",
+      });
     } finally {
       setSendingGm(false);
     }
@@ -440,14 +542,28 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
 
   // ─── Claim XP ───────────────────────────────────────────────────────────────
   const claimXp = useCallback(async () => {
-    if (!wallet.isConnected) { setWalletOpen(true); return; }
-    if (xpClaimed) { toast({ title: "XP already claimed today! Come back tomorrow." }); return; }
+    if (!wallet.isConnected) {
+      setWalletOpen(true);
+      return;
+    }
+    if (xpClaimed) {
+      toast({ title: "XP already claimed today! Come back tomorrow." });
+      return;
+    }
     setClaimingXp(true);
     try {
       // Stub: contract address to be provided by user
-      toast({ title: "XP claim contract not yet configured.", description: "The contract address will be set when announced.", variant: "destructive" });
+      toast({
+        title: "XP claim contract not yet configured.",
+        description: "The contract address will be set when announced.",
+        variant: "destructive",
+      });
     } catch (e: any) {
-      toast({ title: "XP claim failed", description: e.message, variant: "destructive" });
+      toast({
+        title: "XP claim failed",
+        description: e.message,
+        variant: "destructive",
+      });
     } finally {
       setClaimingXp(false);
     }
@@ -460,21 +576,27 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
     isConnected && !isOnRH ? (
       <div className="flex items-center gap-3 rounded-[10px] border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 mb-4">
         <Info size={15} className="text-yellow-400 flex-shrink-0" />
-        <span className="text-yellow-300/90 text-[13px]">You're not on Robinhood Chain.</span>
+        <span className="text-yellow-300/90 text-[13px]">
+          You're not on Robinhood Chain.
+        </span>
         <button
           onClick={switchToRH}
           disabled={switchingNetwork}
           className="ml-auto flex items-center gap-1.5 text-[12px] font-bold text-[#00C805] hover:text-green-300 transition-colors whitespace-nowrap"
         >
-          {switchingNetwork ? <Loader2 size={12} className="animate-spin" /> : null}
+          {switchingNetwork ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : null}
           Switch Network
         </button>
       </div>
     ) : null;
 
   return (
-    <div className="min-h-screen bg-[#050a05] text-white" style={{ fontFamily: "Inter, sans-serif" }}>
-
+    <div
+      className="min-h-screen bg-[#050a05] text-white"
+      style={{ fontFamily: "Inter, sans-serif" }}
+    >
       {/* ── Hero ──────────────────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden border-b border-[#0a1f0a] bg-gradient-to-br from-[#071007] via-[#050a05] to-black px-5 sm:px-8 py-8">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(0,200,5,0.12),transparent_60%)] pointer-events-none" />
@@ -484,7 +606,9 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             <RobinhoodLogo size={52} />
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#00C805]">Robinhood Chain</span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#00C805]">
+                  Robinhood Chain
+                </span>
                 <span className="bg-[#00C805]/10 border border-[#00C805]/30 text-[#00C805] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">
                   Mainnet
                 </span>
@@ -502,13 +626,17 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
           <div className="flex flex-col items-start sm:items-end gap-2">
             {isConnected ? (
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isOnRH ? "bg-[#00C805] shadow-[0_0_6px_#00C805]" : "bg-yellow-400"} animate-pulse`} />
+                <div
+                  className={`w-2 h-2 rounded-full ${isOnRH ? "bg-[#00C805] shadow-[0_0_6px_#00C805]" : "bg-yellow-400"} animate-pulse`}
+                />
                 <span className="text-[13px] text-[#8a9a85]">
                   {isOnRH ? "Connected to Robinhood Chain" : "Wrong network"}
                 </span>
               </div>
             ) : (
-              <span className="text-[13px] text-[#5a6a55]">Wallet not connected</span>
+              <span className="text-[13px] text-[#5a6a55]">
+                Wallet not connected
+              </span>
             )}
 
             {!isConnected ? (
@@ -524,7 +652,9 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                 disabled={switchingNetwork}
                 className="flex items-center gap-2 bg-[#00C805] hover:bg-[#00a804] text-black font-bold text-[14px] px-5 py-2.5 rounded-[12px] transition-all disabled:opacity-60"
               >
-                {switchingNetwork && <Loader2 size={14} className="animate-spin" />}
+                {switchingNetwork && (
+                  <Loader2 size={14} className="animate-spin" />
+                )}
                 Add Robinhood Chain
               </button>
             ) : (
@@ -539,25 +669,35 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         {/* Network stats bar */}
         <div className="relative max-w-[1200px] mx-auto mt-6 flex flex-wrap gap-3">
           {[
-            { label: "Chain ID", value: ACTIVE_NETWORK.chainIdDecimal.toString() },
+            {
+              label: "Chain ID",
+              value: ACTIVE_NETWORK.chainIdDecimal.toString(),
+            },
             { label: "Block Time", value: "100ms" },
             { label: "Gas Token", value: "ETH" },
             { label: "Stack", value: "Arbitrum Orbit L2" },
             { label: "DA Layer", value: "Ethereum blobs" },
           ].map(({ label, value }) => (
-            <div key={label} className="flex items-center gap-2 bg-[#0a1a0a] border border-[#1a2e1a] rounded-[10px] px-3 py-1.5">
+            <div
+              key={label}
+              className="flex items-center gap-2 bg-[#0a1a0a] border border-[#1a2e1a] rounded-[10px] px-3 py-1.5"
+            >
               <span className="text-[#5a6a55] text-[11px]">{label}</span>
-              <span className="text-[#c8d8c4] text-[12px] font-semibold">{value}</span>
+              <span className="text-[#c8d8c4] text-[12px] font-semibold">
+                {value}
+              </span>
             </div>
           ))}
           <a
-            href={FAUCET}
+            href={RH_BRIDGE}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 bg-[#0a1a0a] border border-[#1a2e1a] hover:border-[#00C805]/40 rounded-[10px] px-3 py-1.5 transition-colors group"
           >
-            <Flame size={12} className="text-orange-400" />
-            <span className="text-[#c8d8c4] text-[12px] font-semibold group-hover:text-[#00C805] transition-colors">Faucet</span>
+            <Zap size={12} className="text-[#00C805]" />
+            <span className="text-[#c8d8c4] text-[12px] font-semibold group-hover:text-[#00C805] transition-colors">
+              Bridge
+            </span>
             <ExternalLink size={10} className="text-[#5a6a55]" />
           </a>
         </div>
@@ -568,8 +708,10 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         const totalRaised = baseLPBal + rhLPBal;
         const pct = Math.min((totalRaised / LP_MAX_ETH) * 100, 100);
         const ethAmount = contribUsd / ethPrice;
-        const tokensForContrib = (ethAmount / LP_MAX_ETH) * ROBIINU_COMMUNITY_ALLOC;
-        const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+        const tokensForContrib =
+          (ethAmount / LP_MAX_ETH) * ROBIINU_COMMUNITY_ALLOC;
+        const fmt = (n: number) =>
+          n.toLocaleString(undefined, { maximumFractionDigits: 4 });
         const fmtM = (n: number) =>
           n >= 1_000_000
             ? (n / 1_000_000).toFixed(2) + "M"
@@ -590,17 +732,29 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               {/* Header row */}
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                 <div>
-                  <h2 className="text-[22px] font-black text-white leading-tight">$RobInu LP Contribution</h2>
+                  <h2 className="text-[22px] font-black text-white leading-tight">
+                    $RobInu LP Contribution
+                  </h2>
                   <p className="text-[13px] text-[#5a7a55] mt-1">
-                    Contribute ETH to seed the $RobInu liquidity pool on Robinhood Chain.
+                    Contribute ETH to seed the $RobInu liquidity pool on
+                    Robinhood Chain.
                     <br />
-                    <span className="text-[#c8d8c4]">20% of the 1B total supply (200M $RobInu)</span> is allocated to community contributors.
+                    <span className="text-[#c8d8c4]">
+                      20% of the 1B total supply (200M $RobInu)
+                    </span>{" "}
+                    is allocated to community contributors.
                   </p>
                 </div>
                 <div className="shrink-0 text-right bg-[#00C805]/5 border border-[#00C805]/20 rounded-[12px] px-4 py-2.5">
-                  <div className="text-[11px] text-[#5a7a55] uppercase tracking-wider mb-0.5">Community Allocation</div>
-                  <div className="text-[26px] font-black text-[#00C805] leading-tight">200M</div>
-                  <div className="text-[12px] text-[#5a7a55]">$RobInu tokens</div>
+                  <div className="text-[11px] text-[#5a7a55] uppercase tracking-wider mb-0.5">
+                    Community Allocation
+                  </div>
+                  <div className="text-[26px] font-black text-[#00C805] leading-tight">
+                    200M
+                  </div>
+                  <div className="text-[12px] text-[#5a7a55]">
+                    $RobInu tokens
+                  </div>
                 </div>
               </div>
 
@@ -610,22 +764,30 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                   <span className="text-[13px] font-bold text-white">
                     {lpLoading ? "Loading…" : `${fmt(totalRaised)} ETH raised`}
                   </span>
-                  <span className="text-[13px] text-[#5a7a55]">Goal: {LP_MAX_ETH} ETH</span>
+                  <span className="text-[13px] text-[#5a7a55]">
+                    Goal: {LP_MAX_ETH} ETH
+                  </span>
                 </div>
                 <div className="relative h-4 w-full rounded-full bg-[#0e1f0e] overflow-hidden border border-[#1a3a1a]">
                   <div
                     className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
                     style={{
                       width: `${pct}%`,
-                      background: "linear-gradient(90deg, #00C805 0%, #5dff61 100%)",
-                      boxShadow: pct > 0 ? "0 0 12px rgba(0,200,5,0.5)" : "none",
+                      background:
+                        "linear-gradient(90deg, #00C805 0%, #5dff61 100%)",
+                      boxShadow:
+                        pct > 0 ? "0 0 12px rgba(0,200,5,0.5)" : "none",
                     }}
                   />
                 </div>
                 <div className="flex items-center justify-between mt-2 text-[11px] text-[#5a6a55]">
                   <span>Base: {lpLoading ? "…" : `${fmt(baseLPBal)} ETH`}</span>
-                  <span className="font-bold text-[#00C805]">{pct.toFixed(1)}% filled</span>
-                  <span>RH Chain: {lpLoading ? "…" : `${fmt(rhLPBal)} ETH`}</span>
+                  <span className="font-bold text-[#00C805]">
+                    {pct.toFixed(1)}% filled
+                  </span>
+                  <span>
+                    RH Chain: {lpLoading ? "…" : `${fmt(rhLPBal)} ETH`}
+                  </span>
                 </div>
               </div>
 
@@ -633,7 +795,9 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
                 {/* Network selector */}
                 <div className="flex-1">
-                  <label className="block text-[11px] text-[#5a7a55] uppercase tracking-wider mb-2">Network</label>
+                  <label className="block text-[11px] text-[#5a7a55] uppercase tracking-wider mb-2">
+                    Network
+                  </label>
                   <div className="flex gap-2">
                     {(["base", "rh"] as const).map((net) => (
                       <button
@@ -686,20 +850,25 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                     data-testid="btn-contribute-lp"
                     className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#00C805] hover:bg-[#00a804] disabled:opacity-50 text-black font-black text-[14px] px-6 py-2.5 rounded-[12px] transition-all whitespace-nowrap"
                   >
-                    {contributing && <Loader2 size={14} className="animate-spin" />}
+                    {contributing && (
+                      <Loader2 size={14} className="animate-spin" />
+                    )}
                     {pct >= 100
                       ? "Goal Reached!"
                       : `Contribute $${contribUsd} · ${fmtM(tokensForContrib)} $RobInu`}
                   </button>
                   <div className="text-[11px] text-[#5a6a55] mt-1 sm:text-right">
-                    ≈ {fmt(ethAmount)} ETH @ ${Math.round(ethPrice).toLocaleString()}/ETH
+                    ≈ {fmt(ethAmount)} ETH @ $
+                    {Math.round(ethPrice).toLocaleString()}/ETH
                   </div>
                 </div>
               </div>
 
               {/* Disclaimer */}
               <p className="mt-4 text-[11px] text-[#3a4a3a] border-t border-[#0e1f0e] pt-3">
-                Contributions are sent directly to the LP seeding address. Token distribution is based on your share of the total 2 ETH raised. Final allocation is proportional.
+                Contributions are sent directly to the LP seeding address. Token
+                distribution is based on your share of the total 2 ETH raised.
+                Final allocation is proportional.
               </p>
             </div>
           </div>
@@ -709,13 +878,19 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       {/* ── Tab bar ────────────────────────────────────────────────────────────── */}
       <div className="border-b border-[#0a1f0a] bg-[#050a05] px-5 sm:px-8">
         <div className="max-w-[1200px] mx-auto flex items-center gap-1 overflow-x-auto scrollbar-none">
-          {([ 
-            { id: "create", label: "Create Token", icon: Plus },
-            { id: "tokens", label: `My Tokens (${deployedContracts.length})`, icon: Coins },
-            { id: "gm",     label: "Send GM",       icon: Send },
-            { id: "xp",     label: "Claim 25 XP",   icon: Gift },
-            { id: "explore",label: "Explorer",       icon: Globe },
-          ] as { id: Tab; label: string; icon: any }[]).map(({ id, label, icon: Icon }) => (
+          {(
+            [
+              { id: "create", label: "Create Token", icon: Plus },
+              {
+                id: "tokens",
+                label: `My Tokens (${deployedContracts.length})`,
+                icon: Coins,
+              },
+              { id: "gm", label: "Send GM", icon: Send },
+              { id: "xp", label: "Claim 25 XP", icon: Gift },
+              { id: "explore", label: "Explorer", icon: Globe },
+            ] as { id: Tab; label: string; icon: any }[]
+          ).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
@@ -735,7 +910,6 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
 
       {/* ── Tab content ────────────────────────────────────────────────────────── */}
       <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-8">
-
         {/* CREATE TOKEN */}
         {activeTab === "create" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -746,8 +920,12 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                   <Coins size={18} className="text-[#00C805]" />
                 </div>
                 <div>
-                  <h2 className="text-[16px] font-bold text-white">Create ERC-20 Token</h2>
-                  <p className="text-[12px] text-[#5a6a55]">Deploy to Robinhood Chain Mainnet</p>
+                  <h2 className="text-[16px] font-bold text-white">
+                    Create ERC-20 Token
+                  </h2>
+                  <p className="text-[12px] text-[#5a6a55]">
+                    Deploy to Robinhood Chain Mainnet
+                  </p>
                 </div>
               </div>
 
@@ -761,7 +939,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                   <input
                     type="text"
                     value={tokenName}
-                    onChange={e => setTokenName(e.target.value)}
+                    onChange={(e) => setTokenName(e.target.value)}
                     placeholder="e.g. My Awesome Token"
                     data-testid="input-token-name"
                     className="w-full bg-[#0a1a0a] border border-[#1a2e1a] focus:border-[#00C805]/60 rounded-[10px] px-4 py-3 text-white text-[14px] outline-none transition-colors placeholder:text-[#3a4a35]"
@@ -774,7 +952,9 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                   <input
                     type="text"
                     value={tokenSymbol}
-                    onChange={e => setTokenSymbol(e.target.value.toUpperCase().slice(0, 8))}
+                    onChange={(e) =>
+                      setTokenSymbol(e.target.value.toUpperCase().slice(0, 8))
+                    }
                     placeholder="e.g. MAT"
                     data-testid="input-token-symbol"
                     className="w-full bg-[#0a1a0a] border border-[#1a2e1a] focus:border-[#00C805]/60 rounded-[10px] px-4 py-3 text-white text-[14px] outline-none transition-colors placeholder:text-[#3a4a35]"
@@ -787,21 +967,29 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                   <input
                     type="number"
                     value={tokenSupply}
-                    onChange={e => setTokenSupply(e.target.value)}
+                    onChange={(e) => setTokenSupply(e.target.value)}
                     placeholder="1000000"
                     data-testid="input-token-supply"
                     className="w-full bg-[#0a1a0a] border border-[#1a2e1a] focus:border-[#00C805]/60 rounded-[10px] px-4 py-3 text-white text-[14px] outline-none transition-colors placeholder:text-[#3a4a35]"
                   />
-                  <p className="text-[11px] text-[#3a4a35] mt-1">Decimals: 18 (standard ERC-20)</p>
+                  <p className="text-[11px] text-[#3a4a35] mt-1">
+                    Decimals: 18 (standard ERC-20)
+                  </p>
                 </div>
 
                 <button
                   onClick={deployToken}
-                  disabled={deploying || !tokenName || !tokenSymbol || !tokenSupply}
+                  disabled={
+                    deploying || !tokenName || !tokenSymbol || !tokenSupply
+                  }
                   data-testid="button-deploy-token"
                   className="w-full flex items-center justify-center gap-2 bg-[#00C805] hover:bg-[#00a804] disabled:opacity-50 active:scale-[0.98] text-black font-bold text-[15px] py-3.5 rounded-[12px] transition-all"
                 >
-                  {deploying ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />}
+                  {deploying ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Zap size={18} />
+                  )}
                   {deploying ? "Deploying…" : "Deploy Token"}
                 </button>
               </div>
@@ -811,28 +999,67 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             <div className="flex flex-col gap-4">
               {/* What happens */}
               <div className="bg-[#070f07] border border-[#0e1f0e] rounded-[16px] p-5">
-                <h3 className="text-[14px] font-bold text-white mb-4">What happens when you deploy?</h3>
+                <h3 className="text-[14px] font-bold text-white mb-4">
+                  What happens when you deploy?
+                </h3>
                 {[
-                  { n: 1, text: "Your ERC-20 contract is compiled and signed locally in your wallet" },
-                  { n: 2, text: "The contract is broadcast to Robinhood Chain Mainnet" },
-                  { n: 3, text: "Your wallet receives 100% of the initial supply" },
-                  { n: 4, text: "The contract is saved and viewable in My Tokens" },
+                  {
+                    n: 1,
+                    text: "Your ERC-20 contract is compiled and signed locally in your wallet",
+                  },
+                  {
+                    n: 2,
+                    text: "The contract is broadcast to Robinhood Chain Mainnet",
+                  },
+                  {
+                    n: 3,
+                    text: "Your wallet receives 100% of the initial supply",
+                  },
+                  {
+                    n: 4,
+                    text: "The contract is saved and viewable in My Tokens",
+                  },
                 ].map(({ n, text }) => (
-                  <div key={n} className="flex items-start gap-3 mb-3 last:mb-0">
-                    <div className="w-5 h-5 rounded-full bg-[#00C805] text-black text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{n}</div>
-                    <p className="text-[13px] text-[#8a9a85] leading-snug">{text}</p>
+                  <div
+                    key={n}
+                    className="flex items-start gap-3 mb-3 last:mb-0"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-[#00C805] text-black text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                      {n}
+                    </div>
+                    <p className="text-[13px] text-[#8a9a85] leading-snug">
+                      {text}
+                    </p>
                   </div>
                 ))}
               </div>
 
               {/* Quick links */}
               <div className="bg-[#070f07] border border-[#0e1f0e] rounded-[16px] p-5">
-                <h3 className="text-[13px] font-bold text-[#8a9a85] uppercase tracking-wider mb-3">Quick Links</h3>
+                <h3 className="text-[13px] font-bold text-[#8a9a85] uppercase tracking-wider mb-3">
+                  Quick Links
+                </h3>
                 {[
-                  { label: "Get Testnet ETH", href: FAUCET, desc: "Fund your wallet for gas" },
-                  { label: "Block Explorer",  href: EXPLORER, desc: "View deployed contracts" },
-                  { label: "Robinhood Chain Docs", href: "https://docs.robinhood.com/chain/", desc: "Official documentation" },
-                  { label: "Deploy Guide (Foundry)", href: "https://docs.robinhood.com/chain/deploy-smart-contracts/", desc: "Advanced deployment" },
+                  {
+                    label: "Bridge to RH Chain",
+                    href: RH_BRIDGE,
+                    desc: "Bridge ETH to Robinhood Chain Mainnet",
+                  },
+                  {
+                    label: "Block Explorer",
+                    href: EXPLORER,
+                    desc: "View deployed contracts",
+                  },
+                  {
+                    label: "Robinhood Chain Docs",
+                    href: "https://docs.robinhood.com/chain/",
+                    desc: "Official documentation",
+                  },
+                  {
+                    label: "Deploy Guide (Foundry)",
+                    href: "https://docs.robinhood.com/chain/deploy-smart-contracts/",
+                    desc: "Advanced deployment",
+                  },
                 ].map(({ label, href, desc }) => (
                   <a
                     key={label}
@@ -842,10 +1069,15 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                     className="flex items-center justify-between py-2.5 border-b border-[#0e1f0e] last:border-0 group"
                   >
                     <div>
-                      <div className="text-[13px] font-semibold text-[#c8d8c4] group-hover:text-[#00C805] transition-colors">{label}</div>
+                      <div className="text-[13px] font-semibold text-[#c8d8c4] group-hover:text-[#00C805] transition-colors">
+                        {label}
+                      </div>
                       <div className="text-[11px] text-[#3a4a35]">{desc}</div>
                     </div>
-                    <ExternalLink size={13} className="text-[#3a4a35] group-hover:text-[#00C805] transition-colors" />
+                    <ExternalLink
+                      size={13}
+                      className="text-[#3a4a35] group-hover:text-[#00C805] transition-colors"
+                    />
                   </a>
                 ))}
               </div>
@@ -857,7 +1089,9 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         {activeTab === "tokens" && (
           <div>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-[18px] font-bold text-white">My Deployed Tokens</h2>
+              <h2 className="text-[18px] font-bold text-white">
+                My Deployed Tokens
+              </h2>
               <button
                 onClick={() => setActiveTab("create")}
                 className="flex items-center gap-2 bg-[#00C805]/10 border border-[#00C805]/30 hover:bg-[#00C805]/20 text-[#00C805] text-[13px] font-semibold px-4 py-2 rounded-[10px] transition-all"
@@ -870,21 +1104,34 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             {deployedContracts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 border border-[#0e1f0e] rounded-[16px] bg-[#070f07]">
                 <Coins size={48} className="text-[#1a2e1a] mb-4" />
-                <p className="text-[#5a6a55] text-[15px] font-semibold">No tokens deployed yet</p>
-                <p className="text-[#3a4a35] text-[13px] mt-1">Create your first token on the Create Token tab</p>
+                <p className="text-[#5a6a55] text-[15px] font-semibold">
+                  No tokens deployed yet
+                </p>
+                <p className="text-[#3a4a35] text-[13px] mt-1">
+                  Create your first token on the Create Token tab
+                </p>
               </div>
             ) : (
               <div className="flex flex-col gap-3">
                 {deployedContracts.map((token, i) => (
-                  <div key={i} className="bg-[#070f07] border border-[#0e1f0e] rounded-[14px] p-4 sm:p-5">
+                  <div
+                    key={i}
+                    className="bg-[#070f07] border border-[#0e1f0e] rounded-[14px] p-4 sm:p-5"
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-[#00C805]/10 border border-[#00C805]/20 flex items-center justify-center flex-shrink-0">
-                          <span className="text-[#00C805] text-[11px] font-black">{token.symbol.slice(0, 3)}</span>
+                          <span className="text-[#00C805] text-[11px] font-black">
+                            {token.symbol.slice(0, 3)}
+                          </span>
                         </div>
                         <div>
-                          <div className="text-[15px] font-bold text-white">{token.name}</div>
-                          <div className="text-[12px] text-[#5a6a55] font-mono">{token.symbol}</div>
+                          <div className="text-[15px] font-bold text-white">
+                            {token.name}
+                          </div>
+                          <div className="text-[12px] text-[#5a6a55] font-mono">
+                            {token.symbol}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -921,19 +1168,40 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                     </div>
                     <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {[
-                        { label: "Supply", value: `${Number(token.supply).toLocaleString()} ${token.symbol}` },
-                        { label: "Deployed", value: new Date(token.deployedAt).toLocaleDateString() },
-                        { label: "Contract", value: `${token.address.slice(0,6)}…${token.address.slice(-4)}` },
+                        {
+                          label: "Supply",
+                          value: `${Number(token.supply).toLocaleString()} ${token.symbol}`,
+                        },
+                        {
+                          label: "Deployed",
+                          value: new Date(
+                            token.deployedAt,
+                          ).toLocaleDateString(),
+                        },
+                        {
+                          label: "Contract",
+                          value: `${token.address.slice(0, 6)}…${token.address.slice(-4)}`,
+                        },
                       ].map(({ label, value }) => (
-                        <div key={label} className="bg-[#0a1a0a] border border-[#1a2e1a] rounded-[8px] px-3 py-2">
-                          <div className="text-[10px] text-[#3a4a35] uppercase tracking-wider mb-0.5">{label}</div>
-                          <div className="text-[12px] text-[#c8d8c4] font-mono font-semibold">{value}</div>
+                        <div
+                          key={label}
+                          className="bg-[#0a1a0a] border border-[#1a2e1a] rounded-[8px] px-3 py-2"
+                        >
+                          <div className="text-[10px] text-[#3a4a35] uppercase tracking-wider mb-0.5">
+                            {label}
+                          </div>
+                          <div className="text-[12px] text-[#c8d8c4] font-mono font-semibold">
+                            {value}
+                          </div>
                         </div>
                       ))}
                     </div>
                     <div className="mt-3 flex items-center gap-4">
                       <button
-                        onClick={() => { navigator.clipboard.writeText(token.address); toast({ title: "Address copied!" }); }}
+                        onClick={() => {
+                          navigator.clipboard.writeText(token.address);
+                          toast({ title: "Address copied!" });
+                        }}
                         className="flex items-center gap-1.5 text-[12px] text-[#5a6a55] hover:text-[#00C805] transition-colors"
                       >
                         <Copy size={11} />
@@ -943,24 +1211,42 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                         <button
                           onClick={() => {
                             const supply = parseUnits(token.supply, 18);
-                            const args = encodeAbiParameters(ERC20_CONSTRUCTOR_ABI, [token.name, token.symbol, supply]);
+                            const args = encodeAbiParameters(
+                              ERC20_CONSTRUCTOR_ABI,
+                              [token.name, token.symbol, supply],
+                            );
                             setDeployedContracts((prev) => {
                               const next = prev.map((t) =>
-                                t.address === token.address ? { ...t, verifyStatus: "pending" as const } : t,
+                                t.address === token.address
+                                  ? { ...t, verifyStatus: "pending" as const }
+                                  : t,
                               );
                               saveContracts(next);
                               return next;
                             });
-                            verifyOnBlockscout(token.address, args).then((ok) => {
-                              setDeployedContracts((prev) => {
-                                const next = prev.map((t) =>
-                                  t.address === token.address ? { ...t, verifyStatus: (ok ? "verified" : "failed") as const } : t,
-                                );
-                                saveContracts(next);
-                                return next;
-                              });
-                              if (ok) toast({ title: "✅ Contract verified on Blockscout!" });
-                            });
+                            verifyOnBlockscout(token.address, args).then(
+                              (ok) => {
+                                setDeployedContracts((prev) => {
+                                  const next = prev.map((t) =>
+                                    t.address === token.address
+                                      ? {
+                                          ...t,
+                                          verifyStatus: (ok
+                                            ? "verified"
+                                            : "failed") as const,
+                                        }
+                                      : t,
+                                  );
+                                  saveContracts(next);
+                                  return next;
+                                });
+                                if (ok)
+                                  toast({
+                                    title:
+                                      "✅ Contract verified on Blockscout!",
+                                  });
+                              },
+                            );
                           }}
                           className="flex items-center gap-1.5 text-[12px] text-[#e05555] hover:text-red-300 transition-colors"
                         >
@@ -982,9 +1268,12 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             <div className="bg-[#070f07] border border-[#0e1f0e] rounded-[16px] p-6">
               <div className="text-center mb-6">
                 <div className="text-[48px] mb-3">🌅</div>
-                <h2 className="text-[22px] font-black text-white">Send GM On-Chain</h2>
+                <h2 className="text-[22px] font-black text-white">
+                  Send GM On-Chain
+                </h2>
                 <p className="text-[#5a6a55] text-[13px] mt-2">
-                  Send a "Good Morning" message on Robinhood Chain. Once per day, recorded on-chain forever.
+                  Send a "Good Morning" message on Robinhood Chain. Once per
+                  day, recorded on-chain forever.
                 </p>
               </div>
 
@@ -996,7 +1285,10 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                     <CheckCircle size={20} />
                     GM sent today!
                   </div>
-                  <p className="text-[#5a6a55] text-[13px] text-center">Come back tomorrow to send another GM and keep your streak alive.</p>
+                  <p className="text-[#5a6a55] text-[13px] text-center">
+                    Come back tomorrow to send another GM and keep your streak
+                    alive.
+                  </p>
                   {gmTxHash && (
                     <a
                       href={`${EXPLORER}/tx/${gmTxHash}`}
@@ -1016,15 +1308,20 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                   data-testid="button-send-gm"
                   className="w-full flex items-center justify-center gap-2 bg-[#00C805] hover:bg-[#00a804] disabled:opacity-50 text-black font-bold text-[16px] py-4 rounded-[12px] transition-all active:scale-[0.98]"
                 >
-                  {sendingGm ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                  {sendingGm ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Send size={18} />
+                  )}
                   {sendingGm ? "Sending…" : "GM 🌅"}
                 </button>
               )}
 
               <div className="mt-5 border-t border-[#0e1f0e] pt-4">
                 <div className="text-[11px] text-[#3a4a35] text-center">
-                  GM is stored on-chain as <code className="text-[#5a6a55]">0x474d</code> (UTF-8 encoded).
-                  Each GM uses a tiny amount of testnet ETH for gas.
+                  GM is stored on-chain as{" "}
+                  <code className="text-[#5a6a55]">0x474d</code> (UTF-8
+                  encoded). Each GM uses a tiny amount of ETH for gas.
                 </div>
               </div>
             </div>
@@ -1039,9 +1336,12 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                 <div className="w-16 h-16 rounded-full bg-[#00C805]/10 border border-[#00C805]/30 flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(0,200,5,0.15)]">
                   <Gift size={28} className="text-[#00C805]" />
                 </div>
-                <h2 className="text-[22px] font-black text-white">Claim 25 XP Daily</h2>
+                <h2 className="text-[22px] font-black text-white">
+                  Claim 25 XP Daily
+                </h2>
                 <p className="text-[#5a6a55] text-[13px] mt-2">
-                  Claim 25 XP every 24 hours by interacting with the XP contract on Robinhood Chain.
+                  Claim 25 XP every 24 hours by interacting with the XP contract
+                  on Robinhood Chain.
                 </p>
               </div>
 
@@ -1049,22 +1349,34 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               <div className="flex flex-col gap-2 mb-5">
                 {[
                   { label: "Daily Reward", value: "25 XP" },
-                  { label: "Reset Time",   value: "Every 24 hours (midnight UTC)" },
-                  { label: "Contract",     value: "Announcement pending" },
-                  { label: "Network",      value: ACTIVE_NETWORK.chainName },
+                  {
+                    label: "Reset Time",
+                    value: "Every 24 hours (midnight UTC)",
+                  },
+                  { label: "Contract", value: "Announcement pending" },
+                  { label: "Network", value: ACTIVE_NETWORK.chainName },
                 ].map(({ label, value }) => (
-                  <div key={label} className="flex justify-between items-center py-2 border-b border-[#0e1f0e] last:border-0">
+                  <div
+                    key={label}
+                    className="flex justify-between items-center py-2 border-b border-[#0e1f0e] last:border-0"
+                  >
                     <span className="text-[#5a6a55] text-[13px]">{label}</span>
-                    <span className="text-[#c8d8c4] text-[13px] font-semibold">{value}</span>
+                    <span className="text-[#c8d8c4] text-[13px] font-semibold">
+                      {value}
+                    </span>
                   </div>
                 ))}
               </div>
 
               <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-[10px] px-4 py-3 mb-4">
                 <div className="flex items-start gap-2">
-                  <Info size={14} className="text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <Info
+                    size={14}
+                    className="text-yellow-400 flex-shrink-0 mt-0.5"
+                  />
                   <p className="text-yellow-300/80 text-[12px] leading-relaxed">
-                    The XP claim contract address will be provided in an official announcement. Check back soon.
+                    The XP claim contract address will be provided in an
+                    official announcement. Check back soon.
                   </p>
                 </div>
               </div>
@@ -1075,7 +1387,11 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                 data-testid="button-claim-xp"
                 className="w-full flex items-center justify-center gap-2 bg-[#00C805] hover:bg-[#00a804] disabled:opacity-40 text-black font-bold text-[15px] py-3.5 rounded-[12px] transition-all"
               >
-                {claimingXp ? <Loader2 size={16} className="animate-spin" /> : <Gift size={16} />}
+                {claimingXp ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Gift size={16} />
+                )}
                 {xpClaimed ? "XP Claimed Today ✓" : "Claim 25 XP"}
               </button>
             </div>
@@ -1085,7 +1401,9 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         {/* EXPLORER */}
         {activeTab === "explore" && (
           <div>
-            <h2 className="text-[18px] font-bold text-white mb-5">Explore Robinhood Chain</h2>
+            <h2 className="text-[18px] font-bold text-white mb-5">
+              Explore Robinhood Chain
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
                 {
@@ -1096,11 +1414,11 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                   cta: "Open Explorer",
                 },
                 {
-                  title: "Testnet Faucet",
-                  desc: "Get free testnet ETH to pay for gas on Robinhood Chain",
-                  href: FAUCET,
-                  icon: Flame,
-                  cta: "Get Testnet ETH",
+                  title: "Bridge to RH Chain",
+                  desc: "Bridge ETH from Base or Ethereum to Robinhood Chain Mainnet",
+                  href: RH_BRIDGE,
+                  icon: Zap,
+                  cta: "Open Bridge",
                 },
                 {
                   title: "Official Docs",
@@ -1141,8 +1459,12 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                   <div className="w-10 h-10 rounded-full bg-[#00C805]/10 border border-[#00C805]/20 flex items-center justify-center mb-4 group-hover:bg-[#00C805]/20 transition-all">
                     <Icon size={18} className="text-[#00C805]" />
                   </div>
-                  <div className="font-bold text-[15px] text-white mb-1">{title}</div>
-                  <div className="text-[12px] text-[#5a6a55] leading-relaxed flex-1">{desc}</div>
+                  <div className="font-bold text-[15px] text-white mb-1">
+                    {title}
+                  </div>
+                  <div className="text-[12px] text-[#5a6a55] leading-relaxed flex-1">
+                    {desc}
+                  </div>
                   <div className="flex items-center gap-1 mt-4 text-[12px] font-semibold text-[#00C805] group-hover:gap-2 transition-all">
                     {cta}
                     <ChevronRight size={13} />
@@ -1153,21 +1475,36 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
 
             {/* Network details */}
             <div className="mt-6 bg-[#070f07] border border-[#0e1f0e] rounded-[16px] p-5">
-              <h3 className="text-[14px] font-bold text-white mb-4">Add to MetaMask / Any EVM Wallet</h3>
+              <h3 className="text-[14px] font-bold text-white mb-4">
+                Add to MetaMask / Any EVM Wallet
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
                   { label: "Network Name", value: ACTIVE_NETWORK.chainName },
-                  { label: "Chain ID",     value: ACTIVE_NETWORK.chainIdDecimal.toString() },
-                  { label: "RPC URL",      value: ACTIVE_NETWORK.rpcUrls[0] },
-                  { label: "Currency",     value: "ETH" },
-                  { label: "Explorer",     value: ACTIVE_NETWORK.blockExplorerUrls[0] },
+                  {
+                    label: "Chain ID",
+                    value: ACTIVE_NETWORK.chainIdDecimal.toString(),
+                  },
+                  { label: "RPC URL", value: ACTIVE_NETWORK.rpcUrls[0] },
+                  { label: "Currency", value: "ETH" },
+                  {
+                    label: "Explorer",
+                    value: ACTIVE_NETWORK.blockExplorerUrls[0],
+                  },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex flex-col gap-0.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#3a4a35]">{label}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#3a4a35]">
+                      {label}
+                    </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[12px] text-[#c8d8c4] font-mono break-all">{value}</span>
+                      <span className="text-[12px] text-[#c8d8c4] font-mono break-all">
+                        {value}
+                      </span>
                       <button
-                        onClick={() => { navigator.clipboard.writeText(value); toast({ title: "Copied!" }); }}
+                        onClick={() => {
+                          navigator.clipboard.writeText(value);
+                          toast({ title: "Copied!" });
+                        }}
                         className="text-[#3a4a35] hover:text-[#00C805] transition-colors flex-shrink-0"
                       >
                         <Copy size={11} />
@@ -1181,8 +1518,12 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                 disabled={switchingNetwork || isOnRH}
                 className="mt-5 flex items-center gap-2 bg-[#00C805] hover:bg-[#00a804] disabled:opacity-50 text-black font-bold text-[13px] px-5 py-2.5 rounded-[10px] transition-all"
               >
-                {switchingNetwork && <Loader2 size={13} className="animate-spin" />}
-                {isOnRH ? "✓ Already on Robinhood Chain" : "Add Robinhood Chain to Wallet"}
+                {switchingNetwork && (
+                  <Loader2 size={13} className="animate-spin" />
+                )}
+                {isOnRH
+                  ? "✓ Already on Robinhood Chain"
+                  : "Add Robinhood Chain to Wallet"}
               </button>
             </div>
           </div>
@@ -1192,7 +1533,10 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       <ConnectWalletModal
         open={walletOpen}
         onClose={() => setWalletOpen(false)}
-        onConnect={async () => { setWalletOpen(false); await wallet.connect(); }}
+        onConnect={async () => {
+          setWalletOpen(false);
+          await wallet.connect();
+        }}
       />
     </div>
   );
