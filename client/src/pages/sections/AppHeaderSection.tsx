@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ShieldCheck,
   Sparkles,
+  Check,
 } from "lucide-react";
 
 interface AppHeaderSectionProps {
@@ -39,13 +40,65 @@ const DESKTOP_NAV = [
   { value: "analytics", label: "Analytics" },
 ];
 
+const BASE_CHAIN_ID = 8453;
+const RH_CHAIN_ID   = 4663;
+
+// ─── Mini chain logos ─────────────────────────────────────────────────────────
+const BaseLogo = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+    <circle cx="9" cy="9" r="9" fill="#0052FF" />
+    <path d="M9.01 14.4c-2.98 0-5.4-2.42-5.4-5.4s2.42-5.4 5.4-5.4c2.66 0 4.87 1.93 5.32 4.46H9.97V6.33H8.06v5.34h1.91v-1.73h4.35c-.45 2.53-2.66 4.46-5.32 4.46z" fill="white" />
+  </svg>
+);
+
+const RHLogo = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+    <circle cx="9" cy="9" r="9" fill="#00C805" />
+    <path d="M9 3.5c-1.6 0-3 1.3-3 3 0 1.3.8 2.5 2 3L6 14.5h2.2l1.1-4.5 1.1 4.5H12.5L10.3 9.5c1.1-.5 1.8-1.6 1.8-3 0-1.7-1.4-3-3.1-3z" fill="white" />
+    <ellipse cx="9" cy="6.5" rx="1.8" ry="2.1" fill="#00C805" />
+    <circle cx="9" cy="6" r="0.85" fill="white" />
+  </svg>
+);
+
+// ─── Network config ───────────────────────────────────────────────────────────
+const NETWORKS = [
+  {
+    id: BASE_CHAIN_ID,
+    label: "Base",
+    sublabel: "Mainnet",
+    logo: BaseLogo,
+    color: "#0052FF",
+    explorer: "https://basescan.org",
+    explorerLabel: "Basescan",
+  },
+  {
+    id: RH_CHAIN_ID,
+    label: "Robinhood",
+    sublabel: "Mainnet",
+    logo: RHLogo,
+    color: "#00C805",
+    explorer: "https://robinhoodchain.blockscout.com",
+    explorerLabel: "RH Explorer",
+  },
+];
+
+function getNetwork(chainId: number | null) {
+  return NETWORKS.find((n) => n.id === chainId) ?? null;
+}
+
 export const AppHeaderSection = ({
   onNavSelect,
   activeTab,
 }: AppHeaderSectionProps): JSX.Element => {
   const [walletOpen, setWalletOpen] = useState(false);
-
   const wallet = useWalletContext();
+
+  const currentNet = getNetwork(wallet.chainId);
+
+  const handleNetworkSwitch = async (networkId: number) => {
+    if (networkId === BASE_CHAIN_ID) await wallet.switchToBase();
+    else if (networkId === RH_CHAIN_ID) await wallet.switchToRobinhood();
+  };
 
   return (
     <>
@@ -56,7 +109,7 @@ export const AppHeaderSection = ({
 
         <div className="relative flex min-h-[72px] sm:min-h-[84px] w-full items-center justify-between px-4 sm:px-6 md:px-8">
 
-          {/* LOGO - UNCHANGED */}
+          {/* LOGO */}
           <button
             onClick={() => onNavSelect?.("home")}
             className="flex items-center gap-2 sm:gap-3 focus:outline-none"
@@ -68,20 +121,13 @@ export const AppHeaderSection = ({
               alt="Logo"
               src="/figmaAssets/logo.png"
             />
-
             <span className="flex items-center leading-none font-['Inter',Helvetica] tracking-[0]">
-
-              <span className="font-bold text-[#ccced2] text-[20px] sm:text-[25px]">
-                Super
-              </span>
-
-              <span className="font-normal text-[#37c359] text-[22px] sm:text-[27px]">
-                Swap
-              </span>
+              <span className="font-bold text-[#ccced2] text-[20px] sm:text-[25px]">Super</span>
+              <span className="font-normal text-[#37c359] text-[22px] sm:text-[27px]">Swap</span>
             </span>
           </button>
 
-          {/* DESKTOP NAV LINKS — hidden on mobile */}
+          {/* DESKTOP NAV */}
           <nav className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
             {DESKTOP_NAV.map((item) => (
               <button
@@ -107,223 +153,268 @@ export const AppHeaderSection = ({
             </a>
           </nav>
 
-          {/* RIGHT */}
-          {wallet.isConnected && wallet.address ? (
+          {/* RIGHT — Network switcher + Wallet */}
+          <div className="flex items-center gap-2">
+
+            {/* ── Network Switcher ── */}
             <DropdownMenu>
-
               <DropdownMenuTrigger asChild>
-
                 <button
-                  data-testid="button-wallet-dropdown"
-                  className="group relative overflow-hidden rounded-[24px] border border-white/[0.06] bg-[#0B1118] px-4 py-3 transition-all duration-300 hover:border-cyan-400/20 hover:bg-[#101826] hover:shadow-[0_0_40px_rgba(34,211,238,0.08)]"
+                  data-testid="button-network-switcher"
+                  className="group flex items-center gap-2 rounded-[18px] border border-white/[0.06] bg-[#0B1118] px-3 py-2.5 transition-all duration-200 hover:border-white/[0.12] hover:bg-[#101826]"
                 >
-
-                  {/* glow */}
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_60%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-
-                  <div className="relative z-10 flex items-center gap-3">
-
-                    {/* wallet icon */}
-                    <div className="relative flex h-10 w-10 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
-
-                      <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_70%)]" />
-
-                      <Wallet className="relative z-10 h-4 w-4 text-cyan-300" />
-                    </div>
-
-                    {/* wallet info */}
-                    <div className="flex flex-col items-start leading-none">
-
-                      <div className="flex items-center gap-2">
-
-                        <span className="text-[14px] font-bold text-white">
-                          {shortAddr(wallet.address)}
-                        </span>
-
-                        <div className="flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-[3px]">
-
-                          <ShieldCheck className="h-3 w-3 text-emerald-300" />
-
-                          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-300">
-                            Secure
-                          </span>
-                        </div>
+                  {currentNet ? (
+                    <>
+                      <currentNet.logo size={18} />
+                      <span className="hidden sm:block text-[13px] font-semibold text-white whitespace-nowrap">
+                        {currentNet.label}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {/* unknown / not connected */}
+                      <div className="w-[18px] h-[18px] rounded-full bg-white/10 flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-white/30" />
                       </div>
-
-                      {wallet.balance && (
-                        <span className="mt-1 text-[12px] font-medium text-[#94A3B8]">
-                          {wallet.balance} ETH
-                        </span>
-                      )}
-                    </div>
-
-                    <ChevronDown className="h-4 w-4 text-[#64748B] transition-transform duration-300 group-data-[state=open]:rotate-180" />
-                  </div>
+                      <span className="hidden sm:block text-[13px] font-semibold text-[#64748B] whitespace-nowrap">
+                        Network
+                      </span>
+                    </>
+                  )}
+                  <ChevronDown className="h-3.5 w-3.5 text-[#64748B] transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </button>
               </DropdownMenuTrigger>
 
-              {/* DROPDOWN */}
               <DropdownMenuContent
                 align="end"
                 sideOffset={10}
-                className="w-[290px] overflow-hidden rounded-[28px] border border-white/[0.06] bg-[#070B11]/95 p-0 shadow-[0_25px_100px_rgba(0,0,0,0.65)] backdrop-blur-2xl"
+                className="w-[230px] overflow-hidden rounded-[20px] border border-white/[0.06] bg-[#070B11]/95 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
               >
-
-                {/* top */}
-                <div className="relative overflow-hidden border-b border-white/[0.05] bg-[#0B1118] p-5">
-
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_55%)]" />
-
-                  <div className="relative z-10 flex items-center gap-4">
-
-                    {/* icon */}
-                    <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
-
-                      <Wallet className="h-6 w-6 text-cyan-300" />
-                    </div>
-
-                    {/* wallet */}
-                    <div className="flex flex-col">
-
-                      <div className="flex items-center gap-2">
-
-                        <span className="text-[16px] font-black tracking-[-0.03em] text-white">
-                          {shortAddr(wallet.address)}
-                        </span>
-
-                        <Sparkles className="h-4 w-4 text-cyan-300" />
-                      </div>
-
-                      <span className="mt-1 text-[13px] text-[#94A3B8]">
-                        {wallet.balance || "0"} ETH
-                      </span>
-
-                      <span className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#64748B]">
-                        Base Mainnet
-                      </span>
-                    </div>
-                  </div>
+                <div className="px-3 py-2 mb-1">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#475569]">
+                    Select Network
+                  </p>
                 </div>
 
-                {/* ACTIONS */}
-                <div className="p-2">
-
-                  <DropdownMenuItem
-                    asChild
-                    className="group flex cursor-pointer items-center gap-3 rounded-[18px] border border-transparent px-4 py-3 transition-all hover:border-cyan-400/10 hover:bg-[#0E1621] focus:bg-[#0E1621]"
-                  >
-                    <a
-                      href={`https://basescan.org/address/${wallet.address}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      data-testid="link-view-on-basescan"
+                {NETWORKS.map((net) => {
+                  const isActive = wallet.chainId === net.id;
+                  const isConnected = wallet.isConnected;
+                  return (
+                    <DropdownMenuItem
+                      key={net.id}
+                      onClick={() => isConnected && handleNetworkSwitch(net.id)}
+                      data-testid={`button-network-${net.label.toLowerCase()}`}
+                      className={`flex items-center gap-3 rounded-[14px] px-3 py-3 cursor-pointer transition-all ${
+                        isActive
+                          ? "bg-[#0E1621] border border-white/[0.06]"
+                          : "hover:bg-[#0E1621] border border-transparent"
+                      } ${!isConnected ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
-
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#111827] transition-all group-hover:bg-cyan-400/10">
-
-                        <ExternalLink className="h-4 w-4 text-cyan-300" />
-                      </div>
-
-                      <div className="flex flex-col">
-
-                        <span className="text-[14px] font-semibold text-white">
-                          View on Basescan
+                      <net.logo size={28} />
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <span className="text-[14px] font-bold text-white leading-tight">
+                          {net.label}
                         </span>
-
-                        <span className="text-[12px] text-[#64748B]">
-                          Open wallet explorer
+                        <span className="text-[11px] text-[#64748B]">
+                          {net.sublabel} · Chain {net.id}
                         </span>
                       </div>
-                    </a>
-                  </DropdownMenuItem>
+                      {isActive && (
+                        <div
+                          className="flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: net.color + "22", border: `1px solid ${net.color}44` }}
+                        >
+                          <Check className="w-3 h-3" style={{ color: net.color }} />
+                        </div>
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })}
 
-                  <DropdownMenuSeparator className="my-2 bg-white/[0.04]" />
-
-                  <DropdownMenuItem
-                    onClick={() => wallet.disconnect()}
-                    data-testid="button-disconnect-wallet"
-                    className="group flex cursor-pointer items-center gap-3 rounded-[18px] border border-transparent px-4 py-3 transition-all hover:border-red-400/10 hover:bg-[#140D10] focus:bg-[#140D10]"
-                  >
-
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#111827] transition-all group-hover:bg-red-400/10">
-
-                      <LogOut className="h-4 w-4 text-red-300" />
-                    </div>
-
-                    <div className="flex flex-col">
-
-                      <span className="text-[14px] font-semibold text-red-200">
-                        Disconnect Wallet
-                      </span>
-
-                      <span className="text-[12px] text-[#64748B]">
-                        End current session
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                </div>
+                {!wallet.isConnected && (
+                  <div className="px-3 pt-2 pb-1">
+                    <p className="text-[11px] text-[#475569] text-center">
+                      Connect your wallet to switch networks
+                    </p>
+                  </div>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setWalletOpen(true)}
-              data-testid="button-connect-wallet"
-              className="group relative overflow-hidden rounded-[22px] border border-cyan-400/10 bg-[#0B1118] px-5 py-6 text-white transition-all duration-300 hover:border-cyan-400/20 hover:bg-[#101826] hover:shadow-[0_0_40px_rgba(34,211,238,0.08)]"
-            >
 
-              {/* glow */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_65%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+            {/* ── Wallet button ── */}
+            {wallet.isConnected && wallet.address ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    data-testid="button-wallet-dropdown"
+                    className="group relative overflow-hidden rounded-[24px] border border-white/[0.06] bg-[#0B1118] px-4 py-3 transition-all duration-300 hover:border-cyan-400/20 hover:bg-[#101826] hover:shadow-[0_0_40px_rgba(34,211,238,0.08)]"
+                  >
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_60%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                    <div className="relative z-10 flex items-center gap-3">
+                      <div className="relative flex h-10 w-10 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
+                        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_70%)]" />
+                        <Wallet className="relative z-10 h-4 w-4 text-cyan-300" />
+                      </div>
+                      <div className="flex flex-col items-start leading-none">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[14px] font-bold text-white">
+                            {shortAddr(wallet.address)}
+                          </span>
+                          <div className="flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-[3px]">
+                            <ShieldCheck className="h-3 w-3 text-emerald-300" />
+                            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-300">
+                              Secure
+                            </span>
+                          </div>
+                        </div>
+                        {wallet.balance && (
+                          <span className="mt-1 text-[12px] font-medium text-[#94A3B8]">
+                            {wallet.balance} ETH
+                          </span>
+                        )}
+                      </div>
+                      <ChevronDown className="h-4 w-4 text-[#64748B] transition-transform duration-300 group-data-[state=open]:rotate-180" />
+                    </div>
+                  </button>
+                </DropdownMenuTrigger>
 
-              <span className="relative z-10 flex items-center gap-3 text-[15px] font-bold">
+                <DropdownMenuContent
+                  align="end"
+                  sideOffset={10}
+                  className="w-[290px] overflow-hidden rounded-[28px] border border-white/[0.06] bg-[#070B11]/95 p-0 shadow-[0_25px_100px_rgba(0,0,0,0.65)] backdrop-blur-2xl"
+                >
+                  {/* top */}
+                  <div className="relative overflow-hidden border-b border-white/[0.05] bg-[#0B1118] p-5">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_55%)]" />
+                    <div className="relative z-10 flex items-center gap-4">
+                      <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
+                        <Wallet className="h-6 w-6 text-cyan-300" />
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[16px] font-black tracking-[-0.03em] text-white">
+                            {shortAddr(wallet.address)}
+                          </span>
+                          <Sparkles className="h-4 w-4 text-cyan-300" />
+                        </div>
+                        <span className="mt-1 text-[13px] text-[#94A3B8]">
+                          {wallet.balance || "0"} ETH
+                        </span>
+                        <span className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#64748B]">
+                          {currentNet ? `${currentNet.label} ${currentNet.sublabel}` : "Unknown Network"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
+                  {/* ACTIONS */}
+                  <div className="p-2">
+                    <DropdownMenuItem
+                      asChild
+                      className="group flex cursor-pointer items-center gap-3 rounded-[18px] border border-transparent px-4 py-3 transition-all hover:border-cyan-400/10 hover:bg-[#0E1621] focus:bg-[#0E1621]"
+                    >
+                      <a
+                        href={
+                          currentNet
+                            ? `${currentNet.explorer}/address/${wallet.address}`
+                            : `https://basescan.org/address/${wallet.address}`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid="link-view-on-explorer"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#111827] transition-all group-hover:bg-cyan-400/10">
+                          <ExternalLink className="h-4 w-4 text-cyan-300" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[14px] font-semibold text-white">
+                            View on {currentNet?.explorerLabel ?? "Explorer"}
+                          </span>
+                          <span className="text-[12px] text-[#64748B]">
+                            Open wallet explorer
+                          </span>
+                        </div>
+                      </a>
+                    </DropdownMenuItem>
 
-                  <img
-                    className="h-4 w-4 object-contain"
-                    alt="Wallet"
-                    src="/figmaAssets/image-30.png"
-                  />
-                </div>
+                    <DropdownMenuSeparator className="my-2 bg-white/[0.04]" />
 
-                {wallet.isConnecting ? (
-                  <span className="text-[14px] text-cyan-300">
-                    Connecting...
-                  </span>
-                ) : (
-                  <span className="tracking-[-0.02em]">
-                    Connect Wallet
-                  </span>
-                )}
-              </span>
-            </Button>
-          )}
+                    <DropdownMenuItem
+                      onClick={() => wallet.disconnect()}
+                      data-testid="button-disconnect-wallet"
+                      className="group flex cursor-pointer items-center gap-3 rounded-[18px] border border-transparent px-4 py-3 transition-all hover:border-red-400/10 hover:bg-[#140D10] focus:bg-[#140D10]"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#111827] transition-all group-hover:bg-red-400/10">
+                        <LogOut className="h-4 w-4 text-red-300" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[14px] font-semibold text-red-200">
+                          Disconnect Wallet
+                        </span>
+                        <span className="text-[12px] text-[#64748B]">
+                          End current session
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setWalletOpen(true)}
+                data-testid="button-connect-wallet"
+                className="group relative overflow-hidden rounded-[22px] border border-cyan-400/10 bg-[#0B1118] px-5 py-6 text-white transition-all duration-300 hover:border-cyan-400/20 hover:bg-[#101826] hover:shadow-[0_0_40px_rgba(34,211,238,0.08)]"
+              >
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_65%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <span className="relative z-10 flex items-center gap-3 text-[15px] font-bold">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
+                    <img
+                      className="h-4 w-4 object-contain"
+                      alt="Wallet"
+                      src="/figmaAssets/image-30.png"
+                    />
+                  </div>
+                  {wallet.isConnecting ? (
+                    <span className="text-[14px] text-cyan-300">Connecting...</span>
+                  ) : (
+                    <span className="tracking-[-0.02em]">Connect Wallet</span>
+                  )}
+                </span>
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* WRONG NETWORK */}
+        {/* WRONG NETWORK BANNER — only shows when on an unrecognised chain */}
         {wallet.isWrongNetwork && wallet.isConnected && (
           <div className="border-t border-red-400/10 bg-[#140D10] px-4 py-3 sm:px-6">
-
             <div className="flex items-center justify-between gap-4">
-
               <div className="flex flex-col">
-
                 <span className="text-[13px] font-semibold text-red-300">
-                  Wrong Network Detected
+                  Unsupported Network
                 </span>
-
                 <span className="mt-1 text-[12px] text-[#FCA5A5]">
-                  Please switch to Base Mainnet
+                  Switch to Base or Robinhood Chain
                 </span>
               </div>
-
-              <button
-                onClick={wallet.switchToBase}
-                className="rounded-[14px] border border-red-400/10 bg-red-400/10 px-4 py-2 text-[13px] font-bold text-red-200 transition-all hover:bg-red-400/20"
-              >
-                Switch Network
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={wallet.switchToBase}
+                  className="flex items-center gap-1.5 rounded-[14px] border border-red-400/10 bg-red-400/10 px-3 py-2 text-[12px] font-bold text-red-200 transition-all hover:bg-red-400/20"
+                >
+                  <BaseLogo size={14} />
+                  Base
+                </button>
+                <button
+                  onClick={wallet.switchToRobinhood}
+                  className="flex items-center gap-1.5 rounded-[14px] border border-red-400/10 bg-red-400/10 px-3 py-2 text-[12px] font-bold text-red-200 transition-all hover:bg-red-400/20"
+                >
+                  <RHLogo size={14} />
+                  Robinhood
+                </button>
+              </div>
             </div>
           </div>
         )}

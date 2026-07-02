@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { BASE_CHAIN_ID, BASE_CHAIN_HEX } from "@/lib/tokens";
 
+const RH_CHAIN_ID  = 4663;
+const RH_CHAIN_HEX = "0x1237";
+
+// A "valid" network is either Base mainnet or Robinhood Chain mainnet
+const VALID_CHAIN_IDS = new Set([BASE_CHAIN_ID, RH_CHAIN_ID]);
+
 export interface WalletState {
   address: string | null;
   chainId: number | null;
@@ -57,7 +63,7 @@ export function useWallet() {
           address: accounts[0],
           chainId,
           isConnected: true,
-          isWrongNetwork: chainId !== BASE_CHAIN_ID,
+          isWrongNetwork: !VALID_CHAIN_IDS.has(chainId),
           error: null,
         });
         await fetchBalance(accounts[0]);
@@ -80,7 +86,7 @@ export function useWallet() {
     };
     const onChainChanged = (chainIdHex: string) => {
       const chainId = parseInt(chainIdHex, 16);
-      updateState({ chainId, isWrongNetwork: chainId !== BASE_CHAIN_ID });
+      updateState({ chainId, isWrongNetwork: !VALID_CHAIN_IDS.has(chainId) });
       if (state.address) fetchBalance(state.address);
     };
     window.ethereum.on("accountsChanged", onAccounts);
@@ -106,7 +112,7 @@ export function useWallet() {
         chainId,
         isConnected: true,
         isConnecting: false,
-        isWrongNetwork: chainId !== BASE_CHAIN_ID,
+        isWrongNetwork: !VALID_CHAIN_IDS.has(chainId),
         error: null,
       });
       await fetchBalance(accounts[0]);
@@ -115,13 +121,9 @@ export function useWallet() {
     }
   }, []);
 
-  // ── Auto-connect when running inside Base Mini App frame ────────────────────────────────────────────────────────────────────
+  // ── Auto-connect when running inside Base Mini App frame ──────────────────
   const autoConnectMiniApp = useCallback(async () => {
     if (!window.ethereum) return;
-    // When the host (Base App / Coinbase Wallet) embeds us, the provider
-    // is already injected and often pre-authorised. We try eth_accounts
-    // silently first — if there’s already an account, we connect without
-    // popping a permission prompt.
     try {
       const accounts: string[] = await window.ethereum.request({ method: "eth_accounts" });
       if (accounts.length > 0) {
@@ -132,13 +134,12 @@ export function useWallet() {
           chainId,
           isConnected: true,
           isConnecting: false,
-          isWrongNetwork: chainId !== BASE_CHAIN_ID,
+          isWrongNetwork: !VALID_CHAIN_IDS.has(chainId),
           error: null,
         });
         await fetchBalance(accounts[0]);
         return true;
       }
-      // No pre-authorised accounts → fall back to full connect
       await connect();
       return true;
     } catch {
@@ -146,6 +147,7 @@ export function useWallet() {
     }
   }, [connect, fetchBalance]);
 
+  // ── Switch to Base ────────────────────────────────────────────────────────
   const switchToBase = useCallback(async () => {
     if (!window.ethereum) return;
     try {
@@ -173,6 +175,34 @@ export function useWallet() {
     }
   }, []);
 
+  // ── Switch to Robinhood Chain ────────────────────────────────────────────
+  const switchToRobinhood = useCallback(async () => {
+    if (!window.ethereum) return;
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: RH_CHAIN_HEX }],
+      });
+    } catch (err: any) {
+      if (err.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: RH_CHAIN_HEX,
+              chainName: "Robinhood Chain",
+              nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["https://rpc.mainnet.chain.robinhood.com/"],
+              blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
+            }],
+          });
+        } catch {
+          updateState({ error: "Failed to add Robinhood Chain" });
+        }
+      }
+    }
+  }, []);
+
   const disconnect = useCallback(() => {
     setState({ address: null, chainId: null, balance: null, isConnected: false, isConnecting: false, isWrongNetwork: false, error: null });
   }, []);
@@ -186,5 +216,5 @@ export function useWallet() {
     return txHash;
   }, [state.address]);
 
-  return { ...state, connect, disconnect, switchToBase, sendTransaction, autoConnectMiniApp };
+  return { ...state, connect, disconnect, switchToBase, switchToRobinhood, sendTransaction, autoConnectMiniApp };
 }

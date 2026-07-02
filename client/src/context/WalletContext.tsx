@@ -5,6 +5,7 @@ interface WalletContextType extends WalletState {
   connect: () => Promise<void>;
   disconnect: () => void;
   switchToBase: () => Promise<void>;
+  switchToRobinhood: () => Promise<void>;
   sendTransaction: (tx: { to: string; data: string; value?: string; gas?: string }) => Promise<string>;
   autoConnectMiniApp: () => Promise<boolean | undefined>;
 }
