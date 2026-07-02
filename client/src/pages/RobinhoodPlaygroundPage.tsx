@@ -38,9 +38,9 @@ const RH_TESTNET = {
   blockExplorerUrls: ["https://explorer.testnet.chain.robinhood.com"],
 };
 
-// Default to testnet for safety (mainnet RPC may not be stable yet)
-const ACTIVE_NETWORK = RH_TESTNET;
-const EXPLORER = ACTIVE_NETWORK.blockExplorerUrls[0];
+// Robinhood Chain Mainnet
+const ACTIVE_NETWORK = RH_MAINNET;
+const EXPLORER = "https://robinhoodchain.blockscout.com";
 const FAUCET = "https://faucet.testnet.chain.robinhood.com";
 const RH_RPC = ACTIVE_NETWORK.rpcUrls[0];
 
@@ -302,7 +302,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#00C805]">Robinhood Chain</span>
                 <span className="bg-[#00C805]/10 border border-[#00C805]/30 text-[#00C805] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">
-                  Testnet
+                  Mainnet
                 </span>
               </div>
               <h1 className="text-[26px] sm:text-[32px] font-black tracking-tight text-white leading-tight">
@@ -420,7 +420,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                 </div>
                 <div>
                   <h2 className="text-[16px] font-bold text-white">Create ERC-20 Token</h2>
-                  <p className="text-[12px] text-[#5a6a55]">Deploy to Robinhood Chain Testnet</p>
+                  <p className="text-[12px] text-[#5a6a55]">Deploy to Robinhood Chain Mainnet</p>
                 </div>
               </div>
 
@@ -487,7 +487,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                 <h3 className="text-[14px] font-bold text-white mb-4">What happens when you deploy?</h3>
                 {[
                   { n: 1, text: "Your ERC-20 contract is compiled and signed locally in your wallet" },
-                  { n: 2, text: "The contract is broadcast to Robinhood Chain Testnet" },
+                  { n: 2, text: "The contract is broadcast to Robinhood Chain Mainnet" },
                   { n: 3, text: "Your wallet receives 100% of the initial supply" },
                   { n: 4, text: "The contract is saved and viewable in My Tokens" },
                 ].map(({ n, text }) => (
