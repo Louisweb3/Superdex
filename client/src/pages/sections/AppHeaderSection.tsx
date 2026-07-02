@@ -1,4 +1,6 @@
 import { useState } from "react";
+import rhLogoSrc from "@assets/unnamed_(4)_1782977968316.png";
+import baseLogoSrc from "@assets/base_logo_1782978064400.png";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -45,19 +47,11 @@ const RH_CHAIN_ID   = 4663;
 
 // ─── Mini chain logos ─────────────────────────────────────────────────────────
 const BaseLogo = ({ size = 18 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 18 18" fill="none">
-    <circle cx="9" cy="9" r="9" fill="#0052FF" />
-    <path d="M9.01 14.4c-2.98 0-5.4-2.42-5.4-5.4s2.42-5.4 5.4-5.4c2.66 0 4.87 1.93 5.32 4.46H9.97V6.33H8.06v5.34h1.91v-1.73h4.35c-.45 2.53-2.66 4.46-5.32 4.46z" fill="white" />
-  </svg>
+  <img src={baseLogoSrc} width={size} height={size} alt="Base" style={{ borderRadius: "50%", display: "block" }} />
 );
 
 const RHLogo = ({ size = 18 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 18 18" fill="none">
-    <circle cx="9" cy="9" r="9" fill="#00C805" />
-    <path d="M9 3.5c-1.6 0-3 1.3-3 3 0 1.3.8 2.5 2 3L6 14.5h2.2l1.1-4.5 1.1 4.5H12.5L10.3 9.5c1.1-.5 1.8-1.6 1.8-3 0-1.7-1.4-3-3.1-3z" fill="white" />
-    <ellipse cx="9" cy="6.5" rx="1.8" ry="2.1" fill="#00C805" />
-    <circle cx="9" cy="6" r="0.85" fill="white" />
-  </svg>
+  <img src={rhLogoSrc} width={size} height={size} alt="Robinhood Chain" style={{ borderRadius: "50%", display: "block" }} />
 );
 
 // ─── Network config ───────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import rhLogoSrc from "@assets/unnamed_(4)_1782977968316.png";
 import { encodeAbiParameters, parseUnits } from "viem";
 import { useWalletContext } from "@/context/WalletContext";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
@@ -175,17 +176,9 @@ async function waitForReceipt(txHash: string, rpc: string, maxMs = 60_000): Prom
   throw new Error("Timed out waiting for receipt");
 }
 
-// ─── Robinhood feather logo SVG ───────────────────────────────────────────────
+// ─── Robinhood logo ────────────────────────────────────────────────────────────
 const RobinhoodLogo = ({ size = 32 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-    <circle cx="16" cy="16" r="16" fill="#00C805" />
-    <path
-      d="M16 5C13 5 10 7.5 10 11c0 2.5 1.5 4.5 3.5 5.5L10 27h4l2-8 2 8h4L18.5 16.5C20.5 15.5 22 13.5 22 11c0-3.5-3-6-6-6z"
-      fill="white"
-    />
-    <ellipse cx="16" cy="11" rx="3.5" ry="4" fill="#00C805" />
-    <circle cx="16" cy="10" r="1.5" fill="white" />
-  </svg>
+  <img src={rhLogoSrc} width={size} height={size} alt="Robinhood" style={{ borderRadius: "50%", display: "block" }} />
 );
 
 // ─── Tab types ────────────────────────────────────────────────────────────────
