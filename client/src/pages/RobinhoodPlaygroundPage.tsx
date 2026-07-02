@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import rhLogoSrc from "@assets/unnamed_(4)_1782977968316.png";
+import robInuBannerSrc from "@assets/9D6965AA-F6C3-47D2-B4EF-3173224FB1AF_1782986675007.png";
 import { encodeAbiParameters, parseUnits } from "viem";
 import { useWalletContext } from "@/context/WalletContext";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
@@ -102,6 +103,32 @@ contract Token {
         return true;
     }
 }`;
+
+const BASE_MAINNET = {
+  chainId: "0x2105" as const,
+  chainIdDecimal: 8453,
+  chainName: "Base",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: ["https://mainnet.base.org"],
+  blockExplorerUrls: ["https://basescan.org"],
+};
+const BASE_RPC = "https://mainnet.base.org";
+
+const LP_ADDRESS = "0x42d919355c70Dd47c2282853A333ACB414a446de";
+const LP_MAX_ETH = 2;
+const ROBIINU_COMMUNITY_ALLOC = 200_000_000;
+
+async function fetchEthBalance(address: string, rpc: string): Promise<number> {
+  try {
+    const res = await fetch(rpc, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [address, "latest"] }),
+    });
+    const { result } = await res.json();
+    return result ? parseInt(result, 16) / 1e18 : 0;
+  } catch { return 0; }
+}
 
 const BLOCKSCOUT_API = "https://robinhoodchain.blockscout.com/api/v2/smart-contracts";
 
@@ -211,6 +238,15 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
   const [claimingXp, setClaimingXp] = useState(false);
   const [xpClaimed, setXpClaimed] = useState(hasClaimedXpToday());
 
+  // RobInu LP contribution state
+  const [baseLPBal, setBaseLPBal] = useState(0);
+  const [rhLPBal, setRhLPBal] = useState(0);
+  const [ethPrice, setEthPrice] = useState(2500);
+  const [contribNetwork, setContribNetwork] = useState<"base" | "rh">("base");
+  const [contribUsd, setContribUsd] = useState(10);
+  const [contributing, setContributing] = useState(false);
+  const [lpLoading, setLpLoading] = useState(true);
+
   // Check if on Robinhood Chain
   useEffect(() => {
     if (!wallet.isConnected) { setIsOnRH(false); return; }
@@ -229,6 +265,72 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
     (window as any).ethereum?.on("chainChanged", checkChain);
     return () => (window as any).ethereum?.removeListener("chainChanged", checkChain);
   }, [wallet.isConnected]);
+
+  // ─── Fetch LP balances + ETH price ──────────────────────────────────────────
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      setLpLoading(true);
+      const [base, rh] = await Promise.all([
+        fetchEthBalance(LP_ADDRESS, BASE_RPC),
+        fetchEthBalance(LP_ADDRESS, RH_RPC),
+      ]);
+      if (!mounted) return;
+      setBaseLPBal(base);
+      setRhLPBal(rh);
+      try {
+        const r = await fetch("https://api.coinbase.com/v2/prices/ETH-USD/spot");
+        const d = await r.json();
+        if (d.data?.amount && mounted) setEthPrice(parseFloat(d.data.amount));
+      } catch {}
+      setLpLoading(false);
+    }
+    load();
+    const iv = setInterval(load, 30_000);
+    return () => { mounted = false; clearInterval(iv); };
+  }, []);
+
+  // ─── Contribute to LP ────────────────────────────────────────────────────────
+  const contributeToLP = useCallback(async () => {
+    if (!wallet.isConnected) { setWalletOpen(true); return; }
+    const ethAmount = contribUsd / ethPrice;
+    const weiHex = "0x" + Math.floor(ethAmount * 1e18).toString(16);
+    const targetNet = contribNetwork === "base" ? BASE_MAINNET : ACTIVE_NETWORK;
+    setContributing(true);
+    try {
+      try {
+        await (window as any).ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: targetNet.chainId }],
+        });
+      } catch (sw: any) {
+        if (sw.code === 4902) {
+          await (window as any).ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [targetNet],
+          });
+        } else throw sw;
+      }
+      const accs = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
+      const txHash = await (window as any).ethereum.request({
+        method: "eth_sendTransaction",
+        params: [{ from: accs[0], to: LP_ADDRESS, value: weiHex }],
+      });
+      toast({ title: "🎉 Contribution sent!", description: `TX: ${String(txHash).slice(0, 20)}…` });
+      setTimeout(async () => {
+        const [b, r] = await Promise.all([
+          fetchEthBalance(LP_ADDRESS, BASE_RPC),
+          fetchEthBalance(LP_ADDRESS, RH_RPC),
+        ]);
+        setBaseLPBal(b);
+        setRhLPBal(r);
+      }, 8000);
+    } catch (e: any) {
+      toast({ title: "Contribution failed", description: e.message, variant: "destructive" });
+    } finally {
+      setContributing(false);
+    }
+  }, [wallet, contribUsd, ethPrice, contribNetwork, toast]);
 
   // ─── Switch to Robinhood Chain ──────────────────────────────────────────────
   const switchToRH = useCallback(async () => {
@@ -460,6 +562,150 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
           </a>
         </div>
       </div>
+
+      {/* ── RobInu LP Contribution ─────────────────────────────────────────────── */}
+      {(() => {
+        const totalRaised = baseLPBal + rhLPBal;
+        const pct = Math.min((totalRaised / LP_MAX_ETH) * 100, 100);
+        const ethAmount = contribUsd / ethPrice;
+        const tokensForContrib = (ethAmount / LP_MAX_ETH) * ROBIINU_COMMUNITY_ALLOC;
+        const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+        const fmtM = (n: number) =>
+          n >= 1_000_000
+            ? (n / 1_000_000).toFixed(2) + "M"
+            : n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+        return (
+          <div className="max-w-[1200px] mx-auto px-5 sm:px-8 pt-8 pb-2">
+            {/* Banner */}
+            <img
+              src={robInuBannerSrc}
+              alt="Robin Inu — The rFirst Community Backed Memecoin on Robinhood"
+              className="w-full rounded-[18px] object-cover mb-5"
+              style={{ aspectRatio: "1200/628" }}
+              data-testid="robinu-banner"
+            />
+
+            {/* Contribution card */}
+            <div className="bg-[#070f07] border border-[#0e2e0e] rounded-[20px] p-6">
+              {/* Header row */}
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-[22px] font-black text-white leading-tight">$RobInu LP Contribution</h2>
+                  <p className="text-[13px] text-[#5a7a55] mt-1">
+                    Contribute ETH to seed the $RobInu liquidity pool on Robinhood Chain.
+                    <br />
+                    <span className="text-[#c8d8c4]">20% of the 1B total supply (200M $RobInu)</span> is allocated to community contributors.
+                  </p>
+                </div>
+                <div className="shrink-0 text-right bg-[#00C805]/5 border border-[#00C805]/20 rounded-[12px] px-4 py-2.5">
+                  <div className="text-[11px] text-[#5a7a55] uppercase tracking-wider mb-0.5">Community Allocation</div>
+                  <div className="text-[26px] font-black text-[#00C805] leading-tight">200M</div>
+                  <div className="text-[12px] text-[#5a7a55]">$RobInu tokens</div>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[13px] font-bold text-white">
+                    {lpLoading ? "Loading…" : `${fmt(totalRaised)} ETH raised`}
+                  </span>
+                  <span className="text-[13px] text-[#5a7a55]">Goal: {LP_MAX_ETH} ETH</span>
+                </div>
+                <div className="relative h-4 w-full rounded-full bg-[#0e1f0e] overflow-hidden border border-[#1a3a1a]">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
+                    style={{
+                      width: `${pct}%`,
+                      background: "linear-gradient(90deg, #00C805 0%, #5dff61 100%)",
+                      boxShadow: pct > 0 ? "0 0 12px rgba(0,200,5,0.5)" : "none",
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-2 text-[11px] text-[#5a6a55]">
+                  <span>Base: {lpLoading ? "…" : `${fmt(baseLPBal)} ETH`}</span>
+                  <span className="font-bold text-[#00C805]">{pct.toFixed(1)}% filled</span>
+                  <span>RH Chain: {lpLoading ? "…" : `${fmt(rhLPBal)} ETH`}</span>
+                </div>
+              </div>
+
+              {/* Network + Amount + CTA */}
+              <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
+                {/* Network selector */}
+                <div className="flex-1">
+                  <label className="block text-[11px] text-[#5a7a55] uppercase tracking-wider mb-2">Network</label>
+                  <div className="flex gap-2">
+                    {(["base", "rh"] as const).map((net) => (
+                      <button
+                        key={net}
+                        onClick={() => setContribNetwork(net)}
+                        data-testid={`contrib-network-${net}`}
+                        className={`flex-1 py-2.5 rounded-[10px] text-[13px] font-bold border transition-all ${
+                          contribNetwork === net
+                            ? "bg-[#00C805]/15 border-[#00C805] text-[#00C805]"
+                            : "bg-[#0a1a0a] border-[#1a2e1a] text-[#5a7a55] hover:border-[#00C805]/40 hover:text-[#c8d8c4]"
+                        }`}
+                      >
+                        {net === "base" ? "Base" : "RH Chain"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Amount selector */}
+                <div className="flex-1">
+                  <label className="block text-[11px] text-[#5a7a55] uppercase tracking-wider mb-2">
+                    Amount (USD · min $10, max $50)
+                  </label>
+                  <div className="flex gap-2">
+                    {[10, 25, 50].map((amt) => (
+                      <button
+                        key={amt}
+                        onClick={() => setContribUsd(amt)}
+                        data-testid={`contrib-amount-${amt}`}
+                        className={`flex-1 py-2.5 rounded-[10px] text-[13px] font-bold border transition-all ${
+                          contribUsd === amt
+                            ? "bg-[#00C805]/15 border-[#00C805] text-[#00C805]"
+                            : "bg-[#0a1a0a] border-[#1a2e1a] text-[#5a7a55] hover:border-[#00C805]/40 hover:text-[#c8d8c4]"
+                        }`}
+                      >
+                        ${amt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Contribute CTA */}
+                <div className="flex-shrink-0">
+                  <div className="text-[11px] text-[#5a7a55] uppercase tracking-wider mb-2 sm:text-right">
+                    You receive (est.)
+                  </div>
+                  <button
+                    onClick={contributeToLP}
+                    disabled={contributing || pct >= 100}
+                    data-testid="btn-contribute-lp"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#00C805] hover:bg-[#00a804] disabled:opacity-50 text-black font-black text-[14px] px-6 py-2.5 rounded-[12px] transition-all whitespace-nowrap"
+                  >
+                    {contributing && <Loader2 size={14} className="animate-spin" />}
+                    {pct >= 100
+                      ? "Goal Reached!"
+                      : `Contribute $${contribUsd} · ${fmtM(tokensForContrib)} $RobInu`}
+                  </button>
+                  <div className="text-[11px] text-[#5a6a55] mt-1 sm:text-right">
+                    ≈ {fmt(ethAmount)} ETH @ ${Math.round(ethPrice).toLocaleString()}/ETH
+                  </div>
+                </div>
+              </div>
+
+              {/* Disclaimer */}
+              <p className="mt-4 text-[11px] text-[#3a4a3a] border-t border-[#0e1f0e] pt-3">
+                Contributions are sent directly to the LP seeding address. Token distribution is based on your share of the total 2 ETH raised. Final allocation is proportional.
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Tab bar ────────────────────────────────────────────────────────────── */}
       <div className="border-b border-[#0a1f0a] bg-[#050a05] px-5 sm:px-8">
