@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import rhBannerSrc from "@assets/B24A8016-13DF-4C1F-A843-15347BD40816_1782981867823.png";
 import { Card, CardContent } from "@/components/ui/card";
 import { AppHeaderSection } from "./sections/AppHeaderSection";
 import { AssetTickerNavSection } from "./sections/AssetTickerNavSection";
@@ -174,6 +175,18 @@ export const LandinHome = (): JSX.Element => {
                       </a>
                     </div>
                   </div>
+                </section>
+
+                {/* Robinhood Chain banner */}
+                <section className="w-full px-[14px] sm:px-[18px] pt-[10px] sm:pt-[12px]">
+                  <button onClick={() => navigate("/robinhood")} className="block w-full" data-testid="banner-robinhood">
+                    <img
+                      src={rhBannerSrc}
+                      alt="SuperSwap × Robinhood — Create. Deploy. Earn XP. Send GM."
+                      className="w-full rounded-[16px] object-cover"
+                      style={{ aspectRatio: "1200/628" }}
+                    />
+                  </button>
                 </section>
 
                 {/* SuperDEX PERP banner */}
