@@ -37,7 +37,7 @@ const RH_MAINNET = {
 // Robinhood Chain Mainnet
 const ACTIVE_NETWORK = RH_MAINNET;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
-const RH_BRIDGE = "https://bridge.robinhoodchain.com";
+const RH_BRIDGE = "https://relay.link";
 const RH_RPC = ACTIVE_NETWORK.rpcUrls[0];
 
 // ─── Minimal ERC-20 bytecode ──────────────────────────────────────────────────
@@ -822,7 +822,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                     Amount (USD · min $10, max $50)
                   </label>
                   <div className="flex gap-2">
-                    {[10, 25, 50].map((amt) => (
+                    {[10, 25, 50, 200].map((amt) => (
                       <button
                         key={amt}
                         onClick={() => setContribUsd(amt)}
