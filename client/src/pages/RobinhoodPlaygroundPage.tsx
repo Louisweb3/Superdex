@@ -581,8 +581,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             <img
               src={robInuBannerSrc}
               alt="Robin Inu — The rFirst Community Backed Memecoin on Robinhood"
-              className="w-full rounded-[18px] object-cover mb-5"
-              style={{ aspectRatio: "1200/628" }}
+              className="w-full h-auto rounded-[18px] block mb-5"
               data-testid="robinu-banner"
             />
 

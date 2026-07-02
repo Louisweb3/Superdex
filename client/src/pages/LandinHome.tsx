@@ -183,8 +183,7 @@ export const LandinHome = (): JSX.Element => {
                     <img
                       src={rhBannerSrc}
                       alt="SuperSwap × Robinhood — Create. Deploy. Earn XP. Send GM."
-                      className="w-full rounded-[16px] object-cover"
-                      style={{ aspectRatio: "1200/628" }}
+                      className="w-full h-auto rounded-[16px] block"
                     />
                   </button>
                 </section>
