@@ -822,7 +822,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                     Amount (USD · min $10, max $50)
                   </label>
                   <div className="flex gap-2">
-                    {[10, 25, 50, 200].map((amt) => (
+                    {[10, 25, 50].map((amt) => (
                       <button
                         key={amt}
                         onClick={() => setContribUsd(amt)}
