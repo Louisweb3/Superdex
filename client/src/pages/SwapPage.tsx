@@ -5,7 +5,10 @@ import {
   Search, TrendingUp, Wallet
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip, YAxis } from "recharts";
-import { TOKENS, DEX_SOURCES, type Token, parseAmount, encodeApprove, NATIVE_ETH_ADDRESS, toHexWei } from "@/lib/tokens";
+import {
+  TOKENS, DEX_SOURCES, type Token, parseAmount, encodeApprove, NATIVE_ETH_ADDRESS, toHexWei,
+  BASE_CHAIN_ID, RH_CHAIN_ID, RH_TOKENS, fetchErc20TokenMeta,
+} from "@/lib/tokens";
 import { useWalletContext } from "@/context/WalletContext";
 import { useSwapPrice, fetchSwapQuote, type SwapQuote } from "@/hooks/useSwapQuote";
 import { recordSwapReward, useMarketPrices, type MarketPrice } from "@/hooks/useRewards";
@@ -31,14 +34,20 @@ function TokenPickerModal({
   selected,
   onSelect,
   onClose,
+  network,
+  onAddCustomToken,
 }: {
   tokens: Token[];
   selected: Token;
   onSelect: (t: Token) => void;
   onClose: () => void;
+  network: "base" | "robinhood";
+  onAddCustomToken?: (address: string) => Promise<void>;
 }) {
   const [search, setSearch] = useState("");
+  const [addingCustom, setAddingCustom] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isAddressSearch = /^0x[a-fA-F0-9]{40}$/.test(search.trim());
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -171,7 +180,7 @@ function TokenPickerModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#0d1e2e] px-5 py-3.5">
           <span className="font-['Inter',sans-serif] text-[14px] font-bold text-[#7a8494]">
-            Select Token — Base
+            Select Token — {network === "robinhood" ? "Robinhood Chain" : "Base"}
           </span>
           <button
             onClick={onClose}
@@ -220,7 +229,7 @@ function TokenPickerModal({
             <>
               <SectionLabel
                 icon={<TrendingUp className="h-3 w-3 text-[#f5a623]" />}
-                label="Trending on Base"
+                label={`Trending on ${network === "robinhood" ? "Robinhood Chain" : "Base"}`}
               />
               {trendingList.map((t) => <TokenRow key={t.address} t={t} />)}
             </>
@@ -237,10 +246,32 @@ function TokenPickerModal({
             </>
           )}
 
-          {filtered.length === 0 && (
+          {filtered.length === 0 && !isAddressSearch && (
             <div className="flex flex-col items-center justify-center py-10">
               <Search className="h-8 w-8 text-[#1a2a3c] mb-2" />
               <p className="font-['Inter',sans-serif] text-[13px] text-[#3a4a5c]">No tokens found</p>
+            </div>
+          )}
+
+          {/* Add custom token by address — Robinhood Chain has no indexed token list yet */}
+          {network === "robinhood" && isAddressSearch && filtered.length === 0 && onAddCustomToken && (
+            <div className="flex flex-col items-center gap-3 px-5 py-8">
+              <p className="font-['Inter',sans-serif] text-[13px] text-[#4d5a6e] text-center">
+                Token not in your list yet. Add it by contract address.
+              </p>
+              <button
+                onClick={async () => {
+                  setAddingCustom(true);
+                  await onAddCustomToken(search.trim());
+                  setAddingCustom(false);
+                }}
+                disabled={addingCustom}
+                className="flex items-center gap-2 rounded-[12px] border border-[#1a4a2a] bg-[#0a2015] px-4 py-2.5 font-['Inter',sans-serif] text-[13px] font-bold text-[#2dae50] transition-colors hover:bg-[#0d2818] disabled:opacity-60"
+                data-testid="btn-add-custom-token"
+              >
+                {addingCustom && <Loader2 className="h-4 w-4 animate-spin" />}
+                {addingCustom ? "Looking up token…" : "Add Custom Token"}
+              </button>
             </div>
           )}
         </div>
@@ -248,7 +279,9 @@ function TokenPickerModal({
         {/* Footer */}
         <div className="border-t border-[#0d1e2e] px-4 py-2.5">
           <p className="text-center font-['Inter',sans-serif] text-[10px] text-[#2a3a4c]">
-            Showing Base chain tokens only · Data from DexScreener
+            {network === "robinhood"
+              ? "Showing Robinhood Chain tokens · Paste an address to add more"
+              : "Showing Base chain tokens only · Data from DexScreener"}
           </p>
         </div>
       </div>
@@ -334,7 +367,7 @@ function TokenSparkline({ address, index = 0 }: { address: string; index?: numbe
 // ─── Token Input Box ────────────────────────────────────────────────────────────
 function TokenBox({
   label, token, amount, onAmountChange, readonly, usdValue,
-  allTokens, onTokenChange, disabledToken,
+  allTokens, onTokenChange, disabledToken, network, onAddCustomToken,
 }: {
   label: string;
   token: Token;
@@ -345,6 +378,8 @@ function TokenBox({
   allTokens: Token[];
   onTokenChange: (t: Token) => void;
   disabledToken: Token;
+  network: "base" | "robinhood";
+  onAddCustomToken?: (address: string) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const available = allTokens.filter(
@@ -393,7 +428,9 @@ function TokenBox({
               onError={(e) => {
                 const img = e.target as HTMLImageElement;
                 img.onerror = null;
-                img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${token.address.toLowerCase()}.png`;
+                if (network === "base") {
+                  img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${token.address.toLowerCase()}.png`;
+                }
               }}
             />
             <span className="font-['Inter',sans-serif] text-base font-bold text-[#c8ccd2]">{token.symbol}</span>
@@ -426,6 +463,8 @@ function TokenBox({
           selected={token}
           onSelect={onTokenChange}
           onClose={() => setOpen(false)}
+          network={network}
+          onAddCustomToken={onAddCustomToken}
         />
       )}
     </div>
@@ -534,7 +573,14 @@ function RoutesPanel({ quote, buyToken }: { quote: SwapQuote; buyToken: Token })
 }
 
 // ─── Tx Status Modal ─────────────────────────────────────────────────────────────
-function TxModal({ hash, cashback, onClose }: { hash: string; cashback: number; onClose: () => void }) {
+function TxModal({
+  hash, cashback, onClose, network,
+}: { hash: string; cashback: number; onClose: () => void; network: "base" | "robinhood" }) {
+  const explorerUrl = network === "robinhood"
+    ? `https://robinhoodchain.blockscout.com/tx/${hash}`
+    : `https://basescan.org/tx/${hash}`;
+  const explorerLabel = network === "robinhood" ? "View on Blockscout" : "View on BaseScan";
+  const networkLabel = network === "robinhood" ? "Robinhood Chain" : "Base";
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
       <div className="w-full max-w-[360px] overflow-hidden rounded-[22px] border border-[#0f2a1a] bg-[#030e1a]">
@@ -545,7 +591,7 @@ function TxModal({ hash, cashback, onClose }: { hash: string; cashback: number; 
           <div className="text-center">
             <p className="font-['Inter',sans-serif] text-[18px] font-bold text-[#c8ccd4]">Swap Submitted!</p>
             <p className="mt-1 font-['Inter',sans-serif] text-[13px] text-[#4d5a6e]">
-              Your transaction has been broadcast to Base.
+              Your transaction has been broadcast to {networkLabel}.
             </p>
           </div>
 
@@ -562,13 +608,13 @@ function TxModal({ hash, cashback, onClose }: { hash: string; cashback: number; 
           )}
 
           <a
-            href={`https://basescan.org/tx/${hash}`}
+            href={explorerUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 rounded-[12px] border border-[#0f2030] bg-[#040e1e] px-4 py-2.5 font-['Inter',sans-serif] text-[13px] text-[#4a8fb5] hover:text-[#6ab0d5] transition-colors"
             data-testid="link-basescan"
           >
-            View on BaseScan
+            {explorerLabel}
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
           <button
@@ -591,14 +637,41 @@ export function SwapPage() {
   // ── DB-driven popular tokens (swap quick-select sidebar) ─────────────────────
   const { data: dbPopularTokens } = usePublicPopularTokens();
 
-  // ── 30 Base tokens from DexScreener ─────────────────────────────────────────
+  // ── Active network — Base or Robinhood Chain, same 0x router + fee wallet ────
+  const [network, setNetwork] = useState<"base" | "robinhood">(() =>
+    wallet.chainId === RH_CHAIN_ID ? "robinhood" : "base"
+  );
+  // Follow the wallet's actual connected chain once it's known.
+  useEffect(() => {
+    if (wallet.chainId === BASE_CHAIN_ID) setNetwork("base");
+    else if (wallet.chainId === RH_CHAIN_ID) setNetwork("robinhood");
+  }, [wallet.chainId]);
+
+  const activeChainId = network === "robinhood" ? RH_CHAIN_ID : BASE_CHAIN_ID;
+
+  // ── 30 Base tokens from DexScreener (Base only — no indexed list exists for RH yet) ──
   const { tokens: baseTokens, isLoading: tokensLoading } = useBaseTokens();
 
-  // ── Wallet balances for all 30 tokens ───────────────────────────────────────
-  const { balances } = useWalletBalances(wallet.address, baseTokens);
+  // ── User-added custom tokens on Robinhood Chain (pasted address lookups) ────
+  const [rhCustomTokens, setRhCustomTokens] = useState<Token[]>([]);
+
+  const tokensForNetwork = network === "robinhood"
+    ? [...RH_TOKENS, ...rhCustomTokens]
+    : baseTokens;
+
+  // ── Wallet balances for the active network's token list ─────────────────────
+  const { balances } = useWalletBalances(wallet.address, tokensForNetwork);
 
   // ── Merge token data with live wallet balances ───────────────────────────────
   const allTokens: Token[] = useMemo(() => {
+    if (network === "robinhood") {
+      return tokensForNetwork.map((t) => {
+        const bal = balances.find(
+          (b) => b.address.toLowerCase() === t.address.toLowerCase()
+        );
+        return { ...t, balance: bal?.balance, balanceUsd: bal?.balanceUsd };
+      });
+    }
     if (baseTokens.length === 0) return TOKENS; // fallback while loading
     return baseTokens.map((t) => {
       const bal = balances.find(
@@ -610,7 +683,17 @@ export function SwapPage() {
         balanceUsd: bal?.balanceUsd,
       };
     });
-  }, [baseTokens, balances]);
+  }, [network, tokensForNetwork, baseTokens, balances]);
+
+  const handleAddCustomToken = useCallback(async (address: string) => {
+    if (rhCustomTokens.some((t) => t.address.toLowerCase() === address.toLowerCase())) return;
+    const meta = await fetchErc20TokenMeta(address);
+    if (!meta) return;
+    setRhCustomTokens((prev) => [
+      ...prev,
+      { symbol: meta.symbol, name: meta.name, address, decimals: meta.decimals, icon: "/figmaAssets/image-7.png" },
+    ]);
+  }, [rhCustomTokens]);
 
   // Default to first two tokens (ETH and USDC)
   const defaultSell = useMemo(
@@ -627,9 +710,20 @@ export function SwapPage() {
 
   const [sellToken, setSellToken] = useState<Token>(TOKENS[0]);
   const [buyToken, setBuyToken] = useState<Token>(TOKENS[1]);
+  const prevNetworkRef = useRef(network);
 
-  // Once base tokens load, update defaults
+  // Once base tokens load, update defaults. When the network changes, tokens from
+  // the previous chain no longer apply, so reset straight to that chain's defaults.
   useEffect(() => {
+    const networkChanged = prevNetworkRef.current !== network;
+    prevNetworkRef.current = network;
+
+    if (networkChanged) {
+      setSellToken(defaultSell);
+      setBuyToken(defaultSell.address.toLowerCase() === defaultBuy.address.toLowerCase() ? (allTokens[1] ?? defaultBuy) : defaultBuy);
+      return;
+    }
+
     if (allTokens.length > 1) {
       setSellToken((prev) => {
         const refreshed = allTokens.find(
@@ -644,7 +738,7 @@ export function SwapPage() {
         return refreshed ?? defaultBuy;
       });
     }
-  }, [allTokens, defaultSell, defaultBuy]);
+  }, [allTokens, defaultSell, defaultBuy, network]);
 
   const [sellAmount, setSellAmount] = useState("1");
   const [slippage, setSlippage] = useState("0.5");
@@ -661,7 +755,7 @@ export function SwapPage() {
   const slippageBps = Math.round(parseFloat(slippage || "0.5") * 100);
 
   const { quote, isLoading, error: quoteError } = useSwapPrice(
-    sellToken, buyToken, sellAmount, slippageBps, selectedSources
+    sellToken, buyToken, sellAmount, slippageBps, selectedSources, activeChainId
   );
 
   const { data: marketPrices } = useMarketPrices();
@@ -741,7 +835,7 @@ export function SwapPage() {
 
     try {
       const fullQuote = await fetchSwapQuote(
-        sellToken, buyToken, sellAmount, wallet.address, slippageBps, selectedSources
+        sellToken, buyToken, sellAmount, wallet.address, slippageBps, selectedSources, activeChainId
       );
 
       if (
@@ -766,7 +860,7 @@ export function SwapPage() {
         }
 
         const refreshedQuote = await fetchSwapQuote(
-          sellToken, buyToken, sellAmount, wallet.address, slippageBps, selectedSources
+          sellToken, buyToken, sellAmount, wallet.address, slippageBps, selectedSources, activeChainId
         );
         if (!refreshedQuote.transaction) throw new Error("No transaction data in quote after approval");
 
@@ -835,9 +929,30 @@ export function SwapPage() {
                 <div className="flex items-center gap-2">
                   <Zap className="h-4 w-4 text-[#2dae50]" />
                   <span className="font-['Inter',sans-serif] text-[15px] font-bold text-[#b0b5be]">Swap</span>
-                  {tokensLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#2dae50]" />}
+                  {tokensLoading && network === "base" && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#2dae50]" />}
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* Network toggle — Base and Robinhood Chain share the same 0x router + fee wallet */}
+                  <div className="flex items-center rounded-lg border border-[#0d1e2e] bg-[#040e1e] p-0.5">
+                    <button
+                      onClick={() => setNetwork("base")}
+                      className={`rounded-[6px] px-2.5 py-1 font-['Inter',sans-serif] text-[12px] font-bold transition-all ${
+                        network === "base" ? "bg-[#0a2015] text-[#2dae50]" : "text-[#4d5a6e] hover:text-[#7a8494]"
+                      }`}
+                      data-testid="btn-network-base"
+                    >
+                      Base
+                    </button>
+                    <button
+                      onClick={() => setNetwork("robinhood")}
+                      className={`rounded-[6px] px-2.5 py-1 font-['Inter',sans-serif] text-[12px] font-bold transition-all ${
+                        network === "robinhood" ? "bg-[#0a2015] text-[#2dae50]" : "text-[#4d5a6e] hover:text-[#7a8494]"
+                      }`}
+                      data-testid="btn-network-robinhood"
+                    >
+                      Robinhood
+                    </button>
+                  </div>
                   <button
                     onClick={() => { setShowDexPanel(!showDexPanel); setShowSettings(false); }}
                     className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-['Inter',sans-serif] text-[12px] font-medium transition-all ${
@@ -913,6 +1028,8 @@ export function SwapPage() {
                   allTokens={allTokens}
                   onTokenChange={setSellToken}
                   disabledToken={buyToken}
+                  network={network}
+                  onAddCustomToken={handleAddCustomToken}
                 />
 
                 {/* Flip */}
@@ -935,6 +1052,8 @@ export function SwapPage() {
                   allTokens={allTokens}
                   onTokenChange={setBuyToken}
                   disabledToken={sellToken}
+                  network={network}
+                  onAddCustomToken={handleAddCustomToken}
                 />
               </div>
 
@@ -1008,12 +1127,12 @@ export function SwapPage() {
                   </button>
                 ) : wallet.isWrongNetwork ? (
                   <button
-                    onClick={wallet.switchToBase}
+                    onClick={network === "robinhood" ? wallet.switchToRobinhood : wallet.switchToBase}
                     className="flex h-[54px] w-full items-center justify-center gap-3 rounded-[14px] border border-[#c9953a] bg-[#1a0e04] font-['Inter',sans-serif] text-[17px] font-bold text-[#c9953a] transition-all hover:bg-[#200f04] active:scale-[0.98]"
                     data-testid="btn-switch-network"
                   >
                     <AlertTriangle className="h-5 w-5" />
-                    Switch to Base Network
+                    Switch to {network === "robinhood" ? "Robinhood Chain" : "Base Network"}
                   </button>
                 ) : (
                   <button
@@ -1030,7 +1149,7 @@ export function SwapPage() {
 
                 {wallet.isConnected && wallet.address && (
                   <p className="mt-2 text-center font-['Inter',sans-serif] text-[11px] text-[#2a3840]">
-                    {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)} · Base
+                    {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)} · {network === "robinhood" ? "Robinhood Chain" : "Base"}
                   </p>
                 )}
                 {wallet.error && (
@@ -1081,7 +1200,9 @@ export function SwapPage() {
                         onError={(e) => {
                           const img = e.target as HTMLImageElement;
                           img.onerror = null;
-                          img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${sellToken.address.toLowerCase()}.png`;
+                          if (network === "base") {
+                            img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${sellToken.address.toLowerCase()}.png`;
+                          }
                         }}
                       />
                       <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#8c909a]">
@@ -1282,7 +1403,7 @@ export function SwapPage() {
       </div>
 
       {/* Tx success modal */}
-      {txHash && <TxModal hash={txHash} cashback={swapCashback} onClose={() => { setTxHash(null); setSwapCashback(0); }} />}
+      {txHash && <TxModal hash={txHash} cashback={swapCashback} network={network} onClose={() => { setTxHash(null); setSwapCashback(0); }} />}
     </>
   );
 }

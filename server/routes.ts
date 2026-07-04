@@ -5,9 +5,17 @@ import { verifyTransaction } from "./basescan";
 
 const ZEROX_API_KEY = process.env.ZEROX_API_KEY || "";
 const ZEROX_BASE_URL = "https://api.0x.org";
-const CHAIN_ID = 8453;
+const BASE_CHAIN_ID = 8453;
+const RH_CHAIN_ID = 4663;
+const SUPPORTED_CHAIN_IDS = new Set([BASE_CHAIN_ID, RH_CHAIN_ID]);
+// Same fee wallet is used on both Base and Robinhood Chain.
 const FEE_RECIPIENT = "0xea8d70f2e7e577160b1c5a2c6e33bfd8ad6dde5e";
 const FEE_BPS = 30;
+
+function resolveChainId(raw: unknown): number {
+  const parsed = parseInt(String(raw ?? ""), 10);
+  return SUPPORTED_CHAIN_IDS.has(parsed) ? parsed : BASE_CHAIN_ID;
+}
 
 // Simple in-memory price cache
 let priceCache: { data: any; ts: number } | null = null;
@@ -208,12 +216,13 @@ export async function registerRoutes(
         slippageBps,
         includedSources,
         excludedSources,
+        chainId,
       } = req.query;
       if (!sellToken || !buyToken || !sellAmount)
         return res.status(400).json({ error: "Missing required parameters" });
 
       const params = new URLSearchParams({
-        chainId: String(CHAIN_ID),
+        chainId: String(resolveChainId(chainId)),
         sellToken: String(sellToken),
         buyToken: String(buyToken),
         sellAmount: String(sellAmount),
@@ -259,12 +268,13 @@ export async function registerRoutes(
         slippageBps,
         includedSources,
         excludedSources,
+        chainId,
       } = req.query;
       if (!sellToken || !buyToken || !sellAmount || !taker)
         return res.status(400).json({ error: "Missing required parameters" });
 
       const params = new URLSearchParams({
-        chainId: String(CHAIN_ID),
+        chainId: String(resolveChainId(chainId)),
         sellToken: String(sellToken),
         buyToken: String(buyToken),
         sellAmount: String(sellAmount),
@@ -691,7 +701,7 @@ export async function registerRoutes(
     try {
       do {
         const params = new URLSearchParams({
-          chainId: String(CHAIN_ID),
+          chainId: String(BASE_CHAIN_ID),
           limit: "100",
         });
         if (cursor) params.set("cursor", cursor);
@@ -754,7 +764,7 @@ export async function registerRoutes(
     for (const p of pairs) {
       try {
         const params = new URLSearchParams({
-          chainId: String(CHAIN_ID),
+          chainId: String(BASE_CHAIN_ID),
           sellToken: p.sell,
           buyToken: p.buy,
           sellAmount: p.amount,

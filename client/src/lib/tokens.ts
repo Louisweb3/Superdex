@@ -16,7 +16,23 @@ export interface Token {
 export const BASE_CHAIN_ID = 8453;
 export const BASE_CHAIN_HEX = "0x2105";
 
+export const RH_CHAIN_ID = 4663;
+export const RH_CHAIN_HEX = "0x1237";
+
 export const NATIVE_ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+
+// Robinhood Chain has no indexed token database (DexScreener etc. don't cover it yet),
+// so we start users with native ETH and let them paste any ERC-20 address to add it.
+export const RH_TOKENS: Token[] = [
+  {
+    symbol: "ETH",
+    name: "Ethereum",
+    address: NATIVE_ETH_ADDRESS,
+    decimals: 18,
+    icon: "/figmaAssets/image-7.png",
+    isNative: true,
+  },
+];
 
 export const TOKENS: Token[] = [
   {
@@ -135,6 +151,73 @@ export function toHexWei(dec: string | undefined): string {
   if (!dec || dec === "0") return "0x0";
   if (dec.startsWith("0x") || dec.startsWith("0X")) return dec;
   return "0x" + decimalToHex(dec);
+}
+
+export const RH_RPC_URL = "https://rpc.mainnet.chain.robinhood.com";
+
+// Minimal JSON-RPC eth_call helper — used to look up ERC-20 metadata for
+// custom tokens pasted in on Robinhood Chain, independent of wallet state.
+async function rpcEthCall(rpcUrl: string, to: string, data: string): Promise<string | null> {
+  try {
+    const res = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_call",
+        params: [{ to, data }, "latest"],
+      }),
+    });
+    const json = await res.json();
+    return json?.result ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function decodeAbiString(hex: string | null): string {
+  if (!hex || hex === "0x") return "";
+  const clean = hex.slice(2);
+  // dynamic string: [offset(32B)][length(32B)][data]
+  if (clean.length > 128) {
+    const lenHex = clean.slice(64, 128);
+    const len = parseInt(lenHex, 16);
+    const dataHex = clean.slice(128, 128 + len * 2);
+    try {
+      const bytes = dataHex.match(/.{1,2}/g)?.map((b) => parseInt(b, 16)) ?? [];
+      return new TextDecoder().decode(new Uint8Array(bytes));
+    } catch {
+      return "";
+    }
+  }
+  // some tokens (e.g. bytes32 symbol) return fixed 32 bytes instead
+  try {
+    const bytes = clean.match(/.{1,2}/g)?.map((b) => parseInt(b, 16)) ?? [];
+    return new TextDecoder().decode(new Uint8Array(bytes)).replace(/\0/g, "").trim();
+  } catch {
+    return "";
+  }
+}
+
+export async function fetchErc20TokenMeta(
+  address: string,
+  rpcUrl: string = RH_RPC_URL
+): Promise<{ symbol: string; name: string; decimals: number } | null> {
+  try {
+    const [symbolHex, nameHex, decimalsHex] = await Promise.all([
+      rpcEthCall(rpcUrl, address, "0x95d89b41"), // symbol()
+      rpcEthCall(rpcUrl, address, "0x06fdde03"), // name()
+      rpcEthCall(rpcUrl, address, "0x313ce567"), // decimals()
+    ]);
+    const symbol = decodeAbiString(symbolHex) || "TOKEN";
+    const name = decodeAbiString(nameHex) || symbol;
+    const decimals = decimalsHex ? parseInt(decimalsHex, 16) : 18;
+    if (!decimalsHex && !symbolHex && !nameHex) return null;
+    return { symbol, name, decimals: isNaN(decimals) ? 18 : decimals };
+  } catch {
+    return null;
+  }
 }
 
 export function encodeApprove(spender: string, amount: string): string {

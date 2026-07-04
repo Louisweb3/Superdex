@@ -4,3 +4,4 @@
 - [Supabase migration approach](supabase-migration.md) — extract via json_agg/executeSql, restore via Node pg Pool; psql fails on Supabase passwords with special chars
 - [XP on-chain claim feature](xp-claim-feature.md) — EarnPage replaced with Season 1 XP claim; contract 0xe1408047…, uses viem encodeFunctionData + raw window.ethereum; xp_claimed bool added to reward_users; POST /api/xp-claim verifies receipt on Base RPC before awarding.
 - [RH Playground ERC-20 bytecode](rh-playground-erc20.md) — real solc 0.8.23 compiled bytecode; solc installed via npm; gas param omitted so wallet auto-estimates; constructor(string _name, string _symbol, uint256 _supply) mints full supply to deployer.
+- [Multi-chain 0x swap pattern](multi-chain-swap-pattern.md) — how Base+Robinhood Chain swap support was added: server chainId allow-list, client-supplied chainId, RPC-based custom token lookup.

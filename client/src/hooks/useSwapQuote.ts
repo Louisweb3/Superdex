@@ -34,7 +34,8 @@ export function useSwapPrice(
   buyToken: Token | null,
   sellAmountStr: string,
   slippageBps: number,
-  selectedSources: string[]
+  selectedSources: string[],
+  chainId: number
 ) {
   const [quote, setQuote] = useState<SwapQuote | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -64,6 +65,7 @@ export function useSwapPrice(
         buyToken: buyToken.address,
         sellAmount: sellAmountWei,
         slippageBps: String(slippageBps),
+        chainId: String(chainId),
       });
       if (selectedSources.length > 0) {
         params.set("includedSources", selectedSources.join(","));
@@ -124,7 +126,7 @@ export function useSwapPrice(
     } finally {
       setIsLoading(false);
     }
-  }, [sellToken, buyToken, sellAmountStr, slippageBps, selectedSources]);
+  }, [sellToken, buyToken, sellAmountStr, slippageBps, selectedSources, chainId]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -143,7 +145,8 @@ export async function fetchSwapQuote(
   sellAmountStr: string,
   taker: string,
   slippageBps: number,
-  selectedSources: string[]
+  selectedSources: string[],
+  chainId: number
 ): Promise<SwapQuote> {
   const sellAmountWei = parseAmount(sellAmountStr, sellToken.decimals);
 
@@ -153,6 +156,7 @@ export async function fetchSwapQuote(
     sellAmount: sellAmountWei,
     taker,
     slippageBps: String(slippageBps),
+    chainId: String(chainId),
   });
   if (selectedSources.length > 0) {
     params.set("includedSources", selectedSources.join(","));
