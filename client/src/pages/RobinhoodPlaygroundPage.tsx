@@ -582,7 +582,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         <button
           onClick={switchToRH}
           disabled={switchingNetwork}
-          className="ml-auto flex items-center gap-1.5 text-[12px] font-bold text-[#00C805] hover:text-green-300 transition-colors whitespace-nowrap"
+          className="ml-auto flex items-center gap-1.5 text-[12px] font-bold text-[#00C703] hover:text-green-300 transition-colors whitespace-nowrap"
         >
           {switchingNetwork ? (
             <Loader2 size={12} className="animate-spin" />
@@ -594,29 +594,35 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
 
   return (
     <div
-      className="min-h-screen bg-[#050a05] text-white"
-      style={{ fontFamily: "Inter, sans-serif" }}
+      className="min-h-screen bg-[#090b09] text-white"
+      style={{ fontFamily: "'DM Sans', sans-serif" }}
     >
       {/* ── Hero ──────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden border-b border-[#0a1f0a] bg-gradient-to-br from-[#071007] via-[#050a05] to-black px-5 sm:px-8 py-8">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(0,200,5,0.12),transparent_60%)] pointer-events-none" />
+      <div className="relative overflow-hidden border-b border-[#2a2c2a] bg-gradient-to-br from-[#0d0f0d] via-[#090b09] to-black px-5 sm:px-8 py-8">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(0,199,3,0.12),transparent_60%)] pointer-events-none" />
         <div className="relative max-w-[1200px] mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
           {/* Left */}
           <div className="flex items-center gap-4">
             <RobinhoodLogo size={52} />
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#00C805]">
-                  Robinhood Chain
+              <span
+                className="inline-flex items-center gap-1.5 bg-[#151715] border border-[#3a3c3a] text-[#e5e5e5] text-[11px] font-semibold px-3 py-1 rounded-full mb-2"
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
+              >
+                <span aria-hidden>🐕</span> Native on Robinhood Chain Mainnet
+              </span>
+              <h1
+                className="text-[30px] sm:text-[40px] font-extrabold tracking-tight leading-[1.05]"
+                style={{ fontFamily: "'Syne', sans-serif" }}
+              >
+                <span className="text-white">ROBINHOOD</span>{" "}
+                <span className="text-[#00C703]">CHAIN</span>
+                <br />
+                <span className="text-[#00C703] [text-shadow:0_0_18px_rgba(0,199,3,0.45)]">
+                  PLAYGROUND
                 </span>
-                <span className="bg-[#00C805]/10 border border-[#00C805]/30 text-[#00C805] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">
-                  Mainnet
-                </span>
-              </div>
-              <h1 className="text-[26px] sm:text-[32px] font-black tracking-tight text-white leading-tight">
-                Playground
               </h1>
-              <p className="text-[#5a6a55] text-[13px] mt-0.5">
+              <p className="text-[#9a9a9a] text-[13px] mt-1.5">
                 Deploy tokens · Send GM · Earn XP · Explore on-chain
               </p>
             </div>
@@ -627,14 +633,14 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             {isConnected ? (
               <div className="flex items-center gap-2">
                 <div
-                  className={`w-2 h-2 rounded-full ${isOnRH ? "bg-[#00C805] shadow-[0_0_6px_#00C805]" : "bg-yellow-400"} animate-pulse`}
+                  className={`w-2 h-2 rounded-full ${isOnRH ? "bg-[#00C703] shadow-[0_0_6px_#00C703]" : "bg-yellow-400"} animate-pulse`}
                 />
-                <span className="text-[13px] text-[#8a9a85]">
+                <span className="text-[13px] text-[#b0b0b0]">
                   {isOnRH ? "Connected to Robinhood Chain" : "Wrong network"}
                 </span>
               </div>
             ) : (
-              <span className="text-[13px] text-[#5a6a55]">
+              <span className="text-[13px] text-[#9a9a9a]">
                 Wallet not connected
               </span>
             )}
@@ -642,7 +648,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             {!isConnected ? (
               <button
                 onClick={() => setWalletOpen(true)}
-                className="flex items-center gap-2 bg-[#00C805] hover:bg-[#00a804] text-black font-bold text-[14px] px-5 py-2.5 rounded-[12px] transition-all"
+                className="flex items-center gap-2 bg-[#00C703] hover:bg-[#00e003] text-black font-bold text-[14px] px-5 py-2.5 rounded-full shadow-[0_0_20px_rgba(0,199,3,0.4)] transition-all"
               >
                 Connect Wallet
               </button>
@@ -650,7 +656,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               <button
                 onClick={switchToRH}
                 disabled={switchingNetwork}
-                className="flex items-center gap-2 bg-[#00C805] hover:bg-[#00a804] text-black font-bold text-[14px] px-5 py-2.5 rounded-[12px] transition-all disabled:opacity-60"
+                className="flex items-center gap-2 bg-[#00C703] hover:bg-[#00e003] text-black font-bold text-[14px] px-5 py-2.5 rounded-full shadow-[0_0_20px_rgba(0,199,3,0.4)] transition-all disabled:opacity-60"
               >
                 {switchingNetwork && (
                   <Loader2 size={14} className="animate-spin" />
@@ -658,7 +664,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                 Add Robinhood Chain
               </button>
             ) : (
-              <div className="flex items-center gap-2 text-[13px] text-[#00C805] font-semibold">
+              <div className="flex items-center gap-2 text-[13px] text-[#00C703] font-semibold">
                 <CheckCircle size={16} />
                 Ready to build
               </div>
@@ -680,10 +686,10 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
           ].map(({ label, value }) => (
             <div
               key={label}
-              className="flex items-center gap-2 bg-[#0a1a0a] border border-[#1a2e1a] rounded-[10px] px-3 py-1.5"
+              className="flex items-center gap-2 bg-[#1c1e1c] border border-[#3a3c3a] rounded-[10px] px-3 py-1.5"
             >
-              <span className="text-[#5a6a55] text-[11px]">{label}</span>
-              <span className="text-[#c8d8c4] text-[12px] font-semibold">
+              <span className="text-[#9a9a9a] text-[11px]">{label}</span>
+              <span className="text-[#e5e5e5] text-[12px] font-semibold">
                 {value}
               </span>
             </div>
@@ -692,13 +698,13 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             href={RH_BRIDGE}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-[#0a1a0a] border border-[#1a2e1a] hover:border-[#00C805]/40 rounded-[10px] px-3 py-1.5 transition-colors group"
+            className="flex items-center gap-2 bg-[#1c1e1c] border border-[#3a3c3a] hover:border-[#00C703]/40 rounded-[10px] px-3 py-1.5 transition-colors group"
           >
-            <Zap size={12} className="text-[#00C805]" />
-            <span className="text-[#c8d8c4] text-[12px] font-semibold group-hover:text-[#00C805] transition-colors">
+            <Zap size={12} className="text-[#00C703]" />
+            <span className="text-[#e5e5e5] text-[12px] font-semibold group-hover:text-[#00C703] transition-colors">
               Bridge
             </span>
-            <ExternalLink size={10} className="text-[#5a6a55]" />
+            <ExternalLink size={10} className="text-[#9a9a9a]" />
           </a>
         </div>
       </div>
@@ -728,31 +734,37 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             />
 
             {/* Contribution card */}
-            <div className="bg-[#070f07] border border-[#0e2e0e] rounded-[20px] p-6">
+            <div className="bg-[#151715] border border-[#3a3c3a] rounded-[20px] p-6">
               {/* Header row */}
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                 <div>
-                  <h2 className="text-[22px] font-black text-white leading-tight">
+                  <span className="inline-block text-[11px] font-bold uppercase tracking-[0.18em] text-[#00C703] mb-1.5">
+                    Join the Pack
+                  </span>
+                  <h2
+                    className="text-[24px] font-extrabold text-white leading-tight"
+                    style={{ fontFamily: "'Syne', sans-serif" }}
+                  >
                     $RobInu LP Contribution
                   </h2>
-                  <p className="text-[13px] text-[#5a7a55] mt-1">
+                  <p className="text-[13px] text-[#9a9a9a] mt-1">
                     Contribute ETH to seed the $RobInu liquidity pool on
                     Robinhood Chain.
                     <br />
-                    <span className="text-[#c8d8c4]">
+                    <span className="text-[#e5e5e5]">
                       20% of the 1B total supply (200M $RobInu)
                     </span>{" "}
                     is allocated to community contributors.
                   </p>
                 </div>
-                <div className="shrink-0 text-right bg-[#00C805]/5 border border-[#00C805]/20 rounded-[12px] px-4 py-2.5">
-                  <div className="text-[11px] text-[#5a7a55] uppercase tracking-wider mb-0.5">
+                <div className="shrink-0 text-right bg-[#00C703]/5 border border-[#00C703]/20 rounded-[12px] px-4 py-2.5">
+                  <div className="text-[11px] text-[#9a9a9a] uppercase tracking-wider mb-0.5">
                     Community Allocation
                   </div>
-                  <div className="text-[26px] font-black text-[#00C805] leading-tight">
+                  <div className="text-[26px] font-black text-[#00C703] leading-tight">
                     200M
                   </div>
-                  <div className="text-[12px] text-[#5a7a55]">
+                  <div className="text-[12px] text-[#9a9a9a]">
                     $RobInu tokens
                   </div>
                 </div>
@@ -764,25 +776,25 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                   <span className="text-[13px] font-bold text-white">
                     {lpLoading ? "Loading…" : `${fmt(totalRaised)} ETH raised`}
                   </span>
-                  <span className="text-[13px] text-[#5a7a55]">
+                  <span className="text-[13px] text-[#9a9a9a]">
                     Goal: {LP_MAX_ETH} ETH
                   </span>
                 </div>
-                <div className="relative h-4 w-full rounded-full bg-[#0e1f0e] overflow-hidden border border-[#1a3a1a]">
+                <div className="relative h-4 w-full rounded-full bg-[#3a3c3a] overflow-hidden border border-[#3a3c3a]">
                   <div
                     className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
                     style={{
                       width: `${pct}%`,
                       background:
-                        "linear-gradient(90deg, #00C805 0%, #5dff61 100%)",
+                        "linear-gradient(90deg, #00C703 0%, #5dff61 100%)",
                       boxShadow:
-                        pct > 0 ? "0 0 12px rgba(0,200,5,0.5)" : "none",
+                        pct > 0 ? "0 0 12px rgba(0,199,3,0.5)" : "none",
                     }}
                   />
                 </div>
-                <div className="flex items-center justify-between mt-2 text-[11px] text-[#5a6a55]">
+                <div className="flex items-center justify-between mt-2 text-[11px] text-[#9a9a9a]">
                   <span>Base: {lpLoading ? "…" : `${fmt(baseLPBal)} ETH`}</span>
-                  <span className="font-bold text-[#00C805]">
+                  <span className="font-bold text-[#00C703]">
                     {pct.toFixed(1)}% filled
                   </span>
                   <span>
@@ -795,7 +807,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
                 {/* Network selector */}
                 <div className="flex-1">
-                  <label className="block text-[11px] text-[#5a7a55] uppercase tracking-wider mb-2">
+                  <label className="block text-[11px] text-[#9a9a9a] uppercase tracking-wider mb-2">
                     Network
                   </label>
                   <div className="flex gap-2">
@@ -804,10 +816,10 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                         key={net}
                         onClick={() => setContribNetwork(net)}
                         data-testid={`contrib-network-${net}`}
-                        className={`flex-1 py-2.5 rounded-[10px] text-[13px] font-bold border transition-all ${
+                        className={`flex-1 py-2.5 rounded-full text-[13px] font-bold border transition-all ${
                           contribNetwork === net
-                            ? "bg-[#00C805]/15 border-[#00C805] text-[#00C805]"
-                            : "bg-[#0a1a0a] border-[#1a2e1a] text-[#5a7a55] hover:border-[#00C805]/40 hover:text-[#c8d8c4]"
+                            ? "bg-[#00C703]/15 border-[#00C703] text-[#00C703]"
+                            : "bg-[#1c1e1c] border-[#3a3c3a] text-[#9a9a9a] hover:border-[#00C703]/40 hover:text-[#e5e5e5]"
                         }`}
                       >
                         {net === "base" ? "Base" : "RH Chain"}
@@ -818,7 +830,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
 
                 {/* Amount selector */}
                 <div className="flex-1">
-                  <label className="block text-[11px] text-[#5a7a55] uppercase tracking-wider mb-2">
+                  <label className="block text-[11px] text-[#9a9a9a] uppercase tracking-wider mb-2">
                     Amount (USD · min $10, max $50)
                   </label>
                   <div className="flex gap-2">
@@ -827,10 +839,10 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                         key={amt}
                         onClick={() => setContribUsd(amt)}
                         data-testid={`contrib-amount-${amt}`}
-                        className={`flex-1 py-2.5 rounded-[10px] text-[13px] font-bold border transition-all ${
+                        className={`flex-1 py-2.5 rounded-full text-[13px] font-bold border transition-all ${
                           contribUsd === amt
-                            ? "bg-[#00C805]/15 border-[#00C805] text-[#00C805]"
-                            : "bg-[#0a1a0a] border-[#1a2e1a] text-[#5a7a55] hover:border-[#00C805]/40 hover:text-[#c8d8c4]"
+                            ? "bg-[#00C703]/15 border-[#00C703] text-[#00C703]"
+                            : "bg-[#1c1e1c] border-[#3a3c3a] text-[#9a9a9a] hover:border-[#00C703]/40 hover:text-[#e5e5e5]"
                         }`}
                       >
                         ${amt}
@@ -841,14 +853,14 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
 
                 {/* Contribute CTA */}
                 <div className="flex-shrink-0">
-                  <div className="text-[11px] text-[#5a7a55] uppercase tracking-wider mb-2 sm:text-right">
+                  <div className="text-[11px] text-[#9a9a9a] uppercase tracking-wider mb-2 sm:text-right">
                     You receive (est.)
                   </div>
                   <button
                     onClick={contributeToLP}
                     disabled={contributing || pct >= 100}
                     data-testid="btn-contribute-lp"
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#00C805] hover:bg-[#00a804] disabled:opacity-50 text-black font-black text-[14px] px-6 py-2.5 rounded-[12px] transition-all whitespace-nowrap"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#00C703] hover:bg-[#00e003] disabled:opacity-50 text-black font-black text-[14px] px-6 py-2.5 rounded-full shadow-[0_0_20px_rgba(0,199,3,0.35)] transition-all whitespace-nowrap"
                   >
                     {contributing && (
                       <Loader2 size={14} className="animate-spin" />
@@ -857,7 +869,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                       ? "Goal Reached!"
                       : `Contribute $${contribUsd} · ${fmtM(tokensForContrib)} $RobInu`}
                   </button>
-                  <div className="text-[11px] text-[#5a6a55] mt-1 sm:text-right">
+                  <div className="text-[11px] text-[#9a9a9a] mt-1 sm:text-right">
                     ≈ {fmt(ethAmount)} ETH @ $
                     {Math.round(ethPrice).toLocaleString()}/ETH
                   </div>
@@ -865,7 +877,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               </div>
 
               {/* Disclaimer */}
-              <p className="mt-4 text-[11px] text-[#3a4a3a] border-t border-[#0e1f0e] pt-3">
+              <p className="mt-4 text-[11px] text-[#3a4a3a] border-t border-[#3a3c3a] pt-3">
                 Contributions are sent directly to the LP seeding address. Token
                 distribution is based on your share of the total 2 ETH raised.
                 Final allocation is proportional.
@@ -876,8 +888,8 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       })()}
 
       {/* ── Tab bar ────────────────────────────────────────────────────────────── */}
-      <div className="border-b border-[#0a1f0a] bg-[#050a05] px-5 sm:px-8">
-        <div className="max-w-[1200px] mx-auto flex items-center gap-1 overflow-x-auto scrollbar-none">
+      <div className="border-b border-[#2a2c2a] bg-[#090b09] px-5 sm:px-8 py-3">
+        <div className="max-w-[1200px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-none">
           {(
             [
               { id: "create", label: "Create Token", icon: Plus },
@@ -895,10 +907,10 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               key={id}
               onClick={() => setActiveTab(id)}
               data-testid={`tab-rh-${id}`}
-              className={`flex items-center gap-2 px-4 py-3 text-[13px] font-semibold whitespace-nowrap border-b-2 transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold whitespace-nowrap border transition-all ${
                 activeTab === id
-                  ? "border-[#00C805] text-[#00C805]"
-                  : "border-transparent text-[#5a6a55] hover:text-[#c8d8c4]"
+                  ? "bg-[#00C703]/10 border-[#00C703] text-[#00C703]"
+                  : "bg-transparent border-[#3a3c3a] text-[#9a9a9a] hover:text-[#e5e5e5] hover:border-[#00C703]/40"
               }`}
             >
               <Icon size={14} />
@@ -914,16 +926,19 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         {activeTab === "create" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Form card */}
-            <div className="bg-[#070f07] border border-[#0e1f0e] rounded-[16px] p-6">
+            <div className="bg-[#151715] border border-[#3a3c3a] rounded-[16px] p-6">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-full bg-[#00C805]/10 border border-[#00C805]/20 flex items-center justify-center">
-                  <Coins size={18} className="text-[#00C805]" />
+                <div className="w-10 h-10 rounded-full bg-[#00C703]/10 border border-[#00C703]/20 flex items-center justify-center">
+                  <Coins size={18} className="text-[#00C703]" />
                 </div>
                 <div>
-                  <h2 className="text-[16px] font-bold text-white">
+                  <h2
+                    className="text-[16px] font-bold text-white"
+                    style={{ fontFamily: "'Syne', sans-serif" }}
+                  >
                     Create ERC-20 Token
                   </h2>
-                  <p className="text-[12px] text-[#5a6a55]">
+                  <p className="text-[12px] text-[#9a9a9a]">
                     Deploy to Robinhood Chain Mainnet
                   </p>
                 </div>
@@ -933,7 +948,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
 
               <div className="flex flex-col gap-4">
                 <div>
-                  <label className="text-[12px] font-semibold text-[#8a9a85] uppercase tracking-wider mb-1.5 block">
+                  <label className="text-[12px] font-semibold text-[#b0b0b0] uppercase tracking-wider mb-1.5 block">
                     Token Name
                   </label>
                   <input
@@ -942,11 +957,11 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                     onChange={(e) => setTokenName(e.target.value)}
                     placeholder="e.g. My Awesome Token"
                     data-testid="input-token-name"
-                    className="w-full bg-[#0a1a0a] border border-[#1a2e1a] focus:border-[#00C805]/60 rounded-[10px] px-4 py-3 text-white text-[14px] outline-none transition-colors placeholder:text-[#3a4a35]"
+                    className="w-full bg-[#1c1e1c] border border-[#3a3c3a] focus:border-[#00C703]/60 rounded-[10px] px-4 py-3 text-white text-[14px] outline-none transition-colors placeholder:text-[#707070]"
                   />
                 </div>
                 <div>
-                  <label className="text-[12px] font-semibold text-[#8a9a85] uppercase tracking-wider mb-1.5 block">
+                  <label className="text-[12px] font-semibold text-[#b0b0b0] uppercase tracking-wider mb-1.5 block">
                     Token Symbol
                   </label>
                   <input
@@ -957,11 +972,11 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                     }
                     placeholder="e.g. MAT"
                     data-testid="input-token-symbol"
-                    className="w-full bg-[#0a1a0a] border border-[#1a2e1a] focus:border-[#00C805]/60 rounded-[10px] px-4 py-3 text-white text-[14px] outline-none transition-colors placeholder:text-[#3a4a35]"
+                    className="w-full bg-[#1c1e1c] border border-[#3a3c3a] focus:border-[#00C703]/60 rounded-[10px] px-4 py-3 text-white text-[14px] outline-none transition-colors placeholder:text-[#707070]"
                   />
                 </div>
                 <div>
-                  <label className="text-[12px] font-semibold text-[#8a9a85] uppercase tracking-wider mb-1.5 block">
+                  <label className="text-[12px] font-semibold text-[#b0b0b0] uppercase tracking-wider mb-1.5 block">
                     Initial Supply
                   </label>
                   <input
@@ -970,9 +985,9 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                     onChange={(e) => setTokenSupply(e.target.value)}
                     placeholder="1000000"
                     data-testid="input-token-supply"
-                    className="w-full bg-[#0a1a0a] border border-[#1a2e1a] focus:border-[#00C805]/60 rounded-[10px] px-4 py-3 text-white text-[14px] outline-none transition-colors placeholder:text-[#3a4a35]"
+                    className="w-full bg-[#1c1e1c] border border-[#3a3c3a] focus:border-[#00C703]/60 rounded-[10px] px-4 py-3 text-white text-[14px] outline-none transition-colors placeholder:text-[#707070]"
                   />
-                  <p className="text-[11px] text-[#3a4a35] mt-1">
+                  <p className="text-[11px] text-[#707070] mt-1">
                     Decimals: 18 (standard ERC-20)
                   </p>
                 </div>
@@ -983,7 +998,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                     deploying || !tokenName || !tokenSymbol || !tokenSupply
                   }
                   data-testid="button-deploy-token"
-                  className="w-full flex items-center justify-center gap-2 bg-[#00C805] hover:bg-[#00a804] disabled:opacity-50 active:scale-[0.98] text-black font-bold text-[15px] py-3.5 rounded-[12px] transition-all"
+                  className="w-full flex items-center justify-center gap-2 bg-[#00C703] hover:bg-[#00e003] disabled:opacity-50 active:scale-[0.98] text-black font-bold text-[15px] py-3.5 rounded-full shadow-[0_0_20px_rgba(0,199,3,0.35)] transition-all"
                 >
                   {deploying ? (
                     <Loader2 size={18} className="animate-spin" />
@@ -998,8 +1013,8 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             {/* Info card */}
             <div className="flex flex-col gap-4">
               {/* What happens */}
-              <div className="bg-[#070f07] border border-[#0e1f0e] rounded-[16px] p-5">
-                <h3 className="text-[14px] font-bold text-white mb-4">
+              <div className="bg-[#151715] border border-[#3a3c3a] rounded-[16px] p-5">
+                <h3 className="text-[14px] font-bold text-white mb-4" style={{ fontFamily: "'Syne', sans-serif" }}>
                   What happens when you deploy?
                 </h3>
                 {[
@@ -1024,10 +1039,10 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                     key={n}
                     className="flex items-start gap-3 mb-3 last:mb-0"
                   >
-                    <div className="w-5 h-5 rounded-full bg-[#00C805] text-black text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div className="w-5 h-5 rounded-full bg-[#00C703] text-black text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                       {n}
                     </div>
-                    <p className="text-[13px] text-[#8a9a85] leading-snug">
+                    <p className="text-[13px] text-[#b0b0b0] leading-snug">
                       {text}
                     </p>
                   </div>
@@ -1035,8 +1050,8 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               </div>
 
               {/* Quick links */}
-              <div className="bg-[#070f07] border border-[#0e1f0e] rounded-[16px] p-5">
-                <h3 className="text-[13px] font-bold text-[#8a9a85] uppercase tracking-wider mb-3">
+              <div className="bg-[#151715] border border-[#3a3c3a] rounded-[16px] p-5">
+                <h3 className="text-[13px] font-bold text-[#b0b0b0] uppercase tracking-wider mb-3">
                   Quick Links
                 </h3>
                 {[
@@ -1066,17 +1081,17 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between py-2.5 border-b border-[#0e1f0e] last:border-0 group"
+                    className="flex items-center justify-between py-2.5 border-b border-[#3a3c3a] last:border-0 group"
                   >
                     <div>
-                      <div className="text-[13px] font-semibold text-[#c8d8c4] group-hover:text-[#00C805] transition-colors">
+                      <div className="text-[13px] font-semibold text-[#e5e5e5] group-hover:text-[#00C703] transition-colors">
                         {label}
                       </div>
-                      <div className="text-[11px] text-[#3a4a35]">{desc}</div>
+                      <div className="text-[11px] text-[#707070]">{desc}</div>
                     </div>
                     <ExternalLink
                       size={13}
-                      className="text-[#3a4a35] group-hover:text-[#00C805] transition-colors"
+                      className="text-[#707070] group-hover:text-[#00C703] transition-colors"
                     />
                   </a>
                 ))}
@@ -1089,12 +1104,15 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         {activeTab === "tokens" && (
           <div>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-[18px] font-bold text-white">
+              <h2
+                className="text-[18px] font-extrabold text-white"
+                style={{ fontFamily: "'Syne', sans-serif" }}
+              >
                 My Deployed Tokens
               </h2>
               <button
                 onClick={() => setActiveTab("create")}
-                className="flex items-center gap-2 bg-[#00C805]/10 border border-[#00C805]/30 hover:bg-[#00C805]/20 text-[#00C805] text-[13px] font-semibold px-4 py-2 rounded-[10px] transition-all"
+                className="flex items-center gap-2 bg-[#00C703]/10 border border-[#00C703]/30 hover:bg-[#00C703]/20 text-[#00C703] text-[13px] font-semibold px-4 py-2 rounded-full transition-all"
               >
                 <Plus size={14} />
                 Deploy New
@@ -1102,12 +1120,12 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             </div>
 
             {deployedContracts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 border border-[#0e1f0e] rounded-[16px] bg-[#070f07]">
-                <Coins size={48} className="text-[#1a2e1a] mb-4" />
-                <p className="text-[#5a6a55] text-[15px] font-semibold">
+              <div className="flex flex-col items-center justify-center py-16 border border-[#3a3c3a] rounded-[16px] bg-[#151715]">
+                <Coins size={48} className="text-[#3a3c3a] mb-4" />
+                <p className="text-[#9a9a9a] text-[15px] font-semibold">
                   No tokens deployed yet
                 </p>
-                <p className="text-[#3a4a35] text-[13px] mt-1">
+                <p className="text-[#707070] text-[13px] mt-1">
                   Create your first token on the Create Token tab
                 </p>
               </div>
@@ -1116,12 +1134,12 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                 {deployedContracts.map((token, i) => (
                   <div
                     key={i}
-                    className="bg-[#070f07] border border-[#0e1f0e] rounded-[14px] p-4 sm:p-5"
+                    className="bg-[#151715] border border-[#3a3c3a] rounded-[14px] p-4 sm:p-5"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#00C805]/10 border border-[#00C805]/20 flex items-center justify-center flex-shrink-0">
-                          <span className="text-[#00C805] text-[11px] font-black">
+                        <div className="w-10 h-10 rounded-full bg-[#00C703]/10 border border-[#00C703]/20 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[#00C703] text-[11px] font-black">
                             {token.symbol.slice(0, 3)}
                           </span>
                         </div>
@@ -1129,20 +1147,20 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                           <div className="text-[15px] font-bold text-white">
                             {token.name}
                           </div>
-                          <div className="text-[12px] text-[#5a6a55] font-mono">
+                          <div className="text-[12px] text-[#9a9a9a] font-mono">
                             {token.symbol}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {token.verifyStatus === "verified" && (
-                          <span className="flex items-center gap-1 text-[10px] font-bold text-[#00C805] bg-[#00C805]/10 border border-[#00C805]/25 px-2 py-0.5 rounded-full">
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-[#00C703] bg-[#00C703]/10 border border-[#00C703]/25 px-2 py-0.5 rounded-full">
                             <ShieldCheck size={10} />
                             Verified
                           </span>
                         )}
                         {token.verifyStatus === "pending" && (
-                          <span className="flex items-center gap-1 text-[10px] font-semibold text-[#5a6a55] bg-[#0a1a0a] border border-[#1a2e1a] px-2 py-0.5 rounded-full">
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9a9a9a] bg-[#1c1e1c] border border-[#3a3c3a] px-2 py-0.5 rounded-full">
                             <Clock size={10} className="animate-pulse" />
                             Verifying…
                           </span>
@@ -1153,14 +1171,14 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                             Unverified
                           </span>
                         )}
-                        <span className="text-[11px] text-[#3a4a35] bg-[#0a1a0a] border border-[#1a2e1a] px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] text-[#707070] bg-[#1c1e1c] border border-[#3a3c3a] px-2 py-0.5 rounded-full">
                           {token.network}
                         </span>
                         <a
                           href={`${EXPLORER}/address/${token.address}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[#00C805] hover:text-green-300 transition-colors"
+                          className="text-[#00C703] hover:text-green-300 transition-colors"
                         >
                           <ExternalLink size={14} />
                         </a>
@@ -1185,12 +1203,12 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                       ].map(({ label, value }) => (
                         <div
                           key={label}
-                          className="bg-[#0a1a0a] border border-[#1a2e1a] rounded-[8px] px-3 py-2"
+                          className="bg-[#1c1e1c] border border-[#3a3c3a] rounded-[8px] px-3 py-2"
                         >
-                          <div className="text-[10px] text-[#3a4a35] uppercase tracking-wider mb-0.5">
+                          <div className="text-[10px] text-[#707070] uppercase tracking-wider mb-0.5">
                             {label}
                           </div>
-                          <div className="text-[12px] text-[#c8d8c4] font-mono font-semibold">
+                          <div className="text-[12px] text-[#e5e5e5] font-mono font-semibold">
                             {value}
                           </div>
                         </div>
@@ -1202,7 +1220,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                           navigator.clipboard.writeText(token.address);
                           toast({ title: "Address copied!" });
                         }}
-                        className="flex items-center gap-1.5 text-[12px] text-[#5a6a55] hover:text-[#00C805] transition-colors"
+                        className="flex items-center gap-1.5 text-[12px] text-[#9a9a9a] hover:text-[#00C703] transition-colors"
                       >
                         <Copy size={11} />
                         Copy address
@@ -1265,13 +1283,13 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         {/* SEND GM */}
         {activeTab === "gm" && (
           <div className="max-w-[480px]">
-            <div className="bg-[#070f07] border border-[#0e1f0e] rounded-[16px] p-6">
+            <div className="bg-[#151715] border border-[#3a3c3a] rounded-[16px] p-6">
               <div className="text-center mb-6">
                 <div className="text-[48px] mb-3">🌅</div>
-                <h2 className="text-[22px] font-black text-white">
+                <h2 className="text-[22px] font-extrabold text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
                   Send GM On-Chain
                 </h2>
-                <p className="text-[#5a6a55] text-[13px] mt-2">
+                <p className="text-[#9a9a9a] text-[13px] mt-2">
                   Send a "Good Morning" message on Robinhood Chain. Once per
                   day, recorded on-chain forever.
                 </p>
@@ -1281,11 +1299,11 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
 
               {gmClaimed ? (
                 <div className="flex flex-col items-center gap-3 py-4">
-                  <div className="flex items-center gap-2 text-[#00C805] text-[15px] font-bold">
+                  <div className="flex items-center gap-2 text-[#00C703] text-[15px] font-bold">
                     <CheckCircle size={20} />
                     GM sent today!
                   </div>
-                  <p className="text-[#5a6a55] text-[13px] text-center">
+                  <p className="text-[#9a9a9a] text-[13px] text-center">
                     Come back tomorrow to send another GM and keep your streak
                     alive.
                   </p>
@@ -1294,7 +1312,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                       href={`${EXPLORER}/tx/${gmTxHash}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-[12px] text-[#00C805] hover:text-green-300 transition-colors"
+                      className="flex items-center gap-1.5 text-[12px] text-[#00C703] hover:text-green-300 transition-colors"
                     >
                       <ExternalLink size={12} />
                       View transaction
@@ -1306,7 +1324,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                   onClick={sendGm}
                   disabled={sendingGm}
                   data-testid="button-send-gm"
-                  className="w-full flex items-center justify-center gap-2 bg-[#00C805] hover:bg-[#00a804] disabled:opacity-50 text-black font-bold text-[16px] py-4 rounded-[12px] transition-all active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-2 bg-[#00C703] hover:bg-[#00e003] disabled:opacity-50 text-black font-bold text-[16px] py-4 rounded-full shadow-[0_0_20px_rgba(0,199,3,0.35)] transition-all active:scale-[0.98]"
                 >
                   {sendingGm ? (
                     <Loader2 size={18} className="animate-spin" />
@@ -1317,10 +1335,10 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                 </button>
               )}
 
-              <div className="mt-5 border-t border-[#0e1f0e] pt-4">
-                <div className="text-[11px] text-[#3a4a35] text-center">
+              <div className="mt-5 border-t border-[#3a3c3a] pt-4">
+                <div className="text-[11px] text-[#707070] text-center">
                   GM is stored on-chain as{" "}
-                  <code className="text-[#5a6a55]">0x474d</code> (UTF-8
+                  <code className="text-[#9a9a9a]">0x474d</code> (UTF-8
                   encoded). Each GM uses a tiny amount of ETH for gas.
                 </div>
               </div>
@@ -1331,15 +1349,15 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         {/* CLAIM XP */}
         {activeTab === "xp" && (
           <div className="max-w-[480px]">
-            <div className="bg-[#070f07] border border-[#0e1f0e] rounded-[16px] p-6">
+            <div className="bg-[#151715] border border-[#3a3c3a] rounded-[16px] p-6">
               <div className="text-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-[#00C805]/10 border border-[#00C805]/30 flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(0,200,5,0.15)]">
-                  <Gift size={28} className="text-[#00C805]" />
+                <div className="w-16 h-16 rounded-full bg-[#00C703]/10 border border-[#00C703]/30 flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(0,199,3,0.15)]">
+                  <Gift size={28} className="text-[#00C703]" />
                 </div>
-                <h2 className="text-[22px] font-black text-white">
+                <h2 className="text-[22px] font-extrabold text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
                   Claim 25 XP Daily
                 </h2>
-                <p className="text-[#5a6a55] text-[13px] mt-2">
+                <p className="text-[#9a9a9a] text-[13px] mt-2">
                   Claim 25 XP every 24 hours by interacting with the XP contract
                   on Robinhood Chain.
                 </p>
@@ -1358,10 +1376,10 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                 ].map(({ label, value }) => (
                   <div
                     key={label}
-                    className="flex justify-between items-center py-2 border-b border-[#0e1f0e] last:border-0"
+                    className="flex justify-between items-center py-2 border-b border-[#3a3c3a] last:border-0"
                   >
-                    <span className="text-[#5a6a55] text-[13px]">{label}</span>
-                    <span className="text-[#c8d8c4] text-[13px] font-semibold">
+                    <span className="text-[#9a9a9a] text-[13px]">{label}</span>
+                    <span className="text-[#e5e5e5] text-[13px] font-semibold">
                       {value}
                     </span>
                   </div>
@@ -1385,7 +1403,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                 onClick={claimXp}
                 disabled={claimingXp || xpClaimed}
                 data-testid="button-claim-xp"
-                className="w-full flex items-center justify-center gap-2 bg-[#00C805] hover:bg-[#00a804] disabled:opacity-40 text-black font-bold text-[15px] py-3.5 rounded-[12px] transition-all"
+                className="w-full flex items-center justify-center gap-2 bg-[#00C703] hover:bg-[#00e003] disabled:opacity-40 text-black font-bold text-[15px] py-3.5 rounded-full shadow-[0_0_20px_rgba(0,199,3,0.35)] transition-all"
               >
                 {claimingXp ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -1401,7 +1419,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         {/* EXPLORER */}
         {activeTab === "explore" && (
           <div>
-            <h2 className="text-[18px] font-bold text-white mb-5">
+            <h2 className="text-[18px] font-extrabold text-white mb-5" style={{ fontFamily: "'Syne', sans-serif" }}>
               Explore Robinhood Chain
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1454,18 +1472,18 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex flex-col bg-[#070f07] border border-[#0e1f0e] hover:border-[#00C805]/40 rounded-[14px] p-5 transition-all"
+                  className="group flex flex-col bg-[#151715] border border-[#3a3c3a] hover:border-[#00C703]/40 rounded-[14px] p-5 transition-all"
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#00C805]/10 border border-[#00C805]/20 flex items-center justify-center mb-4 group-hover:bg-[#00C805]/20 transition-all">
-                    <Icon size={18} className="text-[#00C805]" />
+                  <div className="w-10 h-10 rounded-full bg-[#00C703]/10 border border-[#00C703]/20 flex items-center justify-center mb-4 group-hover:bg-[#00C703]/20 transition-all">
+                    <Icon size={18} className="text-[#00C703]" />
                   </div>
                   <div className="font-bold text-[15px] text-white mb-1">
                     {title}
                   </div>
-                  <div className="text-[12px] text-[#5a6a55] leading-relaxed flex-1">
+                  <div className="text-[12px] text-[#9a9a9a] leading-relaxed flex-1">
                     {desc}
                   </div>
-                  <div className="flex items-center gap-1 mt-4 text-[12px] font-semibold text-[#00C805] group-hover:gap-2 transition-all">
+                  <div className="flex items-center gap-1 mt-4 text-[12px] font-semibold text-[#00C703] group-hover:gap-2 transition-all">
                     {cta}
                     <ChevronRight size={13} />
                   </div>
@@ -1474,8 +1492,8 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             </div>
 
             {/* Network details */}
-            <div className="mt-6 bg-[#070f07] border border-[#0e1f0e] rounded-[16px] p-5">
-              <h3 className="text-[14px] font-bold text-white mb-4">
+            <div className="mt-6 bg-[#151715] border border-[#3a3c3a] rounded-[16px] p-5">
+              <h3 className="text-[14px] font-bold text-white mb-4" style={{ fontFamily: "'Syne', sans-serif" }}>
                 Add to MetaMask / Any EVM Wallet
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1493,11 +1511,11 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                   },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex flex-col gap-0.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#3a4a35]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#707070]">
                       {label}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[12px] text-[#c8d8c4] font-mono break-all">
+                      <span className="text-[12px] text-[#e5e5e5] font-mono break-all">
                         {value}
                       </span>
                       <button
@@ -1505,7 +1523,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
                           navigator.clipboard.writeText(value);
                           toast({ title: "Copied!" });
                         }}
-                        className="text-[#3a4a35] hover:text-[#00C805] transition-colors flex-shrink-0"
+                        className="text-[#707070] hover:text-[#00C703] transition-colors flex-shrink-0"
                       >
                         <Copy size={11} />
                       </button>
@@ -1516,7 +1534,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               <button
                 onClick={switchToRH}
                 disabled={switchingNetwork || isOnRH}
-                className="mt-5 flex items-center gap-2 bg-[#00C805] hover:bg-[#00a804] disabled:opacity-50 text-black font-bold text-[13px] px-5 py-2.5 rounded-[10px] transition-all"
+                className="mt-5 flex items-center gap-2 bg-[#00C703] hover:bg-[#00e003] disabled:opacity-50 text-black font-bold text-[13px] px-5 py-2.5 rounded-full shadow-[0_0_16px_rgba(0,199,3,0.3)] transition-all"
               >
                 {switchingNetwork && (
                   <Loader2 size={13} className="animate-spin" />
