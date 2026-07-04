@@ -39,6 +39,7 @@ const DESKTOP_NAV_PRIMARY = [
   { value: "vault",     label: "Vault" },
   { value: "airdrop",   label: "Airdrop" },
   { value: "robinhood", label: "RH Playground" },
+  { value: "farm", label: "Farm" },
 ];
 
 const DESKTOP_NAV_MORE = [
