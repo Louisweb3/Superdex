@@ -293,6 +293,20 @@ export const insertPopularTokenSchema = createInsertSchema(popularTokens).omit({
 export type InsertPopularToken = z.infer<typeof insertPopularTokenSchema>;
 export type PopularToken = typeof popularTokens.$inferSelect;
 
+// ─── Farm page: on-chain action log (GM/GN/deploys) ────────────────────────────
+export const farmActions = pgTable("farm_actions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  wallet_address: varchar("wallet_address", { length: 42 }).notNull(),
+  action_type: varchar("action_type", { length: 24 }).notNull(), // gm | gn | deploy_token | deploy_nft | deploy_counter
+  chain: varchar("chain", { length: 24 }).notNull(), // base | robinhood
+  tx_hash: varchar("tx_hash", { length: 66 }).notNull().default(""),
+  xp_awarded: integer("xp_awarded").notNull().default(0),
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD, used for daily dedup on gm/gn
+  created_at: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+export type FarmAction = typeof farmActions.$inferSelect;
+
 // ─── Admin CMS: Social Links ──────────────────────────────────────────────────
 export const socialLinks = pgTable("social_links", {
   id: varchar("id", { length: 36 }).primaryKey(),

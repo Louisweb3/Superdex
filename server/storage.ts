@@ -11,6 +11,7 @@ import {
   taskCompletions,
   adminAnnouncements,
   popularTokens,
+  farmActions,
   type User,
   type InsertUser,
   type TokenCashback,
@@ -162,7 +163,76 @@ function weekStartUTC(): string {
 }
 
 // ─── DB-backed rewards storage ──────────────────────────────────────────────────────────
+const FARM_ACTION_XP: Record<string, number> = {
+  gm: 10,
+  gn: 10,
+  deploy_token: 50,
+  deploy_nft: 40,
+  deploy_counter: 25,
+};
+const FARM_DAILY_ACTIONS = new Set(["gm", "gn"]);
+
 export class RewardsStorage {
+
+  /**
+   * Records a Farm-page on-chain action (GM/GN/deploy) and awards XP.
+   * GM/GN are capped to once per wallet+chain+day; deploy actions are
+   * awarded every time since each one costs real gas on-chain.
+   */
+  async recordFarmAction(
+    wallet: string,
+    actionType: string,
+    chain: string,
+    txHash: string
+  ): Promise<{ xpAwarded: number; alreadyClaimedToday?: boolean }> {
+    const key = wallet.toLowerCase();
+    const today = todayUTC();
+    const xp = FARM_ACTION_XP[actionType] ?? 0;
+
+    if (FARM_DAILY_ACTIONS.has(actionType)) {
+      const [existing] = await db
+        .select()
+        .from(farmActions)
+        .where(
+          and(
+            eq(farmActions.wallet_address, key),
+            eq(farmActions.action_type, actionType),
+            eq(farmActions.chain, chain),
+            eq(farmActions.date, today)
+          )
+        )
+        .limit(1);
+      if (existing) {
+        return { xpAwarded: 0, alreadyClaimedToday: true };
+      }
+    }
+
+    await this.ensureUser(key);
+
+    await db.insert(farmActions).values({
+      id: randomUUID(),
+      wallet_address: key,
+      action_type: actionType,
+      chain,
+      tx_hash: txHash ?? "",
+      xp_awarded: xp,
+      date: today,
+    });
+
+    if (xp > 0) {
+      await db
+        .update(rewardUsers)
+        .set({
+          xp: sql`${rewardUsers.xp} + ${xp}`,
+          weekly_xp: sql`${rewardUsers.weekly_xp} + ${xp}`,
+          tier: sql`CASE WHEN ${rewardUsers.xp} + ${xp} >= 5000 THEN 'Diamond' WHEN ${rewardUsers.xp} + ${xp} >= 2000 THEN 'Gold' WHEN ${rewardUsers.xp} + ${xp} >= 500 THEN 'Silver' ELSE 'Bronze' END`,
+          level: sql`GREATEST(1, FLOOR((${rewardUsers.xp} + ${xp}) / 100) + 1)`,
+        })
+        .where(eq(rewardUsers.wallet_address, key));
+    }
+
+    return { xpAwarded: xp };
+  }
 
   private async ensureUser(wallet: string): Promise<RewardUser> {
     const key = wallet.toLowerCase();

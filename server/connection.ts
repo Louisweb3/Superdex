@@ -102,7 +102,10 @@ export function getEncodedConnectionUrl(): string {
 
   const params = new URLSearchParams(c.params);
   if (!params.has("sslmode")) {
-    params.set("sslmode", "require");
+    // "no-verify" (not "require") — Supabase's pooler cert isn't in Node's
+    // default trust store, so drizzle-kit needs the same relaxed verification
+    // used by the app's pg Pool (see buildSslConfig above).
+    params.set("sslmode", "no-verify");
   }
   const qs = params.toString();
   return qs ? `${base}?${qs}` : base;

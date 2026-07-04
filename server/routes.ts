@@ -1014,6 +1014,31 @@ export async function registerRoutes(
     }
   });
 
+  // ─── Farm page actions (GM/GN/deploys) ─────────────────────────────────────────
+  app.post("/api/farm/action", async (req, res) => {
+    try {
+      const { wallet, actionType, chain, txHash } = req.body;
+      if (!wallet || typeof wallet !== "string" || wallet.length < 10)
+        return res.status(400).json({ error: "Invalid wallet" });
+      const validActions = ["gm", "gn", "deploy_token", "deploy_nft", "deploy_counter"];
+      if (!validActions.includes(actionType))
+        return res.status(400).json({ error: "Invalid action type" });
+      if (!chain || typeof chain !== "string")
+        return res.status(400).json({ error: "Invalid chain" });
+
+      const result = await rewardsStorage.recordFarmAction(
+        wallet,
+        actionType,
+        chain,
+        txHash ?? ""
+      );
+      return res.json(result);
+    } catch (err: any) {
+      console.error("farm action error:", err);
+      return res.status(500).json({ error: err.message ?? "Internal error" });
+    }
+  });
+
   // ─── XP On-chain Claim ────────────────────────────────────────────────────────
   app.post("/api/xp-claim", async (req, res) => {
     try {
