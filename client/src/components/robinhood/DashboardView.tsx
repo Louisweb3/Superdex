@@ -155,9 +155,11 @@ export function DashboardView(props: DashboardViewProps) {
       {/* Rewards Banner */}
       <div className="bg-[#00090b] border border-[#081312] rounded-[8px] overflow-hidden">
         <div className="flex items-start gap-4 p-4">
-          <div className="w-[100px] h-[100px] rounded-[8px] bg-[#0baa3b]/10 flex items-center justify-center flex-shrink-0">
-            <Gift size={40} className="text-[#0baa3b]" />
-          </div>
+          <img
+            src="/figmaAssets/rewards_chest.png"
+            alt="Rewards Chest"
+            className="w-[100px] h-[100px] rounded-[8px] flex-shrink-0 object-cover"
+          />
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] font-bold text-[#0baa3b] tracking-wider">REWARDS</span>
