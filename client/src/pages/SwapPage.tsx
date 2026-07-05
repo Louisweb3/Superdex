@@ -113,7 +113,7 @@ function TokenPickerModal({
           onError={(e) => {
             const img = e.target as HTMLImageElement;
             img.onerror = null;
-            img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${t.address.toLowerCase()}.png`;
+            img.src = `https://dd.dexscreener.com/ds-data/tokens/${network === "robinhood" ? "robinhood" : "base"}/${t.address.toLowerCase()}.png`;
           }}
         />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -429,9 +429,7 @@ function TokenBox({
               onError={(e) => {
                 const img = e.target as HTMLImageElement;
                 img.onerror = null;
-                if (network === "base") {
-                  img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${token.address.toLowerCase()}.png`;
-                }
+                img.src = `https://dd.dexscreener.com/ds-data/tokens/${network === "robinhood" ? "robinhood" : "base"}/${token.address.toLowerCase()}.png`;
               }}
             />
             <span className="font-['Inter',sans-serif] text-base font-bold text-[#c8ccd2]">{token.symbol}</span>
@@ -1214,9 +1212,7 @@ export function SwapPage() {
                         onError={(e) => {
                           const img = e.target as HTMLImageElement;
                           img.onerror = null;
-                          if (network === "base") {
-                            img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${sellToken.address.toLowerCase()}.png`;
-                          }
+                          img.src = `https://dd.dexscreener.com/ds-data/tokens/${network === "robinhood" ? "robinhood" : "base"}/${sellToken.address.toLowerCase()}.png`;
                         }}
                       />
                       <span className="font-['Inter',sans-serif] text-[13px] font-bold text-[#8c909a]">
@@ -1315,7 +1311,7 @@ export function SwapPage() {
                         symbol: pt.symbol,
                         name: pt.name,
                         address: pt.address,
-                        icon: pt.icon_url || `https://dd.dexscreener.com/ds-data/tokens/base/${pt.address.toLowerCase()}.png`,
+                        icon: pt.icon_url || `https://dd.dexscreener.com/ds-data/tokens/${network === "robinhood" ? "robinhood" : "base"}/${pt.address.toLowerCase()}.png`,
                         token: matched,
                       };
                     })
@@ -1343,7 +1339,7 @@ export function SwapPage() {
                           onError={(e) => {
                             const img = e.target as HTMLImageElement;
                             img.onerror = null;
-                            img.src = `https://dd.dexscreener.com/ds-data/tokens/base/${item.address.toLowerCase()}.png`;
+                            img.src = `https://dd.dexscreener.com/ds-data/tokens/${network === "robinhood" ? "robinhood" : "base"}/${item.address.toLowerCase()}.png`;
                           }}
                         />
                         <div className="flex min-w-0 flex-1 flex-col">
