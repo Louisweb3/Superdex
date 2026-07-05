@@ -99,10 +99,10 @@ export function ContractsView({ tokens, explorerUrl, onCopy, onRetryVerify, onNa
                     <td className="px-4 py-3">
                       <div className={`flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[10px] font-medium ${
                         token.verifyStatus === "verified" ? "bg-[#01160e] text-[#0baa3b] border border-[#02100c]" :
-                        token.verifyStatus === "pending" ? "bg-[#FFB547]/10 text-[#FFB547]" : "bg-[#FF5A67]/10 text-[#FF5A67]"
+                        token.verifyStatus === "pending" ? "bg-[#FFB547]/10 text-[#FFB547]" : "bg-[#63666a]/10 text-[#9a9da3]"
                       }`}>
                         {token.verifyStatus === "verified" && <CheckCircle size={10} />}
-                        {token.verifyStatus ?? "pending"}
+                        {token.verifyStatus === "verified" ? "verified" : token.verifyStatus === "pending" ? "pending" : "unverified"}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-[11px] text-[#63666a]">{new Date(token.deployedAt).toLocaleDateString()}</td>
@@ -112,7 +112,7 @@ export function ContractsView({ tokens, explorerUrl, onCopy, onRetryVerify, onNa
                         <a href={uniswapLpUrl(token.address)} target="_blank" rel="noopener noreferrer" title="Add LP on Uniswap" data-testid={`link-lp-${token.address}`} className="p-1 rounded-[6px] text-[#63666a] hover:text-white transition-colors"><Droplets size={12} /></a>
                         <button onClick={() => onCopy(token.address)} title="Copy address" className="p-1 rounded-[6px] text-[#63666a] hover:text-white transition-colors"><Copy size={12} /></button>
                         <a href={`${explorerUrl}/address/${token.address}`} target="_blank" rel="noopener noreferrer" title="View on explorer" className="p-1 rounded-[6px] text-[#63666a] hover:text-white transition-colors"><ExternalLink size={12} /></a>
-                        {token.verifyStatus === "failed" && <button onClick={() => onRetryVerify(token.address)} title="Retry verify" className="p-1 rounded-[6px] text-[#FF5A67] hover:bg-[#FF5A67]/10 transition-colors"><RefreshCw size={12} /></button>}
+                        {token.verifyStatus === "failed" && <button onClick={() => onRetryVerify(token.address)} title="Retry verify" className="p-1 rounded-[6px] text-[#63666a] hover:text-white hover:bg-[#081312] transition-colors"><RefreshCw size={12} /></button>}
                       </div>
                     </td>
                   </tr>

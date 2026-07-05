@@ -33,7 +33,11 @@ export function DashboardView(props: DashboardViewProps) {
   const verifiedCount = tokens.filter((t) => t.verifyStatus === "verified").length;
 
   // ─── Real stats computed from actual deploy data ───────────────────────────
-  const successfulDeployments = tokens.filter((t) => t.verifyStatus !== "failed").length;
+  // A token only ever lands in `tokens` after its deployment tx has already been confirmed
+  // on-chain, so every entry here is by definition a successful deployment. `verifyStatus`
+  // only tracks the separate, optional block-explorer *source verification* step and must
+  // never be used to decide whether the deployment itself succeeded.
+  const successfulDeployments = tokens.length;
   const totalGasUsedEth = tokens.reduce((sum, t) => sum + (t.gasUsed ? Number(t.gasUsed) : 0), 0);
   const totalTransactions = tokens.length + (gmClaimed ? 1 : 0) + (gnClaimed ? 1 : 0) + (claimedToday ? 1 : 0);
 
@@ -153,7 +157,7 @@ export function DashboardView(props: DashboardViewProps) {
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5 bg-[#081312] rounded-[6px] px-2.5 py-1">
-                      <span className="text-[10px] text-[#63666a] font-medium">{token.verifyStatus ?? "pending"}</span>
+                      <span className="text-[10px] text-[#63666a] font-medium">{token.verifyStatus === "failed" ? "unverified" : (token.verifyStatus ?? "pending")}</span>
                     </div>
                   )}
                   <a href={`${explorerUrl}/address/${token.address}`} target="_blank" rel="noopener noreferrer"><ExternalLink size={12} className="text-[#63666a]" /></a>
