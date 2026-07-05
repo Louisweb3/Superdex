@@ -36,7 +36,12 @@ export function DashboardView(props: DashboardViewProps) {
   return (
     <div className="flex flex-col gap-5 pt-2">
       {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-[12px] bg-[#00090b] border border-[#081312]">
+      <div className="relative overflow-hidden rounded-[12px] border border-[#081312]">
+        <img
+          src="/figmaAssets/hero_bg.png"
+          alt="Hero background"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
         <div className="p-5 relative z-10">
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -47,20 +52,13 @@ export function DashboardView(props: DashboardViewProps) {
               <p className="text-[#63666a] text-[13px] mt-2 leading-relaxed max-w-[260px]">
                 Create, deploy, and manage smart contracts on Robinhood Chain.
               </p>
-              <button
-                onClick={() => onNavigate("deployments")}
-                className="mt-4 flex items-center gap-2 bg-[#020c0c] border border-[#024420] hover:border-[#0baa3b] rounded-[8px] px-4 py-2.5 text-[13px] text-[#0a9637] font-medium transition-colors"
-              >
-                <Plus size={15} /> Create Contract <Rocket size={14} />
+              <button onClick={() => onNavigate("deployments")} className="mt-4 block">
+                <img
+                  src="/figmaAssets/create_contract_btn.png"
+                  alt="Create Contract"
+                  className="h-[40px] w-auto object-contain"
+                />
               </button>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-[60px] h-[60px] rounded-[12px] bg-[#0baa3b]/10 border border-[#0baa3b]/20 flex items-center justify-center">
-                <Rocket size={28} className="text-[#0baa3b]" />
-              </div>
-              <div className="w-[50px] h-[50px] rounded-[12px] bg-[#0baa3b]/10 border border-[#0baa3b]/20 flex items-center justify-center">
-                <ShieldCheck size={24} className="text-[#0baa3b]" />
-              </div>
             </div>
           </div>
         </div>
