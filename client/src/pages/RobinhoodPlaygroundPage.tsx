@@ -352,35 +352,39 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       {/* ─── Top Header ────────────────────────────────────────────────────────────── */}
-      <header className="flex items-center justify-between gap-4 px-4 py-3 lg:px-8 lg:py-4 sticky top-0 z-20 bg-[#000305]/80 backdrop-blur-md">
-        <div className="flex items-center gap-2 lg:gap-3">
-          <img src="/figmaAssets/logo.png" alt="Robinhood" className="w-7 h-7 lg:w-8 lg:h-8" />
-          <div className="leading-tight">
-            <div className="text-[13px] lg:text-[15px] font-semibold text-white">Robinhood</div>
-            <div className="text-[10px] text-[#0baf3d] tracking-wide">PLAYGROUND BETA</div>
+      <header className="flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4 py-3 lg:px-8 lg:py-4 sticky top-0 z-20 bg-[#000305]/80 backdrop-blur-md">
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 min-w-0 flex-shrink-0">
+          <img src="/figmaAssets/logo.png" alt="Robinhood" className="w-7 h-7 lg:w-8 lg:h-8 flex-shrink-0" />
+          <div className="leading-tight min-w-0">
+            <div className="text-[13px] lg:text-[15px] font-semibold text-white whitespace-nowrap">Robinhood</div>
+            <div className="text-[9px] sm:text-[10px] text-[#0baf3d] tracking-wide whitespace-nowrap">PLAYGROUND BETA</div>
           </div>
         </div>
 
         <DesktopNav activeTab={activeTab} onChange={setActiveTab} />
 
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 bg-[#01160e] border border-[#02100c] rounded-[6px] px-3 py-1.5 text-[11px] text-[#0baa3b] font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#0baa3b]" />
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <button className="hidden sm:flex items-center gap-1.5 bg-[#01160e] border border-[#02100c] rounded-[6px] px-3 py-1.5 text-[11px] text-[#0baa3b] font-medium whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#0baa3b] flex-shrink-0" />
             Robinhood Chain
+          </button>
+          <button className="flex sm:hidden items-center justify-center w-8 h-8 bg-[#01160e] border border-[#02100c] rounded-[6px] flex-shrink-0" aria-label="Robinhood Chain">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#0baa3b]" />
           </button>
           <button
             onClick={() => isConnected ? wallet.disconnect() : setWalletOpen(true)}
-            className="flex items-center gap-1.5 bg-[#020c0c] border border-[#024420] rounded-[6px] px-3 py-1.5 text-[11px] text-[#0a9637]"
+            className="flex items-center gap-1.5 bg-[#020c0c] border border-[#024420] rounded-[6px] px-2.5 sm:px-3 py-1.5 text-[11px] text-[#0a9637] whitespace-nowrap flex-shrink-0"
           >
             {isConnected ? (
               <>
-                <span className="w-5 h-5 rounded-full bg-[#0baa3b]/20 flex items-center justify-center text-[9px] font-mono">{wallet.address?.slice(2,4)}</span>
+                <span className="w-5 h-5 rounded-full bg-[#0baa3b]/20 flex items-center justify-center text-[9px] font-mono flex-shrink-0">{wallet.address?.slice(2,4)}</span>
                 {wallet.address?.slice(0,6)}…{wallet.address?.slice(-4)}
               </>
             ) : (
               <>
-                <span className="w-1.5 h-1.5 rounded-full bg-[#FFB547]" />
-                Connect Wallet
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FFB547] flex-shrink-0" />
+                <span className="hidden sm:inline">Connect Wallet</span>
+                <span className="inline sm:hidden">Connect</span>
               </>
             )}
           </button>
