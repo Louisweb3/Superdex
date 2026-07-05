@@ -7,6 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useRewardUser, useDailyClaimStatus, useDailyClaim } from "@/hooks/useRewards";
 
+import swapButtonImg from "@assets/Swap_button_1783272484249.png";
+import bridgeButtonImg from "@assets/Bridge_button_1783272484249.png";
+
 import { BottomNav, DesktopNav } from "@/components/robinhood/Sidebar";
 import { DashboardView } from "@/components/robinhood/DashboardView";
 import { ContractsView } from "@/components/robinhood/ContractsView";
@@ -383,6 +386,24 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
           </button>
         </div>
       </header>
+
+      {/* ─── Swap / Bridge Quick Actions ───────────────────────────────────────────── */}
+      <div className="px-4 pt-4 max-w-[720px] mx-auto lg:max-w-[1160px] lg:px-8 lg:pt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <a href="/swap" data-testid="link-swap" className="block">
+            <img src={swapButtonImg} alt="Swap tokens on Robinhood Playground" className="w-full h-auto rounded-[12px]" />
+          </a>
+          <a
+            href="https://relay.link/bridge/robinhood"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="link-bridge"
+            className="block"
+          >
+            <img src={bridgeButtonImg} alt="Bridge assets to Robinhood Playground" className="w-full h-auto rounded-[12px]" />
+          </a>
+        </div>
+      </div>
 
       {/* ─── Main Content ──────────────────────────────────────────────────────────── */}
       <main className="px-4 pb-28 max-w-[720px] mx-auto lg:max-w-[1160px] lg:px-8 lg:pb-16">
