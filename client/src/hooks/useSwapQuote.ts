@@ -87,6 +87,12 @@ export function useSwapPrice(
         return;
       }
 
+      if (data.liquidityAvailable === false) {
+        setError("No liquidity available for this pair yet on this network");
+        setQuote(null);
+        return;
+      }
+
       // Parse 0x v2 response — no `price` or `estimatedPriceImpact` fields
       const buyAmountFormatted = formatAmount(data.buyAmount ?? "0", buyToken.decimals);
 
@@ -172,6 +178,10 @@ export async function fetchSwapQuote(
       data.error ??
       "Failed to get quote"
     );
+  }
+
+  if (data.liquidityAvailable === false) {
+    throw new Error("No liquidity available for this pair yet on this network");
   }
 
   const buyAmountFormatted = formatAmount(data.buyAmount ?? "0", buyToken.decimals);

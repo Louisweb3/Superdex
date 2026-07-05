@@ -700,13 +700,18 @@ export function SwapPage() {
     () => allTokens.find((t) => t.isNative) ?? allTokens[0] ?? TOKENS[0],
     [allTokens]
   );
-  const defaultBuy = useMemo(
-    () =>
+  const defaultBuy = useMemo(() => {
+    if (network === "robinhood") {
+      // No Base-only fallback here — Robinhood Chain has its own token list
+      // (native ETH + any custom tokens the user has pasted in).
+      return allTokens.find((t) => !t.isNative) ?? allTokens[0] ?? RH_TOKENS[0];
+    }
+    return (
       allTokens.find(
         (t) => t.address.toLowerCase() === "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
-      ) ?? allTokens[1] ?? TOKENS[1],
-    [allTokens]
-  );
+      ) ?? allTokens[1] ?? TOKENS[1]
+    );
+  }, [allTokens, network]);
 
   const [sellToken, setSellToken] = useState<Token>(TOKENS[0]);
   const [buyToken, setBuyToken] = useState<Token>(TOKENS[1]);
@@ -974,6 +979,16 @@ export function SwapPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Robinhood Chain liquidity notice — no DEX/aggregator liquidity is indexed there yet */}
+              {network === "robinhood" && (
+                <div className="mx-4 mt-3 flex items-start gap-2 rounded-[12px] border border-[#3a2f1a] bg-[#1a1408] px-4 py-3">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-[#c9953a] mt-0.5" />
+                  <span className="font-['Inter',sans-serif] text-[13px] text-[#c9953a]">
+                    Robinhood Chain doesn't have any DEX liquidity yet, so swaps can't be filled here right now. You can still browse and add custom tokens below.
+                  </span>
+                </div>
+              )}
 
               {/* DEX Source Panel */}
               {showDexPanel && (
