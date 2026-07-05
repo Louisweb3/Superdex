@@ -647,6 +647,14 @@ export function SwapPage() {
   }, [wallet.chainId]);
 
   const activeChainId = network === "robinhood" ? RH_CHAIN_ID : BASE_CHAIN_ID;
+  // The wallet's own `isWrongNetwork` only checks "is this any chain we support"
+  // (Base OR Robinhood) — it does NOT know which network the swap UI currently has
+  // selected. A user connected on Base who toggles the UI to "Robinhood" would
+  // otherwise see an active "Swap Now" button and send a Robinhood-chain
+  // transaction while MetaMask is still on Base, where the target contract
+  // doesn't exist — silently failing in a way that looks like "no liquidity".
+  const isOnWrongNetworkForSelection =
+    wallet.isConnected && wallet.chainId !== null && wallet.chainId !== activeChainId;
 
   // ── 30 Base tokens from DexScreener ──────────────────────────────────────────
   const { tokens: baseTokens, isLoading: tokensLoading } = useBaseTokens();
@@ -841,6 +849,10 @@ export function SwapPage() {
   // ─── Execute Swap ────────────────────────────────────────────────────────────
   const handleSwap = useCallback(async () => {
     if (!wallet.isConnected || !wallet.address) return;
+    if (wallet.chainId !== activeChainId) {
+      setSwapError(`Please switch your wallet to ${network === "robinhood" ? "Robinhood Chain" : "Base"} before swapping`);
+      return;
+    }
     setSwapError(null);
     setSwapping(true);
     setSwapCashback(0);
@@ -904,7 +916,7 @@ export function SwapPage() {
     } finally {
       setSwapping(false);
     }
-  }, [wallet, sellToken, buyToken, sellAmount, slippageBps, selectedSources, computeVolumeUsd]);
+  }, [wallet, sellToken, buyToken, sellAmount, slippageBps, selectedSources, computeVolumeUsd, activeChainId, network]);
 
   // ─── Computed display values ─────────────────────────────────────────────────
   const rateStr = quote
@@ -1137,7 +1149,7 @@ export function SwapPage() {
                     {wallet.isConnecting ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
                     {wallet.isConnecting ? "Connecting…" : "Connect Wallet to Swap"}
                   </button>
-                ) : wallet.isWrongNetwork ? (
+                ) : wallet.isWrongNetwork || isOnWrongNetworkForSelection ? (
                   <button
                     onClick={network === "robinhood" ? wallet.switchToRobinhood : wallet.switchToBase}
                     className="flex h-[54px] w-full items-center justify-center gap-3 rounded-[14px] border border-[#c9953a] bg-[#1a0e04] font-['Inter',sans-serif] text-[17px] font-bold text-[#c9953a] transition-all hover:bg-[#200f04] active:scale-[0.98]"
