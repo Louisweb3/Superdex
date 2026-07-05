@@ -93,7 +93,7 @@ async function addTokenToWallet(token: DeployedToken) {
 }
 
 // ─── RPC helper ──────────────────────────────────────────────────────────────
-async function waitForReceipt(txHash: string, rpc: string, maxMs = 60_000): Promise<any> {
+async function waitForReceipt(txHash: string, rpc: string, maxMs = 90_000): Promise<any> {
   const start = Date.now();
   while (Date.now() - start < maxMs) {
     const r = await fetch(rpc, {
@@ -104,7 +104,19 @@ async function waitForReceipt(txHash: string, rpc: string, maxMs = 60_000): Prom
     if (result) return result;
     await new Promise((res) => setTimeout(res, 2500));
   }
-  throw new Error("Timed out waiting for receipt");
+  throw new Error("Timed out waiting for confirmation on Robinhood Chain. Check the transaction in your wallet — it may still confirm.");
+}
+
+// Confirms the tx that created the contract actually succeeded on-chain (status 0x1)
+// and that a contract address was actually assigned — a reverted deployment still
+// gets a receipt, so this check must happen before we treat it as "deployed".
+function assertDeploySucceeded(receipt: any) {
+  if (receipt.status !== "0x1") {
+    throw new Error("Transaction was mined but reverted on-chain — no token was created. This is usually a gas or contract-init issue; please retry.");
+  }
+  if (!receipt.contractAddress) {
+    throw new Error("Transaction succeeded but no contract address was returned by Robinhood Chain — the token was not created.");
+  }
 }
 
 // ─── Contract verification ───────────────────────────────────────────────────
@@ -216,11 +228,18 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
     try {
       const supply = parseUnits(tokenSupply, 18);
       const args = encodeAbiParameters(ERC20_CONSTRUCTOR_ABI, [tokenName, tokenSymbol, supply]);
+      const deployData = ERC20_BYTECODE + args.slice(2);
+
+      // Explicitly cap gas for contract creation instead of relying on the wallet's
+      // eth_estimateGas — some RPC nodes on Robinhood Chain under-estimate or fail to
+      // estimate gas for CREATE txs, which silently drops the deployment before it's
+      // ever broadcast. 3,000,000 gas comfortably covers this ERC-20's init code.
       const txHash = await (window as any).ethereum.request({
         method: "eth_sendTransaction",
-        params: [{ from: wallet.address, data: ERC20_BYTECODE + args.slice(2), value: "0x0" }],
+        params: [{ from: wallet.address, data: deployData, value: "0x0", gas: "0x2DC6C0" }],
       });
       const receipt = await waitForReceipt(txHash, RH_RPC);
+      assertDeploySucceeded(receipt);
       const address = "0x" + receipt.contractAddress.slice(-40);
       const gasUsedWei = BigInt(receipt.gasUsed ?? "0x0") * BigInt(receipt.effectiveGasPrice ?? receipt.gasPrice ?? "0x0");
       const gasUsedEth = formatEther(gasUsedWei);

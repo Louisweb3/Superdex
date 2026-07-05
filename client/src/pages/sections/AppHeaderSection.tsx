@@ -1,7 +1,6 @@
 import { useState } from "react";
 import rhLogoSrc from "@assets/unnamed_(4)_1782977968316.png";
 import baseLogoSrc from "@assets/base_logo_1782978064400.png";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -107,7 +106,7 @@ export const AppHeaderSection = ({
         {/* subtle glow */}
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent" />
 
-        <div className="relative flex min-h-[72px] sm:min-h-[84px] w-full items-center px-3 sm:px-6 md:px-8 gap-2 sm:gap-3">
+        <div className="relative mx-auto flex min-h-[72px] sm:min-h-[84px] w-full max-w-[941px] lg:max-w-[1280px] items-center px-3 sm:px-6 lg:px-8 gap-2 sm:gap-3">
 
           {/* LOGO */}
           <button
@@ -402,24 +401,17 @@ export const AppHeaderSection = ({
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button
+              <button
                 type="button"
-                variant="outline"
                 onClick={() => setWalletOpen(true)}
+                disabled={wallet.isConnecting}
                 data-testid="button-connect-wallet"
-                className="group relative flex-shrink-0 overflow-hidden rounded-[22px] border border-cyan-400/10 bg-[#0B1118] px-3 sm:px-5 py-4 sm:py-6 text-white transition-all duration-300 hover:border-cyan-400/20 hover:bg-[#101826] hover:shadow-[0_0_40px_rgba(34,211,238,0.08)]"
+                className="group relative flex-shrink-0 overflow-hidden rounded-[18px] border border-[#0baa3b]/25 bg-gradient-to-b from-[#0baa3b] to-[#0a9637] px-3.5 sm:px-5 py-2.5 sm:py-3 text-black transition-all duration-300 hover:from-[#12c247] hover:to-[#0baa3b] hover:shadow-[0_0_30px_rgba(11,170,59,0.35)] disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_65%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                <span className="relative z-10 flex items-center gap-2 sm:gap-3 text-[13px] sm:text-[15px] font-bold whitespace-nowrap">
-                  <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
-                    <img
-                      className="h-4 w-4 object-contain"
-                      alt="Wallet"
-                      src="/figmaAssets/image-30.png"
-                    />
-                  </div>
+                <span className="relative z-10 flex items-center gap-2 text-[13px] sm:text-[14px] font-bold whitespace-nowrap">
+                  <Wallet className="h-4 w-4" />
                   {wallet.isConnecting ? (
-                    <span className="text-[13px] sm:text-[14px] text-cyan-300">Connecting...</span>
+                    <span>Connecting...</span>
                   ) : (
                     <>
                       <span className="tracking-[-0.02em] hidden sm:inline">Connect Wallet</span>
@@ -427,15 +419,15 @@ export const AppHeaderSection = ({
                     </>
                   )}
                 </span>
-              </Button>
+              </button>
             )}
           </div>
         </div>
 
         {/* WRONG NETWORK BANNER — only shows when on an unrecognised chain */}
         {wallet.isWrongNetwork && wallet.isConnected && (
-          <div className="border-t border-red-400/10 bg-[#140D10] px-4 py-3 sm:px-6">
-            <div className="flex items-center justify-between gap-4">
+          <div className="border-t border-red-400/10 bg-[#140D10] px-3 sm:px-6 lg:px-8">
+            <div className="mx-auto flex w-full max-w-[941px] lg:max-w-[1280px] items-center justify-between gap-4 py-3">
               <div className="flex flex-col">
                 <span className="text-[13px] font-semibold text-red-300">
                   Unsupported Network
