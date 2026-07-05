@@ -107,23 +107,23 @@ export const AppHeaderSection = ({
         {/* subtle glow */}
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent" />
 
-        <div className="relative flex min-h-[72px] sm:min-h-[84px] w-full items-center px-4 sm:px-6 md:px-8 gap-3">
+        <div className="relative flex min-h-[72px] sm:min-h-[84px] w-full items-center px-3 sm:px-6 md:px-8 gap-2 sm:gap-3">
 
           {/* LOGO */}
           <button
             onClick={() => onNavSelect?.("home")}
-            className="flex flex-shrink-0 items-center gap-2 sm:gap-3 focus:outline-none"
+            className="flex flex-shrink-0 items-center gap-1.5 sm:gap-3 focus:outline-none min-w-0"
             aria-label="SuperSwap home"
             data-testid="link-home"
           >
             <img
-              className="h-9 w-7 sm:h-[47px] sm:w-[38px] object-cover"
+              className="h-8 w-6 sm:h-[47px] sm:w-[38px] object-cover flex-shrink-0"
               alt="Logo"
               src="/figmaAssets/logo.png"
             />
-            <span className="flex items-center leading-none font-['Inter',Helvetica] tracking-[0]">
-              <span className="font-bold text-[#ccced2] text-[20px] sm:text-[25px]">Super</span>
-              <span className="font-normal text-[#37c359] text-[22px] sm:text-[27px]">Swap</span>
+            <span className="flex items-center leading-none font-['Inter',Helvetica] tracking-[0] whitespace-nowrap">
+              <span className="font-bold text-[#ccced2] text-[17px] sm:text-[25px]">Super</span>
+              <span className="font-normal text-[#37c359] text-[19px] sm:text-[27px]">Swap</span>
             </span>
           </button>
 
@@ -196,14 +196,14 @@ export const AppHeaderSection = ({
           </nav>
 
           {/* RIGHT — Network switcher + Wallet */}
-          <div className="flex flex-shrink-0 items-center gap-2">
+          <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-2 min-w-0">
 
             {/* ── Network Switcher ── */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   data-testid="button-network-switcher"
-                  className="group flex items-center gap-2 rounded-[18px] border border-white/[0.06] bg-[#0B1118] px-3 py-2.5 transition-all duration-200 hover:border-white/[0.12] hover:bg-[#101826]"
+                  className="group flex items-center gap-1.5 sm:gap-2 rounded-[18px] border border-white/[0.06] bg-[#0B1118] px-2 sm:px-3 py-2 sm:py-2.5 transition-all duration-200 hover:border-white/[0.12] hover:bg-[#101826] flex-shrink-0"
                 >
                   {currentNet ? (
                     <>
@@ -289,20 +289,20 @@ export const AppHeaderSection = ({
                 <DropdownMenuTrigger asChild>
                   <button
                     data-testid="button-wallet-dropdown"
-                    className="group relative overflow-hidden rounded-[24px] border border-white/[0.06] bg-[#0B1118] px-4 py-3 transition-all duration-300 hover:border-cyan-400/20 hover:bg-[#101826] hover:shadow-[0_0_40px_rgba(34,211,238,0.08)]"
+                    className="group relative overflow-hidden rounded-[24px] border border-white/[0.06] bg-[#0B1118] px-2.5 sm:px-4 py-2 sm:py-3 transition-all duration-300 hover:border-cyan-400/20 hover:bg-[#101826] hover:shadow-[0_0_40px_rgba(34,211,238,0.08)] flex-shrink-0"
                   >
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_60%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                    <div className="relative z-10 flex items-center gap-3">
-                      <div className="relative flex h-10 w-10 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
+                    <div className="relative z-10 flex items-center gap-1.5 sm:gap-3">
+                      <div className="relative hidden sm:flex h-10 w-10 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
                         <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_70%)]" />
                         <Wallet className="relative z-10 h-4 w-4 text-cyan-300" />
                       </div>
                       <div className="flex flex-col items-start leading-none">
                         <div className="flex items-center gap-2">
-                          <span className="text-[14px] font-bold text-white">
+                          <span className="text-[13px] sm:text-[14px] font-bold text-white whitespace-nowrap">
                             {shortAddr(wallet.address)}
                           </span>
-                          <div className="flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-[3px]">
+                          <div className="hidden sm:flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-[3px]">
                             <ShieldCheck className="h-3 w-3 text-emerald-300" />
                             <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-300">
                               Secure
@@ -310,12 +310,12 @@ export const AppHeaderSection = ({
                           </div>
                         </div>
                         {wallet.balance && (
-                          <span className="mt-1 text-[12px] font-medium text-[#94A3B8]">
+                          <span className="mt-1 hidden sm:block text-[12px] font-medium text-[#94A3B8]">
                             {wallet.balance} ETH
                           </span>
                         )}
                       </div>
-                      <ChevronDown className="h-4 w-4 text-[#64748B] transition-transform duration-300 group-data-[state=open]:rotate-180" />
+                      <ChevronDown className="h-4 w-4 text-[#64748B] transition-transform duration-300 group-data-[state=open]:rotate-180 flex-shrink-0" />
                     </div>
                   </button>
                 </DropdownMenuTrigger>
@@ -407,11 +407,11 @@ export const AppHeaderSection = ({
                 variant="outline"
                 onClick={() => setWalletOpen(true)}
                 data-testid="button-connect-wallet"
-                className="group relative overflow-hidden rounded-[22px] border border-cyan-400/10 bg-[#0B1118] px-5 py-6 text-white transition-all duration-300 hover:border-cyan-400/20 hover:bg-[#101826] hover:shadow-[0_0_40px_rgba(34,211,238,0.08)]"
+                className="group relative flex-shrink-0 overflow-hidden rounded-[22px] border border-cyan-400/10 bg-[#0B1118] px-3 sm:px-5 py-4 sm:py-6 text-white transition-all duration-300 hover:border-cyan-400/20 hover:bg-[#101826] hover:shadow-[0_0_40px_rgba(34,211,238,0.08)]"
               >
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_65%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                <span className="relative z-10 flex items-center gap-3 text-[15px] font-bold">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
+                <span className="relative z-10 flex items-center gap-2 sm:gap-3 text-[13px] sm:text-[15px] font-bold whitespace-nowrap">
+                  <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-400/10">
                     <img
                       className="h-4 w-4 object-contain"
                       alt="Wallet"
@@ -419,9 +419,12 @@ export const AppHeaderSection = ({
                     />
                   </div>
                   {wallet.isConnecting ? (
-                    <span className="text-[14px] text-cyan-300">Connecting...</span>
+                    <span className="text-[13px] sm:text-[14px] text-cyan-300">Connecting...</span>
                   ) : (
-                    <span className="tracking-[-0.02em]">Connect Wallet</span>
+                    <>
+                      <span className="tracking-[-0.02em] hidden sm:inline">Connect Wallet</span>
+                      <span className="tracking-[-0.02em] inline sm:hidden">Connect</span>
+                    </>
                   )}
                 </span>
               </Button>
