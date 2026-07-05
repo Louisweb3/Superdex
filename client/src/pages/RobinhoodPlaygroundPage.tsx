@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "wouter";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { encodeAbiParameters, parseUnits } from "viem";
 import { useWalletContext } from "@/context/WalletContext";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 import { Sidebar, MobileTabBar } from "@/components/robinhood/Sidebar";
 import { WalletChip } from "@/components/robinhood/WalletChip";
@@ -136,6 +139,7 @@ async function verifyOnBlockscout(
 // ─── Local storage helpers ────────────────────────────────────────────────────
 const LS_CONTRACTS_KEY = "rh_playground_contracts";
 const LS_GM_KEY = "rh_playground_gm";
+const LS_GN_KEY = "rh_playground_gn";
 const LS_XP_KEY = "rh_playground_xp";
 
 function getStoredContracts(): DeployedToken[] {
@@ -156,6 +160,12 @@ function hasClaimedGmToday() {
 }
 function markGmToday() {
   localStorage.setItem(LS_GM_KEY, getTodayKey());
+}
+function hasClaimedGnToday() {
+  return localStorage.getItem(LS_GN_KEY) === getTodayKey();
+}
+function markGnToday() {
+  localStorage.setItem(LS_GN_KEY, getTodayKey());
 }
 function hasClaimedXpToday() {
   return localStorage.getItem(LS_XP_KEY) === getTodayKey();
@@ -193,8 +203,15 @@ async function waitForReceipt(
 export function RobinhoodPlaygroundPage(): JSX.Element {
   const wallet = useWalletContext();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [walletOpen, setWalletOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<RhTab>("dashboard");
+
+  // Platform-wide stats (global counter, not per-browser)
+  const { data: platformStats } = useQuery<{ totalContractsDeployed: number }>({
+    queryKey: ["/api/robinhood/stats"],
+  });
+  const totalContractsDeployed = platformStats?.totalContractsDeployed ?? 310;
 
   // Network state
   const [isOnRH, setIsOnRH] = useState(false);
@@ -212,6 +229,11 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
   const [sendingGm, setSendingGm] = useState(false);
   const [gmClaimed, setGmClaimed] = useState(hasClaimedGmToday());
   const [gmTxHash, setGmTxHash] = useState("");
+
+  // GN state
+  const [sendingGn, setSendingGn] = useState(false);
+  const [gnClaimed, setGnClaimed] = useState(hasClaimedGnToday());
+  const [gnTxHash, setGnTxHash] = useState("");
 
   // XP claim state
   const [claimingXp, setClaimingXp] = useState(false);
@@ -318,6 +340,11 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         description: contractAddress,
       });
 
+      // Bump the platform-wide "Total Contracts Deployed" counter (non-blocking)
+      apiRequest("POST", "/api/robinhood/stats/contract-deployed")
+        .then(() => queryClient.invalidateQueries({ queryKey: ["/api/robinhood/stats"] }))
+        .catch(() => {});
+
       // Auto-verify on Blockscout (non-blocking)
       verifyOnBlockscout(contractAddress, encodedArgs).then((ok) => {
         const status = ok ? "verified" : "failed";
@@ -397,6 +424,49 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       setSendingGm(false);
     }
   }, [wallet, isOnRH, switchToRH, gmClaimed, toast]);
+
+  // ─── Send GN ────────────────────────────────────────────────────────────────
+  const sendGn = useCallback(async () => {
+    if (!wallet.isConnected) {
+      setWalletOpen(true);
+      return;
+    }
+    if (!isOnRH) {
+      await switchToRH();
+      return;
+    }
+    if (gnClaimed) {
+      toast({ title: "Already sent GN today! Come back tomorrow." });
+      return;
+    }
+    setSendingGn(true);
+    try {
+      // Encode "GN" as UTF-8 hex data sent on-chain
+      const txHash = await (window as any).ethereum.request({
+        method: "eth_sendTransaction",
+        params: [
+          {
+            from: wallet.address,
+            to: wallet.address,
+            value: "0x0",
+            data: "0x474e", // UTF-8 "GN"
+          },
+        ],
+      });
+      setGnTxHash(txHash);
+      markGnToday();
+      setGnClaimed(true);
+      toast({ title: "🌙 GN sent on Robinhood Chain!" });
+    } catch (e: any) {
+      toast({
+        title: "GN failed",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingGn(false);
+    }
+  }, [wallet, isOnRH, switchToRH, gnClaimed, toast]);
 
   // ─── Claim XP ───────────────────────────────────────────────────────────────
   const claimXp = useCallback(async () => {
@@ -482,17 +552,39 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="flex items-center justify-between gap-4 px-5 sm:px-8 h-[72px] border-b border-white/[0.06] bg-[#05070A]/80 backdrop-blur-xl sticky top-0 z-20">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-full border border-white/[0.08] flex-shrink-0 overflow-hidden">
-              <RobinhoodLogo size={36} />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[14px] font-semibold text-white leading-tight truncate">
-                Robinhood Chain
+        <header className="flex items-center justify-between gap-3 sm:gap-4 px-5 sm:px-8 h-[72px] border-b border-white/[0.06] bg-[#05070A]/80 backdrop-blur-xl sticky top-0 z-20">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            {/* SuperSwap home link */}
+            <Link
+              href="/"
+              className="flex flex-shrink-0 items-center gap-1.5 sm:gap-2 focus:outline-none"
+              aria-label="Back to SuperSwap home"
+              data-testid="link-home"
+            >
+              <img
+                className="h-6 w-5 sm:h-7 sm:w-[22px] object-cover"
+                alt="SuperSwap logo"
+                src="/figmaAssets/logo.png"
+              />
+              <span className="hidden sm:flex items-center leading-none font-['Inter',Helvetica] tracking-[0]">
+                <span className="font-bold text-[#ccced2] text-[15px]">Super</span>
+                <span className="font-normal text-[#37c359] text-[16px]">Swap</span>
+              </span>
+            </Link>
+
+            <div className="w-px h-6 bg-white/[0.08] flex-shrink-0 hidden sm:block" />
+
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-full border border-white/[0.08] flex-shrink-0 overflow-hidden">
+                <RobinhoodLogo size={36} />
               </div>
-              <div className="text-[11px] text-[#5E6B7A] leading-tight truncate">
-                Playground
+              <div className="min-w-0">
+                <div className="text-[14px] font-semibold text-white leading-tight truncate">
+                  Robinhood Chain
+                </div>
+                <div className="text-[11px] text-[#5E6B7A] leading-tight truncate">
+                  Playground
+                </div>
               </div>
             </div>
           </div>
@@ -521,7 +613,9 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               chainName={ACTIVE_NETWORK.chainName}
               tokens={deployedContracts}
               gmClaimed={gmClaimed}
+              gnClaimed={gnClaimed}
               xpClaimed={xpClaimed}
+              totalContractsDeployed={totalContractsDeployed}
               onNavigate={setActiveTab}
             />
           )}
@@ -565,6 +659,10 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               sendingGm={sendingGm}
               gmTxHash={gmTxHash}
               sendGm={sendGm}
+              gnClaimed={gnClaimed}
+              sendingGn={sendingGn}
+              gnTxHash={gnTxHash}
+              sendGn={sendGn}
               explorerUrl={EXPLORER}
               xpClaimed={xpClaimed}
               claimingXp={claimingXp}

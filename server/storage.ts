@@ -1658,6 +1658,27 @@ export class AdminStorage {
     return out;
   }
 
+  // ── Global counters (e.g. platform-wide deployed contract count) ───────────────────────
+  async getCounterSetting(key: string, startValue: number): Promise<number> {
+    const [existing] = await db.select().from(siteSettings).where(eq(siteSettings.key, key)).limit(1);
+    if (!existing) return startValue;
+    const parsed = parseInt(existing.value, 10);
+    return Number.isFinite(parsed) ? parsed : startValue;
+  }
+
+  async incrementCounterSetting(key: string, startValue: number): Promise<number> {
+    const [existing] = await db.select().from(siteSettings).where(eq(siteSettings.key, key)).limit(1);
+    if (!existing) {
+      const initial = startValue + 1;
+      await db.insert(siteSettings).values({ key, value: String(initial), updated_at: new Date() });
+      return initial;
+    }
+    const parsed = parseInt(existing.value, 10);
+    const next = (Number.isFinite(parsed) ? parsed : startValue) + 1;
+    await db.update(siteSettings).set({ value: String(next), updated_at: new Date() }).where(eq(siteSettings.key, key));
+    return next;
+  }
+
   // ── Page Blocks ─────────────────────────────────────────────────────────────────────────
   async getPageBlocks(page?: string): Promise<CmsPageBlock[]> {
     if (page) {

@@ -10,6 +10,7 @@ import { LandinHome } from "@/pages/LandinHome";
 import { LandingPage } from "@/pages/LandingPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { DocsPage } from "@/pages/DocsPage";
+import { RobinhoodPlaygroundPage } from "@/pages/RobinhoodPlaygroundPage";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 
 function Router() {
@@ -24,7 +25,7 @@ function Router() {
       <Route path="/launch" component={LandinHome} />
       <Route path="/analytics" component={LandinHome} />
       <Route path="/airdrop" component={LandinHome} />
-      <Route path="/robinhood" component={LandinHome} />
+      <Route path="/robinhood" component={RobinhoodPlaygroundPage} />
       <Route path="/farm" component={LandinHome} />
       <Route path="/profile" component={LandinHome} />
       <Route path="/admin" component={AdminPage} />

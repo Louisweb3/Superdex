@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { rewardsStorage, earnStorage, chestStorage } from "./storage";
+import { rewardsStorage, earnStorage, chestStorage, adminStorage } from "./storage";
 import { verifyTransaction } from "./basescan";
 
 const ZEROX_API_KEY = process.env.ZEROX_API_KEY || "";
@@ -514,6 +514,26 @@ export async function registerRoutes(
 
   app.get("/api/rewards/stats", async (_req, res) => {
     return res.json(await rewardsStorage.getTotalStats());
+  });
+
+  // ─── Robinhood Playground: platform-wide stats ─────────────────────────
+  const RH_CONTRACTS_KEY = "robinhood_total_contracts_deployed";
+  const RH_CONTRACTS_START = 310;
+
+  app.get("/api/robinhood/stats", async (_req, res) => {
+    const totalContractsDeployed = await adminStorage.getCounterSetting(
+      RH_CONTRACTS_KEY,
+      RH_CONTRACTS_START,
+    );
+    return res.json({ totalContractsDeployed });
+  });
+
+  app.post("/api/robinhood/stats/contract-deployed", async (_req, res) => {
+    const totalContractsDeployed = await adminStorage.incrementCounterSetting(
+      RH_CONTRACTS_KEY,
+      RH_CONTRACTS_START,
+    );
+    return res.json({ totalContractsDeployed });
   });
 
   // ─── Earn API ─────────────────────────────────────────────────────────

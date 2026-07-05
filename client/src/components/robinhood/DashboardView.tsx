@@ -7,6 +7,7 @@ import {
   Fuel,
   ArrowUpRight,
   Rocket,
+  Globe,
 } from "lucide-react";
 import { GlassCard } from "./GlassCard";
 import { StatCard } from "./StatCard";
@@ -19,7 +20,9 @@ interface DashboardViewProps {
   chainName: string;
   tokens: DeployedToken[];
   gmClaimed: boolean;
+  gnClaimed: boolean;
   xpClaimed: boolean;
+  totalContractsDeployed: number;
   onNavigate: (tab: RhTab) => void;
 }
 
@@ -30,7 +33,9 @@ export function DashboardView({
   chainName,
   tokens,
   gmClaimed,
+  gnClaimed,
   xpClaimed,
+  totalContractsDeployed,
   onNavigate,
 }: DashboardViewProps) {
   const verifiedCount = tokens.filter(
@@ -40,12 +45,18 @@ export function DashboardView({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <StatCard
-          label="Contracts Deployed"
+          label="Total Contracts Deployed"
+          value={totalContractsDeployed.toLocaleString()}
+          icon={Globe}
+          accentColor="#5AE4A8"
+        />
+        <StatCard
+          label="Your Contracts"
           value={tokens.length}
           icon={Coins}
-          accentColor="#5AE4A8"
+          accentColor="#7A8CFF"
         />
         <StatCard
           label="Verified Contracts"
@@ -64,9 +75,9 @@ export function DashboardView({
         <StatCard
           label="Today's Rewards"
           value={
-            gmClaimed && xpClaimed
+            gmClaimed && gnClaimed && xpClaimed
               ? "Complete"
-              : gmClaimed || xpClaimed
+              : gmClaimed || gnClaimed || xpClaimed
                 ? "In Progress"
                 : "Not Started"
           }
