@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { encodeAbiParameters, parseUnits } from "viem";
+import { encodeAbiParameters, encodeFunctionData, parseEther, parseUnits } from "viem";
 import { useWalletContext } from "@/context/WalletContext";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +32,19 @@ const ACTIVE_NETWORK = RH_MAINNET;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
 const RH_BRIDGE = "https://relay.link";
 const RH_RPC = ACTIVE_NETWORK.rpcUrls[0];
+
+// ─── XP claim contract ─────────────────────────────────────────────────────────
+const XP_CLAIM_CONTRACT = "0x8cA81D184878f9A65a933066fD989D6eb4363cC2";
+const XP_CLAIM_VALUE_ETH = "0.000038";
+const XP_CLAIM_ABI = [
+  {
+    type: "function",
+    name: "claim",
+    stateMutability: "payable",
+    inputs: [],
+    outputs: [],
+  },
+] as const;
 
 // ─── Minimal ERC-20 bytecode ──────────────────────────────────────────────────
 // constructor(string _name, string _symbol, uint256 _supply)
@@ -238,6 +251,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
   // XP claim state
   const [claimingXp, setClaimingXp] = useState(false);
   const [xpClaimed, setXpClaimed] = useState(hasClaimedXpToday());
+  const [xpTxHash, setXpTxHash] = useState("");
 
   // Check if on Robinhood Chain
   useEffect(() => {
@@ -474,18 +488,33 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       setWalletOpen(true);
       return;
     }
+    if (!isOnRH) {
+      await switchToRH();
+      return;
+    }
     if (xpClaimed) {
       toast({ title: "XP already claimed today! Come back tomorrow." });
       return;
     }
     setClaimingXp(true);
     try {
-      // Stub: contract address to be provided by user
-      toast({
-        title: "XP claim contract not yet configured.",
-        description: "The contract address will be set when announced.",
-        variant: "destructive",
+      const data = encodeFunctionData({ abi: XP_CLAIM_ABI, functionName: "claim" });
+      const valueHex = `0x${parseEther(XP_CLAIM_VALUE_ETH).toString(16)}`;
+      const txHash = await (window as any).ethereum.request({
+        method: "eth_sendTransaction",
+        params: [
+          {
+            from: wallet.address,
+            to: XP_CLAIM_CONTRACT,
+            value: valueHex,
+            data,
+          },
+        ],
       });
+      setXpTxHash(txHash);
+      markXpToday();
+      setXpClaimed(true);
+      toast({ title: "🎁 25 XP claimed on Robinhood Chain!" });
     } catch (e: any) {
       toast({
         title: "XP claim failed",
@@ -495,7 +524,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
     } finally {
       setClaimingXp(false);
     }
-  }, [wallet, xpClaimed, toast]);
+  }, [wallet, isOnRH, switchToRH, xpClaimed, toast]);
 
   // ─── Retry contract verification ───────────────────────────────────────────
   const retryVerify = useCallback(
@@ -666,6 +695,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               explorerUrl={EXPLORER}
               xpClaimed={xpClaimed}
               claimingXp={claimingXp}
+              xpTxHash={xpTxHash}
               claimXp={claimXp}
             />
           )}

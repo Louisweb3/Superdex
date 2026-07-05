@@ -21,6 +21,7 @@ interface RewardsViewProps {
 
   xpClaimed: boolean;
   claimingXp: boolean;
+  xpTxHash: string;
   claimXp: () => void;
 }
 
@@ -68,6 +69,7 @@ export function RewardsView({
   sendGn,
   xpClaimed,
   claimingXp,
+  xpTxHash,
   claimXp,
 }: RewardsViewProps) {
   return (
@@ -230,7 +232,11 @@ export function RewardsView({
               label: "Reset Time",
               value: "Every 24 hours (midnight UTC)",
             },
-            { label: "Contract", value: "Announcement pending" },
+            { label: "Claim Fee", value: "0.000038 ETH" },
+            {
+              label: "Contract",
+              value: "0x8cA8...63cC2",
+            },
             { label: "Network", value: chainName },
           ].map(({ label, value }) => (
             <div
@@ -245,12 +251,12 @@ export function RewardsView({
           ))}
         </div>
 
-        <div className="bg-[#FFB547]/[0.06] border border-[#FFB547]/20 rounded-[12px] px-4 py-3 mb-4">
+        <div className="bg-[#7A8CFF]/[0.06] border border-[#7A8CFF]/20 rounded-[12px] px-4 py-3 mb-4">
           <div className="flex items-start gap-2">
-            <Info size={14} className="text-[#FFB547] flex-shrink-0 mt-0.5" />
-            <p className="text-[#FFB547]/90 text-[12px] leading-relaxed">
-              The XP claim contract address will be provided in an official
-              announcement. Check back soon.
+            <Info size={14} className="text-[#7A8CFF] flex-shrink-0 mt-0.5" />
+            <p className="text-[#7A8CFF]/90 text-[12px] leading-relaxed">
+              Claiming calls <code className="text-[#8B97A8]">claim()</code>{" "}
+              on the XP contract with a small 0.000038 ETH fee.
             </p>
           </div>
         </div>
@@ -268,6 +274,20 @@ export function RewardsView({
           )}
           {xpClaimed ? "XP Claimed Today ✓" : "Claim 25 XP"}
         </button>
+
+        {xpTxHash && (
+          <a
+            href={`${explorerUrl}/tx/${xpTxHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex items-center justify-center gap-1.5 text-[12px] text-[#7A8CFF] hover:text-[#5AE4A8] transition-colors"
+            data-testid="link-xp-tx"
+          >
+            <CheckCircle size={12} />
+            View transaction
+            <ExternalLink size={12} />
+          </a>
+        )}
       </GlassCard>
     </div>
   );
