@@ -47,7 +47,7 @@ export function ContractsView({ tokens, explorerUrl, onCopy, onRetryVerify, onNa
         <button onClick={() => onNavigate("deployments")} className="text-[11px] text-[#0baa3b] hover:text-[#46D67B]">Deploy New</button>
       </div>
 
-      <div className="relative">
+      <div className="relative lg:max-w-[360px]">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#63666a]" />
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search contracts…"
           className="w-full bg-[#00090b] border border-[#081312] focus:border-[#0baa3b]/40 rounded-[8px] pl-9 pr-3 h-[38px] text-[13px] text-white outline-none transition-all placeholder:text-[#63666a]" />

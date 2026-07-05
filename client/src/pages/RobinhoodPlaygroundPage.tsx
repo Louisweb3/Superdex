@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useRewardUser, useDailyClaimStatus, useDailyClaim } from "@/hooks/useRewards";
 
-import { BottomNav } from "@/components/robinhood/Sidebar";
+import { BottomNav, DesktopNav } from "@/components/robinhood/Sidebar";
 import { DashboardView } from "@/components/robinhood/DashboardView";
 import { ContractsView } from "@/components/robinhood/ContractsView";
 import { DeployView } from "@/components/robinhood/DeployView";
@@ -349,14 +349,17 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       {/* ─── Top Header ────────────────────────────────────────────────────────────── */}
-      <header className="flex items-center justify-between px-4 py-3 sticky top-0 z-20 bg-[#000305]/80 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <img src="/figmaAssets/logo.png" alt="Robinhood" className="w-7 h-7" />
+      <header className="flex items-center justify-between gap-4 px-4 py-3 lg:px-8 lg:py-4 sticky top-0 z-20 bg-[#000305]/80 backdrop-blur-md">
+        <div className="flex items-center gap-2 lg:gap-3">
+          <img src="/figmaAssets/logo.png" alt="Robinhood" className="w-7 h-7 lg:w-8 lg:h-8" />
           <div className="leading-tight">
-            <div className="text-[13px] font-semibold text-white">Robinhood</div>
+            <div className="text-[13px] lg:text-[15px] font-semibold text-white">Robinhood</div>
             <div className="text-[10px] text-[#0baf3d] tracking-wide">PLAYGROUND BETA</div>
           </div>
         </div>
+
+        <DesktopNav activeTab={activeTab} onChange={setActiveTab} />
+
         <div className="flex items-center gap-2">
           <button className="flex items-center gap-1.5 bg-[#01160e] border border-[#02100c] rounded-[6px] px-3 py-1.5 text-[11px] text-[#0baa3b] font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-[#0baa3b]" />
@@ -382,7 +385,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       </header>
 
       {/* ─── Main Content ──────────────────────────────────────────────────────────── */}
-      <main className="px-4 pb-28 max-w-[720px] mx-auto">
+      <main className="px-4 pb-28 max-w-[720px] mx-auto lg:max-w-[1160px] lg:px-8 lg:pb-16">
         {activeTab === "dashboard" && (
           <DashboardView
             isConnected={isConnected}

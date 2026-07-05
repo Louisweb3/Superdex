@@ -46,21 +46,21 @@ export function DashboardView(props: DashboardViewProps) {
           alt="Hero background"
           className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="p-5 relative z-10">
+        <div className="p-5 lg:p-10 relative z-10">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h1 className="text-[28px] font-bold text-white leading-tight">
+              <h1 className="text-[28px] lg:text-[40px] font-bold text-white leading-tight">
                 Build. Deploy.<br />
                 <span className="text-[#0baf3d]">Onchain.</span>
               </h1>
-              <p className="text-[#63666a] text-[13px] mt-2 leading-relaxed max-w-[260px]">
+              <p className="text-[#63666a] text-[13px] lg:text-[15px] mt-2 leading-relaxed max-w-[260px] lg:max-w-[380px]">
                 Create, deploy, and manage smart contracts on Robinhood Chain.
               </p>
-              <button onClick={() => onNavigate("deployments")} className="mt-4 block">
+              <button onClick={() => onNavigate("deployments")} className="mt-4 lg:mt-6 block">
                 <img
                   src="/figmaAssets/create_contract_btn.png"
                   alt="Create Contract"
-                  className="h-[40px] w-auto object-contain"
+                  className="h-[40px] lg:h-[48px] w-auto object-contain"
                 />
               </button>
             </div>
@@ -74,19 +74,19 @@ export function DashboardView(props: DashboardViewProps) {
           <h2 className="text-[14px] font-semibold text-white">Stats Overview</h2>
           <button onClick={() => onNavigate("analytics")} className="text-[11px] text-[#0baa3b] hover:text-[#46D67B] transition-colors">View Analytics</button>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             { label: "Total Contracts (Platform)", value: totalContractsDeployed.toLocaleString(), sub: "Across all users", icon: FileText },
             { label: "Successful Deployments", value: successfulDeployments.toString(), sub: `${verifiedCount} verified`, icon: Rocket },
             { label: "Total Transactions", value: totalTransactions.toLocaleString(), sub: "Your on-chain actions", icon: BarChart3 },
             { label: "Total Gas Used", value: `${totalGasUsedEth.toFixed(6)} ETH`, sub: "From your deploys", icon: Flame },
           ].map(({ label, value, sub, icon: Icon }) => (
-            <div key={label} className="bg-[#00090b] border border-[#081312] rounded-[8px] p-3" data-testid={`stat-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
+            <div key={label} className="bg-[#00090b] border border-[#081312] rounded-[8px] p-3 lg:p-4" data-testid={`stat-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
               <div className="flex items-center gap-1.5 mb-2">
                 <Icon size={14} className="text-[#0baa3b]" />
                 <span className="text-[10px] text-[#63666a]">{label}</span>
               </div>
-              <div className="text-[18px] font-bold text-white">{value}</div>
+              <div className="text-[18px] lg:text-[22px] font-bold text-white">{value}</div>
               <div className="text-[10px] text-[#63666a] mt-0.5">{sub}</div>
             </div>
           ))}
@@ -96,7 +96,7 @@ export function DashboardView(props: DashboardViewProps) {
       {/* Quick Actions */}
       <div className="flex flex-col gap-3">
         <h2 className="text-[14px] font-semibold text-white">Quick Actions</h2>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-5 gap-2 lg:gap-3">
           {[
             { label: "Create Contract", sub: "Start a new contract", icon: Plus, onClick: () => onNavigate("deployments") },
             { label: "Deploy Contract", sub: "Deploy to network", icon: Rocket, onClick: () => onNavigate("deployments") },
@@ -104,12 +104,12 @@ export function DashboardView(props: DashboardViewProps) {
             { label: "View Analytics", sub: "Explore insights", icon: BarChart3, onClick: () => onNavigate("analytics") },
             { label: "Rewards", sub: "Earn daily XP", icon: GiftIcon, onClick: () => onNavigate("rewards") },
           ].map(({ label, sub, icon: Icon, onClick }) => (
-            <button key={label} onClick={onClick} className="flex flex-col items-center gap-1.5 bg-[#00090b] border border-[#081312] hover:border-[#0baa3b]/30 rounded-[8px] p-3 transition-colors">
-              <div className="w-8 h-8 rounded-[8px] bg-[#0baa3b]/10 flex items-center justify-center">
+            <button key={label} onClick={onClick} className="flex flex-col items-center gap-1.5 bg-[#00090b] border border-[#081312] hover:border-[#0baa3b]/30 rounded-[8px] p-3 lg:p-4 transition-colors">
+              <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-[8px] bg-[#0baa3b]/10 flex items-center justify-center">
                 <Icon size={16} className="text-[#0baa3b]" />
               </div>
-              <span className="text-[10px] text-white font-medium text-center leading-tight">{label}</span>
-              <span className="text-[9px] text-[#63666a] text-center leading-tight">{sub}</span>
+              <span className="text-[10px] lg:text-[12px] text-white font-medium text-center leading-tight">{label}</span>
+              <span className="text-[9px] lg:text-[10px] text-[#63666a] text-center leading-tight">{sub}</span>
             </button>
           ))}
         </div>
@@ -186,7 +186,7 @@ export function DashboardView(props: DashboardViewProps) {
       </div>
 
       {/* GM / GN Cards */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:max-w-[600px]">
         <div className="bg-[#00090b] border border-[#081312] rounded-[8px] p-4">
           <div className="text-center mb-3">
             <div className="text-[32px] mb-1">🌅</div>
@@ -226,7 +226,7 @@ export function DashboardView(props: DashboardViewProps) {
       </div>
 
       {/* XP Claim Card */}
-      <div className="bg-[#00090b] border border-[#081312] rounded-[8px] p-4">
+      <div className="bg-[#00090b] border border-[#081312] rounded-[8px] p-4 lg:max-w-[420px]">
         <div className="text-center mb-3">
           <div className="w-12 h-12 rounded-full bg-[#0baa3b]/10 border border-[#0baa3b]/25 flex items-center justify-center mx-auto mb-2">
             <Gift size={20} className="text-[#0baa3b]" />

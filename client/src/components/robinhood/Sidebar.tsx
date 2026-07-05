@@ -24,7 +24,7 @@ export function BottomNav({
   onChange: (tab: RhTab) => void;
 }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around bg-[#000405]/95 backdrop-blur-xl border-t border-[#081312] px-1 py-2">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around bg-[#000405]/95 backdrop-blur-xl border-t border-[#081312] px-1 py-2">
       {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
         const active = activeTab === id;
         return (
@@ -44,6 +44,37 @@ export function BottomNav({
                 <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-[2px] rounded-full bg-[#0baf3d]" />
               )}
             </div>
+            {label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+export function DesktopNav({
+  activeTab,
+  onChange,
+}: {
+  activeTab: RhTab;
+  onChange: (tab: RhTab) => void;
+}) {
+  return (
+    <nav className="hidden lg:flex items-center gap-1 bg-[#00090b] border border-[#081312] rounded-[10px] p-1">
+      {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
+        const active = activeTab === id;
+        return (
+          <button
+            key={id}
+            onClick={() => onChange(id)}
+            data-testid={`nav-desktop-${id}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-[8px] text-[13px] font-medium transition-colors ${
+              active
+                ? "bg-[#0baa3b]/12 text-[#0baf3d]"
+                : "text-[#8b8e92] hover:text-white hover:bg-white/[0.03]"
+            }`}
+          >
+            <Icon size={15} strokeWidth={active ? 2.5 : 1.5} />
             {label}
           </button>
         );

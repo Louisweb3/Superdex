@@ -30,7 +30,7 @@ export function RewardsView({
   const weeklyBonusesEarned = Math.floor(streak / 7) * 200;
 
   return (
-    <div className="flex flex-col gap-5 pt-2 max-w-[520px]">
+    <div className="flex flex-col gap-5 pt-2 max-w-[520px] lg:max-w-[560px] lg:mx-auto">
       <h2 className="text-[16px] font-semibold text-white">Rewards</h2>
 
       {/* XP card */}

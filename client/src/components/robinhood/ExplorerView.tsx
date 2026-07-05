@@ -27,7 +27,7 @@ export function ExplorerView({ explorerUrl, bridgeUrl, chainName, chainId, rpcUr
   return (
     <div className="flex flex-col gap-5 pt-2">
       <h2 className="text-[16px] font-semibold text-white">Explore {chainName}</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {cards.map(({ title, desc, href, icon: Icon, cta }) => (
           <a key={title} href={href} target="_blank" rel="noopener noreferrer" className="group">
             <GlassCard hoverable className="p-4 h-full flex flex-col">
@@ -46,7 +46,7 @@ export function ExplorerView({ explorerUrl, bridgeUrl, chainName, chainId, rpcUr
 
       <GlassCard className="p-4">
         <h3 className="text-[13px] font-semibold text-white mb-3">Add to MetaMask / EVM Wallet</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[{ label: "Network Name", value: chainName }, { label: "Chain ID", value: chainId }, { label: "RPC URL", value: rpcUrl }, { label: "Currency", value: "ETH" }, { label: "Explorer", value: explorerUrl }].map(({ label, value }) => (
             <div key={label} className="flex flex-col gap-0.5">
               <span className="text-[10px] font-medium uppercase tracking-wider text-[#63666a]">{label}</span>

@@ -25,7 +25,8 @@ export function DeployView({
   const canDeploy = !!tokenName && !!tokenSymbol && !!tokenSupply;
 
   return (
-    <div className="flex flex-col gap-5 pt-2 max-w-[640px]">
+    <div className="flex flex-col gap-5 pt-2 lg:flex-row lg:items-start lg:gap-6">
+      <div className="flex flex-col gap-5 max-w-[640px] lg:max-w-[480px] lg:flex-shrink-0 w-full">
       <h2 className="text-[16px] font-semibold text-white">Deploy Contract</h2>
 
       <div className="bg-[#00090b] border border-[#081312] rounded-[8px] p-5">
@@ -87,51 +88,60 @@ export function DeployView({
           </button>
         </div>
       </div>
+      </div>
 
-      {lastDeployed && (
-        <div className="bg-[#00090b] border border-[#0baa3b]/25 rounded-[8px] p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-[#0baa3b]/10 border border-[#0baa3b]/20 flex items-center justify-center overflow-hidden">
-              {lastDeployed.imageUrl ? (
-                <img src={lastDeployed.imageUrl} alt={lastDeployed.symbol} className="w-full h-full object-cover" />
-              ) : (
-                <CheckCircle2 size={18} className="text-[#0baa3b]" />
-              )}
+      <div className="flex-1 w-full lg:pt-[38px]">
+        {lastDeployed ? (
+          <div className="bg-[#00090b] border border-[#0baa3b]/25 rounded-[8px] p-5 lg:p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-[#0baa3b]/10 border border-[#0baa3b]/20 flex items-center justify-center overflow-hidden">
+                {lastDeployed.imageUrl ? (
+                  <img src={lastDeployed.imageUrl} alt={lastDeployed.symbol} className="w-full h-full object-cover" />
+                ) : (
+                  <CheckCircle2 size={18} className="text-[#0baa3b]" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-[14px] font-semibold text-white">{lastDeployed.name} ({lastDeployed.symbol}) deployed!</h3>
+                <p className="text-[11px] text-[#63666a] font-mono">{lastDeployed.address.slice(0,8)}…{lastDeployed.address.slice(-6)}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-[14px] font-semibold text-white">{lastDeployed.name} ({lastDeployed.symbol}) deployed!</h3>
-              <p className="text-[11px] text-[#63666a] font-mono">{lastDeployed.address.slice(0,8)}…{lastDeployed.address.slice(-6)}</p>
+
+            <p className="text-[11px] text-[#63666a] mb-3">What's next for your token:</p>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+              <button onClick={() => onAddToWallet(lastDeployed)} data-testid="button-add-to-wallet"
+                className="flex items-center gap-2 bg-[#020c0c] border border-[#024420] hover:border-[#0baa3b] rounded-[8px] px-3 py-2.5 text-[12px] text-[#0a9637] font-medium transition-colors">
+                <Wallet size={14} /> Add to Wallet
+              </button>
+              <a href={uniswapLpUrl(lastDeployed.address)} target="_blank" rel="noopener noreferrer" data-testid="link-add-lp-uniswap"
+                className="flex items-center gap-2 bg-[#020c0c] border border-[#024420] hover:border-[#0baa3b] rounded-[8px] px-3 py-2.5 text-[12px] text-[#0a9637] font-medium transition-colors">
+                <Droplets size={14} /> Add LP on Uniswap
+              </a>
+              <a href={`${explorerUrl}/address/${lastDeployed.address}`} target="_blank" rel="noopener noreferrer" data-testid="link-view-explorer"
+                className="flex items-center gap-2 bg-[#020c0c] border border-[#024420] hover:border-[#0baa3b] rounded-[8px] px-3 py-2.5 text-[12px] text-[#0a9637] font-medium transition-colors">
+                <ExternalLink size={14} /> View on Explorer
+              </a>
+              <button onClick={() => onCopy(lastDeployed.address)} data-testid="button-copy-address"
+                className="flex items-center gap-2 bg-[#020c0c] border border-[#024420] hover:border-[#0baa3b] rounded-[8px] px-3 py-2.5 text-[12px] text-[#0a9637] font-medium transition-colors">
+                <Copy size={14} /> Copy Address
+              </button>
+              <a
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I just deployed ${lastDeployed.name} (${lastDeployed.symbol}) on ${chainName}! 🚀`)}`}
+                target="_blank" rel="noopener noreferrer" data-testid="link-share-x"
+                className="flex items-center gap-2 bg-[#020c0c] border border-[#024420] hover:border-[#0baa3b] rounded-[8px] px-3 py-2.5 text-[12px] text-[#0a9637] font-medium transition-colors col-span-2 lg:col-span-1"
+              >
+                <Share2 size={14} /> Share on X
+              </a>
             </div>
           </div>
-
-          <p className="text-[11px] text-[#63666a] mb-3">What's next for your token:</p>
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => onAddToWallet(lastDeployed)} data-testid="button-add-to-wallet"
-              className="flex items-center gap-2 bg-[#020c0c] border border-[#024420] hover:border-[#0baa3b] rounded-[8px] px-3 py-2.5 text-[12px] text-[#0a9637] font-medium transition-colors">
-              <Wallet size={14} /> Add to Wallet
-            </button>
-            <a href={uniswapLpUrl(lastDeployed.address)} target="_blank" rel="noopener noreferrer" data-testid="link-add-lp-uniswap"
-              className="flex items-center gap-2 bg-[#020c0c] border border-[#024420] hover:border-[#0baa3b] rounded-[8px] px-3 py-2.5 text-[12px] text-[#0a9637] font-medium transition-colors">
-              <Droplets size={14} /> Add LP on Uniswap
-            </a>
-            <a href={`${explorerUrl}/address/${lastDeployed.address}`} target="_blank" rel="noopener noreferrer" data-testid="link-view-explorer"
-              className="flex items-center gap-2 bg-[#020c0c] border border-[#024420] hover:border-[#0baa3b] rounded-[8px] px-3 py-2.5 text-[12px] text-[#0a9637] font-medium transition-colors">
-              <ExternalLink size={14} /> View on Explorer
-            </a>
-            <button onClick={() => onCopy(lastDeployed.address)} data-testid="button-copy-address"
-              className="flex items-center gap-2 bg-[#020c0c] border border-[#024420] hover:border-[#0baa3b] rounded-[8px] px-3 py-2.5 text-[12px] text-[#0a9637] font-medium transition-colors">
-              <Copy size={14} /> Copy Address
-            </button>
-            <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I just deployed ${lastDeployed.name} (${lastDeployed.symbol}) on ${chainName}! 🚀`)}`}
-              target="_blank" rel="noopener noreferrer" data-testid="link-share-x"
-              className="flex items-center gap-2 bg-[#020c0c] border border-[#024420] hover:border-[#0baa3b] rounded-[8px] px-3 py-2.5 text-[12px] text-[#0a9637] font-medium transition-colors col-span-2"
-            >
-              <Share2 size={14} /> Share on X
-            </a>
+        ) : (
+          <div className="hidden lg:flex flex-col items-center justify-center text-center h-full min-h-[300px] bg-[#00090b]/50 border border-dashed border-[#081312] rounded-[8px] p-8">
+            <Zap size={28} className="text-[#3a3d40] mb-3" />
+            <p className="text-[13px] text-[#63666a] font-medium">Your deployed token will appear here</p>
+            <p className="text-[11px] text-[#3a3d40] mt-1 max-w-[260px]">Fill in the form and deploy to see wallet, LP, and sharing actions.</p>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
