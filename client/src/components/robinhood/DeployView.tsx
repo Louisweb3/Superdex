@@ -1,210 +1,66 @@
 import { Coins, Loader2, Zap, Info } from "lucide-react";
-import { GlassCard } from "./GlassCard";
 
 interface DeployViewProps {
-  tokenName: string;
-  setTokenName: (v: string) => void;
-  tokenSymbol: string;
-  setTokenSymbol: (v: string) => void;
-  tokenSupply: string;
-  setTokenSupply: (v: string) => void;
-  deploying: boolean;
-  deployToken: () => void;
-  chainName: string;
-  isConnected: boolean;
-  isOnRH: boolean;
-  switchToRH: () => void;
-  switchingNetwork: boolean;
+  tokenName: string; setTokenName: (v: string) => void;
+  tokenSymbol: string; setTokenSymbol: (v: string) => void;
+  tokenSupply: string; setTokenSupply: (v: string) => void;
+  deploying: boolean; deployToken: () => void;
+  chainName: string; isConnected: boolean; isOnRH: boolean;
+  switchToRH: () => void; switchingNetwork: boolean;
 }
 
-export function DeployView({
-  tokenName,
-  setTokenName,
-  tokenSymbol,
-  setTokenSymbol,
-  tokenSupply,
-  setTokenSupply,
-  deploying,
-  deployToken,
-  chainName,
-  isConnected,
-  isOnRH,
-  switchToRH,
-  switchingNetwork,
-}: DeployViewProps) {
+export function DeployView({ tokenName, setTokenName, tokenSymbol, setTokenSymbol, tokenSupply, setTokenSupply, deploying, deployToken, chainName, isConnected, isOnRH, switchToRH, switchingNetwork }: DeployViewProps) {
   const canDeploy = !!tokenName && !!tokenSymbol && !!tokenSupply;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Form */}
-      <GlassCard className="p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-[12px] bg-[#5AE4A8]/10 border border-[#5AE4A8]/20 flex items-center justify-center">
-            <Coins size={18} className="text-[#5AE4A8]" />
+    <div className="flex flex-col gap-5 pt-2 max-w-[640px]">
+      <h2 className="text-[16px] font-semibold text-white">Deploy Contract</h2>
+
+      <div className="bg-[#00090b] border border-[#081312] rounded-[8px] p-5">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-[8px] bg-[#0baa3b]/10 border border-[#0baa3b]/20 flex items-center justify-center">
+            <Coins size={18} className="text-[#0baa3b]" />
           </div>
           <div>
-            <h2 className="text-[16px] font-semibold text-[var(--rh-text)]">
-              Create ERC-20 Token
-            </h2>
-            <p className="text-[12px] text-[var(--rh-text-secondary)]">
-              Deploy to {chainName} Mainnet
-            </p>
+            <h3 className="text-[14px] font-semibold text-white">Create ERC-20 Token</h3>
+            <p className="text-[11px] text-[#63666a]">Deploy to {chainName} Mainnet</p>
           </div>
         </div>
 
         {isConnected && !isOnRH && (
-          <div className="flex items-center gap-3 rounded-[12px] border border-[#FFB547]/20 bg-[#FFB547]/[0.06] px-4 py-3 mb-5">
+          <div className="flex items-center gap-3 rounded-[8px] border border-[#FFB547]/20 bg-[#FFB547]/[0.06] px-4 py-3 mb-4">
             <Info size={15} className="text-[#FFB547] flex-shrink-0" />
-            <span className="text-[#FFB547]/90 text-[13px]">
-              You're not on {chainName}.
-            </span>
-            <button
-              onClick={switchToRH}
-              disabled={switchingNetwork}
-              className="ml-auto flex items-center gap-1.5 text-[12px] font-semibold text-[#5AE4A8] hover:text-[#46D67B] transition-colors whitespace-nowrap"
-            >
-              {switchingNetwork && <Loader2 size={12} className="animate-spin" />}
-              Switch Network
+            <span className="text-[#FFB547]/90 text-[12px]">You're not on {chainName}.</span>
+            <button onClick={switchToRH} disabled={switchingNetwork} className="ml-auto flex items-center gap-1.5 text-[11px] font-semibold text-[#0baa3b] transition-colors whitespace-nowrap">
+              {switchingNetwork && <Loader2 size={11} className="animate-spin" />}Switch Network
             </button>
           </div>
         )}
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           <div>
-            <label className="text-[11px] font-medium text-[var(--rh-text-secondary)] uppercase tracking-wider mb-1.5 block">
-              Token Name
-            </label>
-            <input
-              type="text"
-              value={tokenName}
-              onChange={(e) => setTokenName(e.target.value)}
-              placeholder="e.g. My Awesome Token"
-              data-testid="input-token-name"
-              className="w-full bg-[var(--rh-surface-a02)] border border-[var(--rh-border-08)] focus:border-[#5AE4A8]/50 focus:bg-[var(--rh-surface-a03)] rounded-[12px] px-4 py-3 text-[var(--rh-text)] text-[14px] outline-none transition-all placeholder:text-[var(--rh-muted)]"
-            />
+            <label className="text-[10px] font-medium text-[#63666a] uppercase tracking-wider mb-1 block">Token Name</label>
+            <input type="text" value={tokenName} onChange={(e) => setTokenName(e.target.value)} placeholder="e.g. My Token"
+              className="w-full bg-[#000305] border border-[#081312] focus:border-[#0baa3b]/50 rounded-[8px] px-3 py-2.5 text-white text-[13px] outline-none transition-all placeholder:text-[#63666a]" />
           </div>
           <div>
-            <label className="text-[11px] font-medium text-[var(--rh-text-secondary)] uppercase tracking-wider mb-1.5 block">
-              Token Symbol
-            </label>
-            <input
-              type="text"
-              value={tokenSymbol}
-              onChange={(e) =>
-                setTokenSymbol(e.target.value.toUpperCase().slice(0, 8))
-              }
-              placeholder="e.g. MAT"
-              data-testid="input-token-symbol"
-              className="w-full bg-[var(--rh-surface-a02)] border border-[var(--rh-border-08)] focus:border-[#5AE4A8]/50 focus:bg-[var(--rh-surface-a03)] rounded-[12px] px-4 py-3 text-[var(--rh-text)] text-[14px] outline-none transition-all placeholder:text-[var(--rh-muted)]"
-            />
+            <label className="text-[10px] font-medium text-[#63666a] uppercase tracking-wider mb-1 block">Token Symbol</label>
+            <input type="text" value={tokenSymbol} onChange={(e) => setTokenSymbol(e.target.value.toUpperCase().slice(0, 8))} placeholder="e.g. MTK"
+              className="w-full bg-[#000305] border border-[#081312] focus:border-[#0baa3b]/50 rounded-[8px] px-3 py-2.5 text-white text-[13px] outline-none transition-all placeholder:text-[#63666a]" />
           </div>
           <div>
-            <label className="text-[11px] font-medium text-[var(--rh-text-secondary)] uppercase tracking-wider mb-1.5 block">
-              Initial Supply
-            </label>
-            <input
-              type="number"
-              value={tokenSupply}
-              onChange={(e) => setTokenSupply(e.target.value)}
-              placeholder="1000000"
-              data-testid="input-token-supply"
-              className="w-full bg-[var(--rh-surface-a02)] border border-[var(--rh-border-08)] focus:border-[#5AE4A8]/50 focus:bg-[var(--rh-surface-a03)] rounded-[12px] px-4 py-3 text-[var(--rh-text)] text-[14px] outline-none transition-all placeholder:text-[var(--rh-muted)]"
-            />
-            <p className="text-[11px] text-[var(--rh-muted)] mt-1.5">
-              Decimals: 18 (standard ERC-20)
-            </p>
+            <label className="text-[10px] font-medium text-[#63666a] uppercase tracking-wider mb-1 block">Initial Supply</label>
+            <input type="number" value={tokenSupply} onChange={(e) => setTokenSupply(e.target.value)} placeholder="1000000"
+              className="w-full bg-[#000305] border border-[#081312] focus:border-[#0baa3b]/50 rounded-[8px] px-3 py-2.5 text-white text-[13px] outline-none transition-all placeholder:text-[#63666a]" />
+            <p className="text-[10px] text-[#63666a] mt-1">Decimals: 18 (standard ERC-20)</p>
           </div>
 
-          <button
-            onClick={deployToken}
-            disabled={deploying || !canDeploy}
-            data-testid="button-deploy-token"
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-br from-[#5AE4A8] to-[#46D67B] hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed text-[#05070A] font-semibold text-[14px] h-[48px] rounded-[14px] shadow-[0_4px_24px_rgba(90,228,168,0.25)] transition-all duration-200 mt-2"
-          >
-            {deploying ? (
-              <Loader2 size={17} className="animate-spin" />
-            ) : (
-              <Zap size={17} />
-            )}
+          <button onClick={deployToken} disabled={deploying || !canDeploy}
+            className="w-full flex items-center justify-center gap-2 bg-[#0baa3b] hover:bg-[#46D67B] disabled:opacity-40 text-[#000305] font-semibold text-[13px] h-[44px] rounded-[8px] transition-colors mt-1">
+            {deploying ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
             {deploying ? "Deploying…" : "Deploy Token"}
           </button>
         </div>
-      </GlassCard>
-
-      {/* Live preview */}
-      <div className="flex flex-col gap-4">
-        <GlassCard className="p-6">
-          <h3 className="text-[13px] font-semibold text-[var(--rh-text-secondary)] uppercase tracking-wider mb-4">
-            Live Preview
-          </h3>
-          <div className="flex items-center gap-3 mb-5 p-4 rounded-[14px] bg-[var(--rh-surface-a02)] border border-[var(--rh-border-05)]">
-            <div className="w-12 h-12 rounded-full bg-[#5AE4A8]/10 border border-[#5AE4A8]/25 flex items-center justify-center">
-              <span className="text-[#5AE4A8] text-[13px] font-semibold">
-                {(tokenSymbol || "TKN").slice(0, 3)}
-              </span>
-            </div>
-            <div>
-              <div className="text-[15px] font-semibold text-[var(--rh-text)]">
-                {tokenName || "Token Name"}
-              </div>
-              <div className="text-[12px] text-[var(--rh-text-secondary)] font-mono">
-                {tokenSymbol || "SYMBOL"}
-              </div>
-            </div>
-          </div>
-          {[
-            {
-              label: "Total Supply",
-              value: `${Number(tokenSupply || 0).toLocaleString()} ${tokenSymbol || ""}`,
-            },
-            { label: "Decimals", value: "18" },
-            { label: "Chain", value: chainName },
-            { label: "Owner", value: "Connected wallet (100% supply)" },
-          ].map(({ label, value }) => (
-            <div
-              key={label}
-              className="flex justify-between items-center py-2.5 border-b border-[var(--rh-border-05)] last:border-0"
-            >
-              <span className="text-[var(--rh-text-secondary)] text-[13px]">{label}</span>
-              <span className="text-[var(--rh-text-tertiary)] text-[13px] font-medium text-right">
-                {value}
-              </span>
-            </div>
-          ))}
-        </GlassCard>
-
-        <GlassCard className="p-5">
-          <h3 className="text-[14px] font-semibold text-[var(--rh-text)] mb-4">
-            What happens when you deploy?
-          </h3>
-          {[
-            {
-              n: 1,
-              text: "Your ERC-20 contract is compiled and signed locally in your wallet",
-            },
-            {
-              n: 2,
-              text: `The contract is broadcast to ${chainName} Mainnet`,
-            },
-            {
-              n: 3,
-              text: "Your wallet receives 100% of the initial supply",
-            },
-            {
-              n: 4,
-              text: "The contract is saved and viewable in My Contracts",
-            },
-          ].map(({ n, text }) => (
-            <div key={n} className="flex items-start gap-3 mb-3 last:mb-0">
-              <div className="w-5 h-5 rounded-full bg-[#5AE4A8] text-[#05070A] text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                {n}
-              </div>
-              <p className="text-[13px] text-[var(--rh-text-secondary)] leading-snug">
-                {text}
-              </p>
-            </div>
-          ))}
-        </GlassCard>
       </div>
     </div>
   );

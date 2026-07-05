@@ -16,38 +16,22 @@ export function SettingsView({ chainName, chainId, rpcUrl }: SettingsViewProps) 
   ];
 
   return (
-    <div className="flex flex-col gap-6 max-w-[640px]">
-      <h2 className="text-[20px] font-semibold text-[var(--rh-text)]">Settings</h2>
-      <GlassCard className="p-6 flex flex-col gap-1">
-        <h3 className="text-[13px] font-semibold text-[var(--rh-text-secondary)] uppercase tracking-wider mb-3">
-          Network Configuration
-        </h3>
+    <div className="flex flex-col gap-4 pt-2 max-w-[640px]">
+      <h2 className="text-[16px] font-semibold text-white">Settings</h2>
+      <GlassCard className="p-5 flex flex-col gap-1">
+        <h3 className="text-[11px] font-semibold text-[#63666a] uppercase tracking-wider mb-2">Network Configuration</h3>
         {rows.map(({ icon: Icon, label, value }) => (
-          <div
-            key={label}
-            className="flex items-center justify-between py-3 border-b border-[var(--rh-border-05)] last:border-0"
-          >
-            <span className="flex items-center gap-2.5 text-[13px] text-[var(--rh-text-tertiary)]">
-              <Icon size={15} className="text-[var(--rh-muted)]" />
-              {label}
-            </span>
-            <span className="text-[13px] text-[var(--rh-text)] font-medium">
-              {value}
-            </span>
+          <div key={label} className="flex items-center justify-between py-2.5 border-b border-[#081312] last:border-0">
+            <span className="flex items-center gap-2 text-[12px] text-[#c2c4c5]"><Icon size={14} className="text-[#63666a]" />{label}</span>
+            <span className="text-[12px] text-white font-medium">{value}</span>
           </div>
         ))}
       </GlassCard>
-      <GlassCard className="p-6">
-        <h3 className="text-[13px] font-semibold text-[var(--rh-text-secondary)] uppercase tracking-wider mb-3">
-          RPC Endpoint
-        </h3>
-        <p className="text-[13px] text-[var(--rh-text-tertiary)] font-mono break-all">
-          {rpcUrl}
-        </p>
+      <GlassCard className="p-5">
+        <h3 className="text-[11px] font-semibold text-[#63666a] uppercase tracking-wider mb-2">RPC Endpoint</h3>
+        <p className="text-[12px] text-[#c2c4c5] font-mono break-all">{rpcUrl}</p>
       </GlassCard>
-      <p className="text-[12px] text-[var(--rh-muted)] text-center">
-        More preferences are on the way — stay tuned.
-      </p>
+      <p className="text-[11px] text-[#63666a] text-center">More preferences are on the way — stay tuned.</p>
     </div>
   );
 }

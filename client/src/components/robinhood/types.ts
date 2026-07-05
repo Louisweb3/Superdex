@@ -1,9 +1,8 @@
 export type RhTab =
   | "dashboard"
-  | "deploy"
   | "contracts"
-  | "rewards"
-  | "explorer"
+  | "deployments"
+  | "analytics"
   | "settings";
 
 export type DeployedToken = {

@@ -6,17 +6,9 @@ interface GlassCardProps extends HTMLAttributes<HTMLDivElement> {
   hoverable?: boolean;
 }
 
-export function GlassCard({
-  children,
-  hoverable = false,
-  className = "",
-  ...rest
-}: GlassCardProps) {
+export function GlassCard({ children, hoverable = false, className = "", ...rest }: GlassCardProps) {
   return (
-    <div
-      className={`${cardBase} ${hoverable ? cardHover : ""} ${className}`}
-      {...rest}
-    >
+    <div className={`${cardBase} ${hoverable ? cardHover : ""} ${className}`} {...rest}>
       {children}
     </div>
   );

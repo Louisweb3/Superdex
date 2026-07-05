@@ -32,10 +32,10 @@ export function RewardsView({
           <div className="w-16 h-16 rounded-full bg-[#7A8CFF]/10 border border-[#7A8CFF]/25 flex items-center justify-center mx-auto mb-4">
             <Gift size={26} className="text-[#7A8CFF]" />
           </div>
-          <h2 className="text-[18px] font-semibold text-[var(--rh-text)]">
+          <h2 className="text-[18px] font-semibold text-white">
             Claim 25 XP Daily
           </h2>
-          <p className="text-[var(--rh-text-secondary)] text-[13px] mt-2">
+          <p className="text-[#c2c4c5] text-[13px] mt-2">
             Claim your XP every 24 hours and build a streak on {chainName}.
           </p>
         </div>
@@ -63,13 +63,13 @@ export function RewardsView({
           ].map(({ label, value, icon }) => (
             <div
               key={label}
-              className="flex justify-between items-center py-2 border-b border-[var(--rh-border-05)] last:border-0"
+              className="flex justify-between items-center py-2 border-b border-[#081312] last:border-0"
             >
-              <span className="text-[var(--rh-text-secondary)] text-[13px] flex items-center gap-2">
+              <span className="text-[#c2c4c5] text-[13px] flex items-center gap-2">
                 {icon}
                 {label}
               </span>
-              <span className="text-[var(--rh-text)] text-[13px] font-medium">
+              <span className="text-white text-[13px] font-medium">
                 {value}
               </span>
             </div>

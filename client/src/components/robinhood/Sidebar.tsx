@@ -1,24 +1,22 @@
+import type { LucideIcon } from "lucide-react";
 import {
-  LayoutDashboard,
+  Home,
+  FileText,
   Rocket,
-  FileStack,
-  Gift,
-  Compass,
+  BarChart3,
   Settings,
-  type LucideIcon,
 } from "lucide-react";
 import type { RhTab } from "./types";
 
 const NAV_ITEMS: { id: RhTab; label: string; icon: LucideIcon }[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "deploy", label: "Deploy", icon: Rocket },
-  { id: "contracts", label: "My Contracts", icon: FileStack },
-  { id: "rewards", label: "Rewards", icon: Gift },
-  { id: "explorer", label: "Explorer", icon: Compass },
+  { id: "dashboard", label: "Dashboard", icon: Home },
+  { id: "contracts", label: "Contracts", icon: FileText },
+  { id: "deployments", label: "Deployments", icon: Rocket },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-export function Sidebar({
+export function BottomNav({
   activeTab,
   onChange,
 }: {
@@ -26,56 +24,26 @@ export function Sidebar({
   onChange: (tab: RhTab) => void;
 }) {
   return (
-    <aside className="hidden lg:flex flex-col w-[240px] shrink-0 border-r border-[var(--rh-border-06)] bg-[var(--rh-surface)]/60 backdrop-blur-xl px-4 py-6 gap-1">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around bg-[#000405]/95 backdrop-blur-xl border-t border-[#081312] px-1 py-2">
       {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
         const active = activeTab === id;
         return (
           <button
             key={id}
             onClick={() => onChange(id)}
-            data-testid={`nav-rh-${id}`}
-            className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-[12px] text-[14px] font-medium transition-all duration-200 ${
+            data-testid={`nav-bottom-${id}`}
+            className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-[8px] text-[10px] font-medium transition-colors min-w-[60px] ${
               active
-                ? "bg-[var(--rh-surface-a06)] text-[var(--rh-text)]"
-                : "text-[var(--rh-text-secondary)] hover:text-[var(--rh-text)] hover:bg-[var(--rh-surface-a03)]"
+                ? "text-[#0baf3d]"
+                : "text-[#5e6164] hover:text-[#8b8e92]"
             }`}
           >
-            {active && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-[#5AE4A8]" />
-            )}
-            <Icon
-              size={17}
-              className={active ? "text-[#5AE4A8]" : "text-[var(--rh-muted)]"}
-            />
-            {label}
-          </button>
-        );
-      })}
-    </aside>
-  );
-}
-
-export function MobileTabBar({
-  activeTab,
-  onChange,
-}: {
-  activeTab: RhTab;
-  onChange: (tab: RhTab) => void;
-}) {
-  return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around bg-[var(--rh-surface)]/90 backdrop-blur-xl border-t border-[var(--rh-border-06)] px-2 py-2">
-      {NAV_ITEMS.slice(0, 5).map(({ id, label, icon: Icon }) => {
-        const active = activeTab === id;
-        return (
-          <button
-            key={id}
-            onClick={() => onChange(id)}
-            data-testid={`nav-mobile-rh-${id}`}
-            className={`flex flex-col items-center gap-1 px-2 py-1 rounded-[10px] text-[10px] font-medium transition-colors ${
-              active ? "text-[#5AE4A8]" : "text-[var(--rh-muted)]"
-            }`}
-          >
-            <Icon size={18} />
+            <div className="relative">
+              <Icon size={20} strokeWidth={active ? 2.5 : 1.5} />
+              {active && (
+                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-[2px] rounded-full bg-[#0baf3d]" />
+              )}
+            </div>
             {label}
           </button>
         );
