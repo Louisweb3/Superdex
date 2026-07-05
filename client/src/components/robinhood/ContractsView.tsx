@@ -62,21 +62,21 @@ export function ContractsView({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h2 className="text-[20px] font-semibold text-white">
+        <h2 className="text-[20px] font-semibold text-[var(--rh-text)]">
           My Deployed Contracts
         </h2>
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search
               size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5E6B7A]"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rh-muted)]"
             />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search contracts…"
               data-testid="input-search-contracts"
-              className="bg-white/[0.03] border border-white/[0.08] focus:border-[#5AE4A8]/40 rounded-[10px] pl-9 pr-3 h-[38px] text-[13px] text-white outline-none transition-all placeholder:text-[#5E6B7A] w-[220px]"
+              className="bg-[var(--rh-surface-a03)] border border-[var(--rh-border-08)] focus:border-[#5AE4A8]/40 rounded-[10px] pl-9 pr-3 h-[38px] text-[13px] text-[var(--rh-text)] outline-none transition-all placeholder:text-[var(--rh-muted)] w-[220px]"
             />
           </div>
           <button
@@ -90,13 +90,13 @@ export function ContractsView({
 
       {tokens.length === 0 ? (
         <GlassCard className="flex flex-col items-center justify-center py-16">
-          <div className="w-14 h-14 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
-            <Coins size={22} className="text-[#5E6B7A]" />
+          <div className="w-14 h-14 rounded-full bg-[var(--rh-surface-a03)] border border-[var(--rh-border-06)] flex items-center justify-center mb-4">
+            <Coins size={22} className="text-[var(--rh-muted)]" />
           </div>
-          <p className="text-[#c9d1de] text-[14px] font-medium">
+          <p className="text-[var(--rh-text-tertiary)] text-[14px] font-medium">
             No contracts deployed yet
           </p>
-          <p className="text-[#5E6B7A] text-[12px] mt-1 mb-4">
+          <p className="text-[var(--rh-muted)] text-[12px] mt-1 mb-4">
             Create your first token from the Deploy page
           </p>
           <button
@@ -111,7 +111,7 @@ export function ContractsView({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-white/[0.06]">
+                <tr className="border-b border-[var(--rh-border-06)]">
                   {[
                     { key: "name" as SortKey, label: "Token" },
                     { key: "supply" as SortKey, label: "Supply" },
@@ -119,28 +119,28 @@ export function ContractsView({
                     <th
                       key={key}
                       onClick={() => toggleSort(key)}
-                      className="cursor-pointer select-none px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-[#8B97A8]"
+                      className="cursor-pointer select-none px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-[var(--rh-text-secondary)]"
                     >
                       <span className="flex items-center gap-1">
                         {label} <ArrowUpDown size={11} />
                       </span>
                     </th>
                   ))}
-                  <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-[#8B97A8]">
+                  <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-[var(--rh-text-secondary)]">
                     Contract Address
                   </th>
-                  <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-[#8B97A8]">
+                  <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-[var(--rh-text-secondary)]">
                     Status
                   </th>
                   <th
                     onClick={() => toggleSort("deployedAt")}
-                    className="cursor-pointer select-none px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-[#8B97A8]"
+                    className="cursor-pointer select-none px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-[var(--rh-text-secondary)]"
                   >
                     <span className="flex items-center gap-1">
                       Created <ArrowUpDown size={11} />
                     </span>
                   </th>
-                  <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-[#8B97A8] text-right">
+                  <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-[var(--rh-text-secondary)] text-right">
                     Actions
                   </th>
                 </tr>
@@ -149,7 +149,7 @@ export function ContractsView({
                 {filtered.map((token, i) => (
                   <tr
                     key={i}
-                    className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors"
+                    className="border-b border-[var(--rh-border-04)] last:border-0 hover:bg-[var(--rh-surface-a02)] transition-colors"
                     data-testid={`row-contract-${i}`}
                   >
                     <td className="px-5 py-4">
@@ -160,19 +160,19 @@ export function ContractsView({
                           </span>
                         </div>
                         <div>
-                          <div className="text-[13px] font-medium text-white">
+                          <div className="text-[13px] font-medium text-[var(--rh-text)]">
                             {token.name}
                           </div>
-                          <div className="text-[11px] text-[#8B97A8] font-mono">
+                          <div className="text-[11px] text-[var(--rh-text-secondary)] font-mono">
                             {token.symbol}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-[13px] text-[#c9d1de] font-mono">
+                    <td className="px-5 py-4 text-[13px] text-[var(--rh-text-tertiary)] font-mono">
                       {Number(token.supply).toLocaleString()}
                     </td>
-                    <td className="px-5 py-4 text-[13px] text-[#c9d1de] font-mono">
+                    <td className="px-5 py-4 text-[13px] text-[var(--rh-text-tertiary)] font-mono">
                       {token.address.slice(0, 6)}…{token.address.slice(-4)}
                     </td>
                     <td className="px-5 py-4">
@@ -181,7 +181,7 @@ export function ContractsView({
                         spin={token.verifyStatus === "pending"}
                       />
                     </td>
-                    <td className="px-5 py-4 text-[12px] text-[#8B97A8]">
+                    <td className="px-5 py-4 text-[12px] text-[var(--rh-text-secondary)]">
                       {new Date(token.deployedAt).toLocaleDateString()}
                     </td>
                     <td className="px-5 py-4">
@@ -189,7 +189,7 @@ export function ContractsView({
                         <button
                           onClick={() => onCopy(token.address)}
                           title="Copy address"
-                          className="p-1.5 rounded-[8px] text-[#8B97A8] hover:text-white hover:bg-white/[0.06] transition-colors"
+                          className="p-1.5 rounded-[8px] text-[var(--rh-text-secondary)] hover:text-[var(--rh-text)] hover:bg-[var(--rh-surface-a06)] transition-colors"
                         >
                           <Copy size={14} />
                         </button>
@@ -198,7 +198,7 @@ export function ContractsView({
                           target="_blank"
                           rel="noopener noreferrer"
                           title="View on explorer"
-                          className="p-1.5 rounded-[8px] text-[#8B97A8] hover:text-white hover:bg-white/[0.06] transition-colors"
+                          className="p-1.5 rounded-[8px] text-[var(--rh-text-secondary)] hover:text-[var(--rh-text)] hover:bg-[var(--rh-surface-a06)] transition-colors"
                         >
                           <ExternalLink size={14} />
                         </a>

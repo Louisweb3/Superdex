@@ -6,6 +6,7 @@ import { useWalletContext } from "@/context/WalletContext";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { ArrowLeftRight, Layers, Sun, Moon } from "lucide-react";
 
 import { Sidebar, MobileTabBar } from "@/components/robinhood/Sidebar";
 import { WalletChip } from "@/components/robinhood/WalletChip";
@@ -187,6 +188,39 @@ function markXpToday() {
   localStorage.setItem(LS_XP_KEY, getTodayKey());
 }
 
+// ─── XP streak tracking ───────────────────────────────────────────────────────
+const LS_XP_STREAK_KEY = "rh_playground_xp_streak";
+function getYesterdayKey() {
+  return new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+}
+function getXpStreak(): number {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_XP_STREAK_KEY) || "null");
+    if (!raw) return 0;
+    const today = getTodayKey();
+    const yesterday = getYesterdayKey();
+    if (raw.lastDate === today || raw.lastDate === yesterday) return raw.count;
+    return 0; // streak broken — more than a day was missed
+  } catch {
+    return 0;
+  }
+}
+function bumpXpStreak(): number {
+  const today = getTodayKey();
+  const yesterday = getYesterdayKey();
+  let raw: { count: number; lastDate: string } | null = null;
+  try {
+    raw = JSON.parse(localStorage.getItem(LS_XP_STREAK_KEY) || "null");
+  } catch {
+    raw = null;
+  }
+  let count = 1;
+  if (raw?.lastDate === yesterday) count = raw.count + 1;
+  else if (raw?.lastDate === today) count = raw.count;
+  localStorage.setItem(LS_XP_STREAK_KEY, JSON.stringify({ count, lastDate: today }));
+  return count;
+}
+
 // ─── RH RPC call helper ───────────────────────────────────────────────────────
 async function waitForReceipt(
   txHash: string,
@@ -219,6 +253,13 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
   const queryClient = useQueryClient();
   const [walletOpen, setWalletOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<RhTab>("dashboard");
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window === "undefined") return "dark";
+    return (localStorage.getItem("rh_theme") as "dark" | "light") || "dark";
+  });
+  useEffect(() => {
+    localStorage.setItem("rh_theme", theme);
+  }, [theme]);
 
   // Platform-wide stats (global counter, not per-browser)
   const { data: platformStats } = useQuery<{ totalContractsDeployed: number }>({
@@ -252,6 +293,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
   const [claimingXp, setClaimingXp] = useState(false);
   const [xpClaimed, setXpClaimed] = useState(hasClaimedXpToday());
   const [xpTxHash, setXpTxHash] = useState("");
+  const [xpStreak, setXpStreak] = useState(getXpStreak());
 
   // Check if on Robinhood Chain
   useEffect(() => {
@@ -514,6 +556,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       setXpTxHash(txHash);
       markXpToday();
       setXpClaimed(true);
+      setXpStreak(bumpXpStreak());
       toast({ title: "🎁 25 XP claimed on Robinhood Chain!" });
     } catch (e: any) {
       toast({
@@ -574,14 +617,15 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
 
   return (
     <div
-      className="min-h-screen bg-[#05070A] text-white flex"
-      style={{ fontFamily: "'Inter', sans-serif" }}
+      className="rh-root min-h-screen bg-[var(--rh-bg)] text-[var(--rh-text)] flex"
+      data-theme={theme}
+      style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}
     >
       <Sidebar activeTab={activeTab} onChange={setActiveTab} />
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="flex items-center justify-between gap-3 sm:gap-4 px-5 sm:px-8 h-[72px] border-b border-white/[0.06] bg-[#05070A]/80 backdrop-blur-xl sticky top-0 z-20">
+        <header className="flex items-center justify-between gap-3 sm:gap-4 px-5 sm:px-8 h-[72px] border-b border-[var(--rh-border-06)] bg-[var(--rh-bg)]/80 backdrop-blur-xl sticky top-0 z-20">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             {/* SuperSwap home link */}
             <Link
@@ -601,21 +645,52 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               </span>
             </Link>
 
-            <div className="w-px h-6 bg-white/[0.08] flex-shrink-0 hidden sm:block" />
+            <div className="w-px h-6 bg-[var(--rh-border-08)] flex-shrink-0 hidden sm:block" />
 
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-full border border-white/[0.08] flex-shrink-0 overflow-hidden">
+              <div className="w-9 h-9 rounded-full border border-[var(--rh-border-08)] flex-shrink-0 overflow-hidden">
                 <RobinhoodLogo size={36} />
               </div>
               <div className="min-w-0">
-                <div className="text-[14px] font-semibold text-white leading-tight truncate">
+                <div className="text-[14px] font-semibold text-[var(--rh-text)] leading-tight truncate">
                   Robinhood Chain
                 </div>
-                <div className="text-[11px] text-[#5E6B7A] leading-tight truncate">
+                <div className="text-[11px] text-[var(--rh-muted)] leading-tight truncate">
                   Playground
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <a
+              href="/swap"
+              className="hidden sm:flex items-center gap-1.5 text-[13px] font-semibold text-[var(--rh-text)] bg-[var(--rh-surface-a03)] hover:bg-[var(--rh-surface-a06)] border border-[var(--rh-border-08)] px-3.5 h-[38px] rounded-[10px] transition-colors"
+              data-testid="link-swap"
+            >
+              <ArrowLeftRight size={14} />
+              Swap
+            </a>
+            <a
+              href={RH_BRIDGE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:flex items-center gap-1.5 text-[13px] font-semibold text-[var(--rh-text)] bg-[var(--rh-surface-a03)] hover:bg-[var(--rh-surface-a06)] border border-[var(--rh-border-08)] px-3.5 h-[38px] rounded-[10px] transition-colors"
+              data-testid="link-bridge"
+            >
+              <Layers size={14} />
+              Bridge
+            </a>
+            <button
+              onClick={() =>
+                setTheme((t) => (t === "dark" ? "light" : "dark"))
+              }
+              title={theme === "dark" ? "Switch to day mode" : "Switch to night mode"}
+              className="flex items-center justify-center w-[38px] h-[38px] rounded-[10px] bg-[var(--rh-surface-a03)] hover:bg-[var(--rh-surface-a06)] border border-[var(--rh-border-08)] text-[var(--rh-text)] transition-colors"
+              data-testid="button-toggle-theme"
+            >
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
           </div>
 
           <WalletChip
@@ -646,6 +721,15 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
               xpClaimed={xpClaimed}
               totalContractsDeployed={totalContractsDeployed}
               onNavigate={setActiveTab}
+              switchToRH={switchToRH}
+              switchingNetwork={switchingNetwork}
+              explorerUrl={EXPLORER}
+              sendingGm={sendingGm}
+              gmTxHash={gmTxHash}
+              sendGm={sendGm}
+              sendingGn={sendingGn}
+              gnTxHash={gnTxHash}
+              sendGn={sendGn}
             />
           )}
 
@@ -680,23 +764,12 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
           {activeTab === "rewards" && (
             <RewardsView
               chainName={ACTIVE_NETWORK.chainName}
-              isConnected={isConnected}
-              isOnRH={isOnRH}
-              switchToRH={switchToRH}
-              switchingNetwork={switchingNetwork}
-              gmClaimed={gmClaimed}
-              sendingGm={sendingGm}
-              gmTxHash={gmTxHash}
-              sendGm={sendGm}
-              gnClaimed={gnClaimed}
-              sendingGn={sendingGn}
-              gnTxHash={gnTxHash}
-              sendGn={sendGn}
               explorerUrl={EXPLORER}
               xpClaimed={xpClaimed}
               claimingXp={claimingXp}
               xpTxHash={xpTxHash}
               claimXp={claimXp}
+              xpStreak={xpStreak}
             />
           )}
 

@@ -43,10 +43,10 @@ export function DeployView({
             <Coins size={18} className="text-[#5AE4A8]" />
           </div>
           <div>
-            <h2 className="text-[16px] font-semibold text-white">
+            <h2 className="text-[16px] font-semibold text-[var(--rh-text)]">
               Create ERC-20 Token
             </h2>
-            <p className="text-[12px] text-[#8B97A8]">
+            <p className="text-[12px] text-[var(--rh-text-secondary)]">
               Deploy to {chainName} Mainnet
             </p>
           </div>
@@ -71,7 +71,7 @@ export function DeployView({
 
         <div className="flex flex-col gap-4">
           <div>
-            <label className="text-[11px] font-medium text-[#8B97A8] uppercase tracking-wider mb-1.5 block">
+            <label className="text-[11px] font-medium text-[var(--rh-text-secondary)] uppercase tracking-wider mb-1.5 block">
               Token Name
             </label>
             <input
@@ -80,11 +80,11 @@ export function DeployView({
               onChange={(e) => setTokenName(e.target.value)}
               placeholder="e.g. My Awesome Token"
               data-testid="input-token-name"
-              className="w-full bg-white/[0.02] border border-white/[0.08] focus:border-[#5AE4A8]/50 focus:bg-white/[0.03] rounded-[12px] px-4 py-3 text-white text-[14px] outline-none transition-all placeholder:text-[#5E6B7A]"
+              className="w-full bg-[var(--rh-surface-a02)] border border-[var(--rh-border-08)] focus:border-[#5AE4A8]/50 focus:bg-[var(--rh-surface-a03)] rounded-[12px] px-4 py-3 text-[var(--rh-text)] text-[14px] outline-none transition-all placeholder:text-[var(--rh-muted)]"
             />
           </div>
           <div>
-            <label className="text-[11px] font-medium text-[#8B97A8] uppercase tracking-wider mb-1.5 block">
+            <label className="text-[11px] font-medium text-[var(--rh-text-secondary)] uppercase tracking-wider mb-1.5 block">
               Token Symbol
             </label>
             <input
@@ -95,11 +95,11 @@ export function DeployView({
               }
               placeholder="e.g. MAT"
               data-testid="input-token-symbol"
-              className="w-full bg-white/[0.02] border border-white/[0.08] focus:border-[#5AE4A8]/50 focus:bg-white/[0.03] rounded-[12px] px-4 py-3 text-white text-[14px] outline-none transition-all placeholder:text-[#5E6B7A]"
+              className="w-full bg-[var(--rh-surface-a02)] border border-[var(--rh-border-08)] focus:border-[#5AE4A8]/50 focus:bg-[var(--rh-surface-a03)] rounded-[12px] px-4 py-3 text-[var(--rh-text)] text-[14px] outline-none transition-all placeholder:text-[var(--rh-muted)]"
             />
           </div>
           <div>
-            <label className="text-[11px] font-medium text-[#8B97A8] uppercase tracking-wider mb-1.5 block">
+            <label className="text-[11px] font-medium text-[var(--rh-text-secondary)] uppercase tracking-wider mb-1.5 block">
               Initial Supply
             </label>
             <input
@@ -108,9 +108,9 @@ export function DeployView({
               onChange={(e) => setTokenSupply(e.target.value)}
               placeholder="1000000"
               data-testid="input-token-supply"
-              className="w-full bg-white/[0.02] border border-white/[0.08] focus:border-[#5AE4A8]/50 focus:bg-white/[0.03] rounded-[12px] px-4 py-3 text-white text-[14px] outline-none transition-all placeholder:text-[#5E6B7A]"
+              className="w-full bg-[var(--rh-surface-a02)] border border-[var(--rh-border-08)] focus:border-[#5AE4A8]/50 focus:bg-[var(--rh-surface-a03)] rounded-[12px] px-4 py-3 text-[var(--rh-text)] text-[14px] outline-none transition-all placeholder:text-[var(--rh-muted)]"
             />
-            <p className="text-[11px] text-[#5E6B7A] mt-1.5">
+            <p className="text-[11px] text-[var(--rh-muted)] mt-1.5">
               Decimals: 18 (standard ERC-20)
             </p>
           </div>
@@ -134,20 +134,20 @@ export function DeployView({
       {/* Live preview */}
       <div className="flex flex-col gap-4">
         <GlassCard className="p-6">
-          <h3 className="text-[13px] font-semibold text-[#8B97A8] uppercase tracking-wider mb-4">
+          <h3 className="text-[13px] font-semibold text-[var(--rh-text-secondary)] uppercase tracking-wider mb-4">
             Live Preview
           </h3>
-          <div className="flex items-center gap-3 mb-5 p-4 rounded-[14px] bg-white/[0.02] border border-white/[0.05]">
+          <div className="flex items-center gap-3 mb-5 p-4 rounded-[14px] bg-[var(--rh-surface-a02)] border border-[var(--rh-border-05)]">
             <div className="w-12 h-12 rounded-full bg-[#5AE4A8]/10 border border-[#5AE4A8]/25 flex items-center justify-center">
               <span className="text-[#5AE4A8] text-[13px] font-semibold">
                 {(tokenSymbol || "TKN").slice(0, 3)}
               </span>
             </div>
             <div>
-              <div className="text-[15px] font-semibold text-white">
+              <div className="text-[15px] font-semibold text-[var(--rh-text)]">
                 {tokenName || "Token Name"}
               </div>
-              <div className="text-[12px] text-[#8B97A8] font-mono">
+              <div className="text-[12px] text-[var(--rh-text-secondary)] font-mono">
                 {tokenSymbol || "SYMBOL"}
               </div>
             </div>
@@ -163,10 +163,10 @@ export function DeployView({
           ].map(({ label, value }) => (
             <div
               key={label}
-              className="flex justify-between items-center py-2.5 border-b border-white/[0.05] last:border-0"
+              className="flex justify-between items-center py-2.5 border-b border-[var(--rh-border-05)] last:border-0"
             >
-              <span className="text-[#8B97A8] text-[13px]">{label}</span>
-              <span className="text-[#e5e5e5] text-[13px] font-medium text-right">
+              <span className="text-[var(--rh-text-secondary)] text-[13px]">{label}</span>
+              <span className="text-[var(--rh-text-tertiary)] text-[13px] font-medium text-right">
                 {value}
               </span>
             </div>
@@ -174,7 +174,7 @@ export function DeployView({
         </GlassCard>
 
         <GlassCard className="p-5">
-          <h3 className="text-[14px] font-semibold text-white mb-4">
+          <h3 className="text-[14px] font-semibold text-[var(--rh-text)] mb-4">
             What happens when you deploy?
           </h3>
           {[
@@ -199,7 +199,7 @@ export function DeployView({
               <div className="w-5 h-5 rounded-full bg-[#5AE4A8] text-[#05070A] text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                 {n}
               </div>
-              <p className="text-[13px] text-[#8B97A8] leading-snug">
+              <p className="text-[13px] text-[var(--rh-text-secondary)] leading-snug">
                 {text}
               </p>
             </div>

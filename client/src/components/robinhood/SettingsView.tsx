@@ -17,35 +17,35 @@ export function SettingsView({ chainName, chainId, rpcUrl }: SettingsViewProps) 
 
   return (
     <div className="flex flex-col gap-6 max-w-[640px]">
-      <h2 className="text-[20px] font-semibold text-white">Settings</h2>
+      <h2 className="text-[20px] font-semibold text-[var(--rh-text)]">Settings</h2>
       <GlassCard className="p-6 flex flex-col gap-1">
-        <h3 className="text-[13px] font-semibold text-[#8B97A8] uppercase tracking-wider mb-3">
+        <h3 className="text-[13px] font-semibold text-[var(--rh-text-secondary)] uppercase tracking-wider mb-3">
           Network Configuration
         </h3>
         {rows.map(({ icon: Icon, label, value }) => (
           <div
             key={label}
-            className="flex items-center justify-between py-3 border-b border-white/[0.05] last:border-0"
+            className="flex items-center justify-between py-3 border-b border-[var(--rh-border-05)] last:border-0"
           >
-            <span className="flex items-center gap-2.5 text-[13px] text-[#c9d1de]">
-              <Icon size={15} className="text-[#5E6B7A]" />
+            <span className="flex items-center gap-2.5 text-[13px] text-[var(--rh-text-tertiary)]">
+              <Icon size={15} className="text-[var(--rh-muted)]" />
               {label}
             </span>
-            <span className="text-[13px] text-white font-medium">
+            <span className="text-[13px] text-[var(--rh-text)] font-medium">
               {value}
             </span>
           </div>
         ))}
       </GlassCard>
       <GlassCard className="p-6">
-        <h3 className="text-[13px] font-semibold text-[#8B97A8] uppercase tracking-wider mb-3">
+        <h3 className="text-[13px] font-semibold text-[var(--rh-text-secondary)] uppercase tracking-wider mb-3">
           RPC Endpoint
         </h3>
-        <p className="text-[13px] text-[#c9d1de] font-mono break-all">
+        <p className="text-[13px] text-[var(--rh-text-tertiary)] font-mono break-all">
           {rpcUrl}
         </p>
       </GlassCard>
-      <p className="text-[12px] text-[#5E6B7A] text-center">
+      <p className="text-[12px] text-[var(--rh-muted)] text-center">
         More preferences are on the way — stay tuned.
       </p>
     </div>

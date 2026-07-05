@@ -26,7 +26,7 @@ export function Sidebar({
   onChange: (tab: RhTab) => void;
 }) {
   return (
-    <aside className="hidden lg:flex flex-col w-[240px] shrink-0 border-r border-white/[0.06] bg-[#0B1118]/60 backdrop-blur-xl px-4 py-6 gap-1">
+    <aside className="hidden lg:flex flex-col w-[240px] shrink-0 border-r border-[var(--rh-border-06)] bg-[var(--rh-surface)]/60 backdrop-blur-xl px-4 py-6 gap-1">
       {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
         const active = activeTab === id;
         return (
@@ -36,8 +36,8 @@ export function Sidebar({
             data-testid={`nav-rh-${id}`}
             className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-[12px] text-[14px] font-medium transition-all duration-200 ${
               active
-                ? "bg-white/[0.06] text-white"
-                : "text-[#8B97A8] hover:text-white hover:bg-white/[0.03]"
+                ? "bg-[var(--rh-surface-a06)] text-[var(--rh-text)]"
+                : "text-[var(--rh-text-secondary)] hover:text-[var(--rh-text)] hover:bg-[var(--rh-surface-a03)]"
             }`}
           >
             {active && (
@@ -45,7 +45,7 @@ export function Sidebar({
             )}
             <Icon
               size={17}
-              className={active ? "text-[#5AE4A8]" : "text-[#5E6B7A]"}
+              className={active ? "text-[#5AE4A8]" : "text-[var(--rh-muted)]"}
             />
             {label}
           </button>
@@ -63,7 +63,7 @@ export function MobileTabBar({
   onChange: (tab: RhTab) => void;
 }) {
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around bg-[#0B1118]/90 backdrop-blur-xl border-t border-white/[0.06] px-2 py-2">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around bg-[var(--rh-surface)]/90 backdrop-blur-xl border-t border-[var(--rh-border-06)] px-2 py-2">
       {NAV_ITEMS.slice(0, 5).map(({ id, label, icon: Icon }) => {
         const active = activeTab === id;
         return (
@@ -72,7 +72,7 @@ export function MobileTabBar({
             onClick={() => onChange(id)}
             data-testid={`nav-mobile-rh-${id}`}
             className={`flex flex-col items-center gap-1 px-2 py-1 rounded-[10px] text-[10px] font-medium transition-colors ${
-              active ? "text-[#5AE4A8]" : "text-[#5E6B7A]"
+              active ? "text-[#5AE4A8]" : "text-[var(--rh-muted)]"
             }`}
           >
             <Icon size={18} />

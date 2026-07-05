@@ -11,6 +11,44 @@
   --animate-spin: spin 1s linear infinite;
 }
 
+/* ─── Robinhood Playground theme tokens (scoped) ────────────────────────── */
+.rh-root {
+  --rh-bg: #05070a;
+  --rh-surface: #0b1118;
+  --rh-surface-a02: rgba(255, 255, 255, 0.02);
+  --rh-surface-a03: rgba(255, 255, 255, 0.03);
+  --rh-surface-a045: rgba(255, 255, 255, 0.045);
+  --rh-surface-a05: rgba(255, 255, 255, 0.05);
+  --rh-surface-a06: rgba(255, 255, 255, 0.06);
+  --rh-border-04: rgba(255, 255, 255, 0.04);
+  --rh-border-05: rgba(255, 255, 255, 0.05);
+  --rh-border-06: rgba(255, 255, 255, 0.06);
+  --rh-border-08: rgba(255, 255, 255, 0.08);
+  --rh-border-1: rgba(255, 255, 255, 0.1);
+  --rh-text: #ffffff;
+  --rh-text-secondary: #8b97a8;
+  --rh-text-tertiary: #c9d1de;
+  --rh-muted: #5e6b7a;
+}
+.rh-root[data-theme="light"] {
+  --rh-bg: #f4f6f9;
+  --rh-surface: #ffffff;
+  --rh-surface-a02: rgba(11, 17, 24, 0.03);
+  --rh-surface-a03: rgba(11, 17, 24, 0.04);
+  --rh-surface-a045: rgba(11, 17, 24, 0.06);
+  --rh-surface-a05: rgba(11, 17, 24, 0.06);
+  --rh-surface-a06: rgba(11, 17, 24, 0.07);
+  --rh-border-04: rgba(11, 17, 24, 0.06);
+  --rh-border-05: rgba(11, 17, 24, 0.08);
+  --rh-border-06: rgba(11, 17, 24, 0.1);
+  --rh-border-08: rgba(11, 17, 24, 0.12);
+  --rh-border-1: rgba(11, 17, 24, 0.14);
+  --rh-text: #0b1118;
+  --rh-text-secondary: #545f6e;
+  --rh-text-tertiary: #333c47;
+  --rh-muted: #7c8797;
+}
+
 .animate-fade-in {
   animation: fade-in 1s var(--animation-delay, 0s) ease forwards;
 }

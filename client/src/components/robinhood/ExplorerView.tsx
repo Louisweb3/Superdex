@@ -80,7 +80,7 @@ export function ExplorerView({
 
   return (
     <div className="flex flex-col gap-6">
-      <h2 className="text-[20px] font-semibold text-white">
+      <h2 className="text-[20px] font-semibold text-[var(--rh-text)]">
         Explore Robinhood Chain
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -96,10 +96,10 @@ export function ExplorerView({
               <div className="w-10 h-10 rounded-[12px] bg-[#5AE4A8]/10 border border-[#5AE4A8]/20 flex items-center justify-center mb-4 group-hover:bg-[#5AE4A8]/20 transition-all">
                 <Icon size={18} className="text-[#5AE4A8]" />
               </div>
-              <div className="font-semibold text-[15px] text-white mb-1">
+              <div className="font-semibold text-[15px] text-[var(--rh-text)] mb-1">
                 {title}
               </div>
-              <div className="text-[12px] text-[#8B97A8] leading-relaxed flex-1">
+              <div className="text-[12px] text-[var(--rh-text-secondary)] leading-relaxed flex-1">
                 {desc}
               </div>
               <div className="flex items-center gap-1 mt-4 text-[12px] font-medium text-[#5AE4A8] group-hover:gap-2 transition-all">
@@ -112,7 +112,7 @@ export function ExplorerView({
       </div>
 
       <GlassCard className="p-5">
-        <h3 className="text-[14px] font-semibold text-white mb-4">
+        <h3 className="text-[14px] font-semibold text-[var(--rh-text)] mb-4">
           Add to MetaMask / Any EVM Wallet
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -124,16 +124,16 @@ export function ExplorerView({
             { label: "Explorer", value: explorerUrl },
           ].map(({ label, value }) => (
             <div key={label} className="flex flex-col gap-0.5">
-              <span className="text-[10px] font-medium uppercase tracking-wider text-[#5E6B7A]">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--rh-muted)]">
                 {label}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-[12px] text-[#e5e5e5] font-mono break-all">
+                <span className="text-[12px] text-[var(--rh-text-tertiary)] font-mono break-all">
                   {value}
                 </span>
                 <button
                   onClick={() => onCopy(value)}
-                  className="text-[#5E6B7A] hover:text-[#5AE4A8] transition-colors flex-shrink-0"
+                  className="text-[var(--rh-muted)] hover:text-[#5AE4A8] transition-colors flex-shrink-0"
                 >
                   <Copy size={11} />
                 </button>

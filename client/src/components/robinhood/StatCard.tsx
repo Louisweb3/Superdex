@@ -20,7 +20,7 @@ export function StatCard({
   return (
     <GlassCard hoverable className="p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <span className="text-[12px] text-[#8B97A8] font-medium">
+        <span className="text-[12px] text-[var(--rh-text-secondary)] font-medium">
           {label}
         </span>
         <div
@@ -33,11 +33,11 @@ export function StatCard({
           <Icon size={15} />
         </div>
       </div>
-      <div className="text-[22px] font-semibold text-white tracking-tight">
+      <div className="text-[22px] font-semibold text-[var(--rh-text)] tracking-tight">
         {value}
       </div>
       {sub ? (
-        <div className="text-[12px] text-[#5E6B7A]">{sub}</div>
+        <div className="text-[12px] text-[var(--rh-muted)]">{sub}</div>
       ) : null}
     </GlassCard>
   );
