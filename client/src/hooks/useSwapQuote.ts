@@ -77,12 +77,16 @@ export function useSwapPrice(
       const data = await resp.json();
 
       if (!resp.ok) {
-        setError(
-          data.validationErrors?.[0]?.reason ??
-          data.reason ??
-          data.error ??
-          "Failed to get price"
-        );
+        if (data.name === "BUY_TOKEN_NOT_AUTHORIZED_FOR_TRADE" || data.name === "SELL_TOKEN_NOT_AUTHORIZED_FOR_TRADE") {
+          setError("This token is restricted from trading through this swap router");
+        } else {
+          setError(
+            data.validationErrors?.[0]?.reason ??
+            data.reason ??
+            data.error ??
+            "Failed to get price"
+          );
+        }
         setQuote(null);
         return;
       }
@@ -172,6 +176,9 @@ export async function fetchSwapQuote(
   const data = await resp.json();
 
   if (!resp.ok) {
+    if (data.name === "BUY_TOKEN_NOT_AUTHORIZED_FOR_TRADE" || data.name === "SELL_TOKEN_NOT_AUTHORIZED_FOR_TRADE") {
+      throw new Error("This token is restricted from trading through this swap router");
+    }
     throw new Error(
       data.validationErrors?.[0]?.reason ??
       data.reason ??

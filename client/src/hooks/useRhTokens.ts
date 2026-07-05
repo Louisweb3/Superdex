@@ -50,8 +50,22 @@ export function useRhTokens() {
         const bsData = await bsRes.json();
         const items: any[] = Array.isArray(bsData.items) ? bsData.items : [];
 
+        // Robinhood's tokenized stock/ETF assets (NVDA, TSLA, AAPL, SPY, etc.) are
+        // real ERC-20s on-chain, but 0x rejects trades on them with
+        // BUY_TOKEN_NOT_AUTHORIZED_FOR_TRADE / SELL_TOKEN_NOT_AUTHORIZED_FOR_TRADE
+        // ("legal restrictions") — they can never actually be swapped through this
+        // router. Blockscout consistently tags these with a " • Robinhood Token"
+        // suffix in the name, so we filter them out of the swap picker entirely
+        // instead of showing tokens that always fail with a confusing error.
+        const isRestrictedStockToken = (name: string) => /•\s*Robinhood Token$/i.test(name.trim());
+
         const candidates = items
-          .filter((t) => t.reputation !== "scam" && t.address_hash)
+          .filter(
+            (t) =>
+              t.reputation !== "scam" &&
+              t.address_hash &&
+              !isRestrictedStockToken(t.name ?? "")
+          )
           .map((t) => ({
             address: (t.address_hash as string).toLowerCase(),
             symbol: t.symbol ?? "???",
