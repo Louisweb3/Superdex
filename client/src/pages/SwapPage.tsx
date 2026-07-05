@@ -10,6 +10,7 @@ import {
   BASE_CHAIN_ID, RH_CHAIN_ID, RH_TOKENS, fetchErc20TokenMeta,
 } from "@/lib/tokens";
 import { useWalletContext } from "@/context/WalletContext";
+import { useRhTokens } from "@/hooks/useRhTokens";
 import { useSwapPrice, fetchSwapQuote, type SwapQuote } from "@/hooks/useSwapQuote";
 import { recordSwapReward, useMarketPrices, type MarketPrice } from "@/hooks/useRewards";
 import { useBaseTokens } from "@/hooks/useBaseTokens";
@@ -649,14 +650,22 @@ export function SwapPage() {
 
   const activeChainId = network === "robinhood" ? RH_CHAIN_ID : BASE_CHAIN_ID;
 
-  // ── 30 Base tokens from DexScreener (Base only — no indexed list exists for RH yet) ──
+  // ── 30 Base tokens from DexScreener ──────────────────────────────────────────
   const { tokens: baseTokens, isLoading: tokensLoading } = useBaseTokens();
+
+  // ── Robinhood Chain tokens from Blockscout (real, indexed ERC-20 list) ──────
+  const { tokens: rhTokens, isLoading: rhTokensLoading } = useRhTokens();
 
   // ── User-added custom tokens on Robinhood Chain (pasted address lookups) ────
   const [rhCustomTokens, setRhCustomTokens] = useState<Token[]>([]);
 
   const tokensForNetwork = network === "robinhood"
-    ? [...RH_TOKENS, ...rhCustomTokens]
+    ? [
+        ...rhTokens,
+        ...rhCustomTokens.filter(
+          (ct) => !rhTokens.some((t) => t.address.toLowerCase() === ct.address.toLowerCase())
+        ),
+      ]
     : baseTokens;
 
   // ── Wallet balances for the active network's token list ─────────────────────
@@ -934,7 +943,7 @@ export function SwapPage() {
                 <div className="flex items-center gap-2">
                   <Zap className="h-4 w-4 text-[#2dae50]" />
                   <span className="font-['Inter',sans-serif] text-[15px] font-bold text-[#b0b5be]">Swap</span>
-                  {tokensLoading && network === "base" && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#2dae50]" />}
+                  {((tokensLoading && network === "base") || (rhTokensLoading && network === "robinhood")) && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#2dae50]" />}
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Network toggle — Base and Robinhood Chain share the same 0x router + fee wallet */}
@@ -979,16 +988,6 @@ export function SwapPage() {
                   </button>
                 </div>
               </div>
-
-              {/* Robinhood Chain liquidity notice — no DEX/aggregator liquidity is indexed there yet */}
-              {network === "robinhood" && (
-                <div className="mx-4 mt-3 flex items-start gap-2 rounded-[12px] border border-[#3a2f1a] bg-[#1a1408] px-4 py-3">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-[#c9953a] mt-0.5" />
-                  <span className="font-['Inter',sans-serif] text-[13px] text-[#c9953a]">
-                    Robinhood Chain doesn't have any DEX liquidity yet, so swaps can't be filled here right now. You can still browse and add custom tokens below.
-                  </span>
-                </div>
-              )}
 
               {/* DEX Source Panel */}
               {showDexPanel && (
