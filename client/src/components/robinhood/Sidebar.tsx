@@ -4,7 +4,7 @@ import {
   FileText,
   Rocket,
   BarChart3,
-  Settings,
+  Gift,
 } from "lucide-react";
 import type { RhTab } from "./types";
 
@@ -13,7 +13,7 @@ const NAV_ITEMS: { id: RhTab; label: string; icon: LucideIcon }[] = [
   { id: "contracts", label: "Contracts", icon: FileText },
   { id: "deployments", label: "Deployments", icon: Rocket },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "settings", label: "Settings", icon: Settings },
+  { id: "rewards", label: "Rewards", icon: Gift },
 ];
 
 export function BottomNav({

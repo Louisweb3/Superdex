@@ -1,17 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { encodeAbiParameters, encodeFunctionData, parseEther, parseUnits } from "viem";
+import { encodeAbiParameters, encodeFunctionData, formatEther, parseEther, parseUnits } from "viem";
 import { useWalletContext } from "@/context/WalletContext";
 import { ConnectWalletModal } from "@/components/ConnectWalletModal";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useRewardUser, useDailyClaimStatus, useDailyClaim } from "@/hooks/useRewards";
 
 import { BottomNav } from "@/components/robinhood/Sidebar";
 import { DashboardView } from "@/components/robinhood/DashboardView";
 import { ContractsView } from "@/components/robinhood/ContractsView";
 import { DeployView } from "@/components/robinhood/DeployView";
 import { ExplorerView } from "@/components/robinhood/ExplorerView";
-import { SettingsView } from "@/components/robinhood/SettingsView";
+import { RewardsView } from "@/components/robinhood/RewardsView";
 import type { DeployedToken, RhTab } from "@/components/robinhood/types";
 
 // ─── Robinhood Chain config ───────────────────────────────────────────────────────
@@ -44,8 +45,6 @@ const XP_CLAIM_ABI = [{ type: "function", name: "claim", inputs: [], outputs: []
 const LS_CONTRACTS_KEY = "rh_playground_contracts";
 const LS_GM_KEY = "rh_playground_gm";
 const LS_GN_KEY = "rh_playground_gn";
-const LS_XP_KEY = "rh_playground_xp";
-const LS_XP_STREAK_KEY = "rh_playground_xp_streak";
 
 function getStoredContracts(): DeployedToken[] {
   try { return JSON.parse(localStorage.getItem(LS_CONTRACTS_KEY) || "[]"); }
@@ -55,34 +54,39 @@ function saveContracts(list: DeployedToken[]) {
   localStorage.setItem(LS_CONTRACTS_KEY, JSON.stringify(list));
 }
 function getTodayKey() { return new Date().toISOString().slice(0, 10); }
-function getYesterdayKey() { return new Date(Date.now() - 86_400_000).toISOString().slice(0, 10); }
 function hasClaimedGmToday() { return localStorage.getItem(LS_GM_KEY) === getTodayKey(); }
 function markGmToday() { localStorage.setItem(LS_GM_KEY, getTodayKey()); }
 function hasClaimedGnToday() { return localStorage.getItem(LS_GN_KEY) === getTodayKey(); }
 function markGnToday() { localStorage.setItem(LS_GN_KEY, getTodayKey()); }
-function hasClaimedXpToday() { return localStorage.getItem(LS_XP_KEY) === getTodayKey(); }
-function markXpToday() { localStorage.setItem(LS_XP_KEY, getTodayKey()); }
-function getXpStreak(): number {
+
+// ─── Farm action XP sync helper ──────────────────────────────────────────────
+async function recordFarmAction(wallet: string, actionType: string, chain: string, txHash: string) {
   try {
-    const raw = JSON.parse(localStorage.getItem(LS_XP_STREAK_KEY) || "null");
-    if (!raw) return 0;
-    const today = getTodayKey();
-    const yesterday = getYesterdayKey();
-    if (raw.lastDate === today || raw.lastDate === yesterday) return raw.count;
-    return 0;
-  } catch { return 0; }
+    await apiRequest("POST", "/api/farm/action", { wallet, actionType, chain, txHash });
+  } catch { /* non-fatal: XP sync failure shouldn't block the on-chain action */ }
 }
-function bumpXpStreak(): number {
-  const today = getTodayKey();
-  const yesterday = getYesterdayKey();
-  let raw: { count: number; lastDate: string } | null = null;
-  try { raw = JSON.parse(localStorage.getItem(LS_XP_STREAK_KEY) || "null"); }
-  catch { raw = null; }
-  let count = 1;
-  if (raw?.lastDate === yesterday) count = raw.count + 1;
-  else if (raw?.lastDate === today) count = raw.count;
-  localStorage.setItem(LS_XP_STREAK_KEY, JSON.stringify({ count, lastDate: today }));
-  return count;
+
+// ─── Uniswap LP link builder ──────────────────────────────────────────────────
+function buildUniswapLpUrl(deployedCA: string): string {
+  const priceRangeState = encodeURIComponent(JSON.stringify({ priceInverted: false, fullRange: true }));
+  const depositState = encodeURIComponent(JSON.stringify({ exactField: "TOKEN0" }));
+  return `https://app.uniswap.org/positions/create/v2?currencyA=${deployedCA}&currencyB=undefined&chain=robinhood&fee=undefined&hook=undefined&priceRangeState=${priceRangeState}&depositState=${depositState}`;
+}
+
+// ─── Add token to wallet helper ───────────────────────────────────────────────
+async function addTokenToWallet(token: DeployedToken) {
+  await (window as any).ethereum.request({
+    method: "wallet_watchAsset",
+    params: {
+      type: "ERC20",
+      options: {
+        address: token.address,
+        symbol: token.symbol,
+        decimals: 18,
+        image: token.imageUrl || undefined,
+      },
+    },
+  });
 }
 
 // ─── RPC helper ──────────────────────────────────────────────────────────────
@@ -140,8 +144,10 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [tokenSupply, setTokenSupply] = useState("1000000");
+  const [tokenImageUrl, setTokenImageUrl] = useState("");
   const [deploying, setDeploying] = useState(false);
   const [deployedContracts, setDeployedContracts] = useState<DeployedToken[]>(getStoredContracts());
+  const [lastDeployed, setLastDeployed] = useState<DeployedToken | null>(deployedContracts[0] ?? null);
 
   const [sendingGm, setSendingGm] = useState(false);
   const [gmClaimed, setGmClaimed] = useState(hasClaimedGmToday());
@@ -152,9 +158,15 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
   const [gnTxHash, setGnTxHash] = useState("");
 
   const [claimingXp, setClaimingXp] = useState(false);
-  const [xpClaimed, setXpClaimed] = useState(hasClaimedXpToday());
   const [xpTxHash, setXpTxHash] = useState("");
-  const [xpStreak, setXpStreak] = useState(getXpStreak());
+
+  // ─── Real, backend-synced XP/rewards state (single source of truth) ─────────
+  const { data: rewardUser } = useRewardUser(wallet.address ?? null);
+  const { data: dailyClaimStatus } = useDailyClaimStatus(wallet.address ?? null);
+  const dailyClaimMutation = useDailyClaim(wallet.address ?? null);
+  const claimedToday = dailyClaimStatus?.claimedToday ?? false;
+  const streak = dailyClaimStatus?.streak ?? rewardUser?.streak ?? 0;
+  const totalXp = rewardUser?.xp ?? 0;
 
   useEffect(() => {
     if (!wallet.isConnected) { setIsOnRH(false); return; }
@@ -207,13 +219,17 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
       });
       const receipt = await waitForReceipt(txHash, RH_RPC);
       const address = "0x" + receipt.contractAddress.slice(-40);
+      const gasUsedWei = BigInt(receipt.gasUsed ?? "0x0") * BigInt(receipt.effectiveGasPrice ?? receipt.gasPrice ?? "0x0");
+      const gasUsedEth = formatEther(gasUsedWei);
       const newToken: DeployedToken = {
         name: tokenName, symbol: tokenSymbol, supply: tokenSupply,
         address, txHash, deployedAt: Date.now(),
         network: ACTIVE_NETWORK.chainName, verifyStatus: "pending",
+        imageUrl: tokenImageUrl || undefined, gasUsed: gasUsedEth,
       };
       setDeployedContracts((prev) => { const next = [newToken, ...prev]; saveContracts(next); return next; });
-      setTokenName(""); setTokenSymbol(""); setTokenSupply("1000000");
+      setLastDeployed(newToken);
+      setTokenName(""); setTokenSymbol(""); setTokenSupply("1000000"); setTokenImageUrl("");
       toast({ title: "🚀 Token deployed!" });
       verifyOnBlockscout(address, args).then((ok) => {
         setDeployedContracts((prev) => {
@@ -221,14 +237,18 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
           const next = prev.map((t) => t.address === address ? { ...t, verifyStatus: status } : t);
           saveContracts(next); return next;
         });
+        setLastDeployed((prev) => prev && prev.address === address ? { ...prev, verifyStatus: ok ? "verified" : "failed" } : prev);
         if (ok) toast({ title: "✅ Contract verified on Blockscout!" });
       });
-      try { await apiRequest("POST", "/api/robinhood/stats/increment"); }
+      try { await apiRequest("POST", "/api/robinhood/stats/contract-deployed"); }
       catch {}
+      if (wallet.address) {
+        recordFarmAction(wallet.address, "deploy_token", ACTIVE_NETWORK.chainName, txHash);
+      }
     } catch (e: any) {
       toast({ title: "Deploy failed", description: e.message, variant: "destructive" });
     } finally { setDeploying(false); }
-  }, [wallet, isOnRH, switchToRH, tokenName, tokenSymbol, tokenSupply, toast]);
+  }, [wallet, isOnRH, switchToRH, tokenName, tokenSymbol, tokenSupply, tokenImageUrl, toast]);
 
   const sendGm = useCallback(async () => {
     if (!wallet.isConnected) { setWalletOpen(true); return; }
@@ -242,6 +262,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         params: [{ from: wallet.address, to: wallet.address, value: "0x0", data }],
       });
       setGmTxHash(txHash); markGmToday(); setGmClaimed(true);
+      if (wallet.address) recordFarmAction(wallet.address, "gm", ACTIVE_NETWORK.chainName, txHash);
       toast({ title: "🌅 GM sent on Robinhood Chain!" });
     } catch (e: any) {
       toast({ title: "GM failed", description: e.message, variant: "destructive" });
@@ -260,6 +281,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         params: [{ from: wallet.address, to: wallet.address, value: "0x0", data }],
       });
       setGnTxHash(txHash); markGnToday(); setGnClaimed(true);
+      if (wallet.address) recordFarmAction(wallet.address, "gn", ACTIVE_NETWORK.chainName, txHash);
       toast({ title: "🌙 GN sent on Robinhood Chain!" });
     } catch (e: any) {
       toast({ title: "GN failed", description: e.message, variant: "destructive" });
@@ -269,7 +291,7 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
   const claimXp = useCallback(async () => {
     if (!wallet.isConnected) { setWalletOpen(true); return; }
     if (!isOnRH) { await switchToRH(); return; }
-    if (xpClaimed) { toast({ title: "XP already claimed today!" }); return; }
+    if (claimedToday) { toast({ title: "XP already claimed today!" }); return; }
     setClaimingXp(true);
     try {
       const data = encodeFunctionData({ abi: XP_CLAIM_ABI, functionName: "claim" });
@@ -278,12 +300,13 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
         method: "eth_sendTransaction",
         params: [{ from: wallet.address, to: XP_CLAIM_CONTRACT, value: valueHex, data }],
       });
-      setXpTxHash(txHash); markXpToday(); setXpClaimed(true); setXpStreak(bumpXpStreak());
-      toast({ title: "🎁 25 XP claimed on Robinhood Chain!" });
+      setXpTxHash(txHash);
+      const result = await dailyClaimMutation.mutateAsync(txHash);
+      toast({ title: result.bonusAwarded ? "🎉 25 XP + 200 XP streak bonus claimed!" : "🎁 25 XP claimed on Robinhood Chain!" });
     } catch (e: any) {
       toast({ title: "XP claim failed", description: e.message, variant: "destructive" });
     } finally { setClaimingXp(false); }
-  }, [wallet, isOnRH, switchToRH, xpClaimed, toast]);
+  }, [wallet, isOnRH, switchToRH, claimedToday, dailyClaimMutation, toast]);
 
   const retryVerify = useCallback((address: string) => {
     const token = deployedContracts.find((t) => t.address === address);
@@ -307,6 +330,15 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
   const copyToClipboard = useCallback((value: string) => {
     navigator.clipboard.writeText(value);
     toast({ title: "Copied!" });
+  }, [toast]);
+
+  const handleAddToWallet = useCallback(async (token: DeployedToken) => {
+    try {
+      await addTokenToWallet(token);
+      toast({ title: `${token.symbol} added to wallet!` });
+    } catch (e: any) {
+      toast({ title: "Failed to add token", description: e.message, variant: "destructive" });
+    }
   }, [toast]);
 
   const isConnected = wallet.isConnected;
@@ -361,8 +393,9 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             totalContractsDeployed={totalContractsDeployed}
             gmClaimed={gmClaimed}
             gnClaimed={gnClaimed}
-            xpClaimed={xpClaimed}
-            xpStreak={xpStreak}
+            claimedToday={claimedToday}
+            streak={streak}
+            totalXp={totalXp}
             onNavigate={setActiveTab}
             switchToRH={switchToRH}
             switchingNetwork={switchingNetwork}
@@ -386,6 +419,8 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             onCopy={copyToClipboard}
             onRetryVerify={retryVerify}
             onNavigate={setActiveTab}
+            onAddToWallet={handleAddToWallet}
+            uniswapLpUrl={buildUniswapLpUrl}
           />
         )}
 
@@ -397,6 +432,8 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             setTokenSymbol={setTokenSymbol}
             tokenSupply={tokenSupply}
             setTokenSupply={setTokenSupply}
+            tokenImageUrl={tokenImageUrl}
+            setTokenImageUrl={setTokenImageUrl}
             deploying={deploying}
             deployToken={deployToken}
             chainName={ACTIVE_NETWORK.chainName}
@@ -404,6 +441,11 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
             isOnRH={isOnRH}
             switchToRH={switchToRH}
             switchingNetwork={switchingNetwork}
+            lastDeployed={lastDeployed}
+            explorerUrl={EXPLORER}
+            onAddToWallet={handleAddToWallet}
+            onCopy={copyToClipboard}
+            uniswapLpUrl={buildUniswapLpUrl}
           />
         )}
 
@@ -421,11 +463,17 @@ export function RobinhoodPlaygroundPage(): JSX.Element {
           />
         )}
 
-        {activeTab === "settings" && (
-          <SettingsView
+        {activeTab === "rewards" && (
+          <RewardsView
             chainName={ACTIVE_NETWORK.chainName}
-            chainId={ACTIVE_NETWORK.chainIdDecimal.toString()}
-            rpcUrl={ACTIVE_NETWORK.rpcUrls[0]}
+            explorerUrl={EXPLORER}
+            claimedToday={claimedToday}
+            claimingXp={claimingXp}
+            xpTxHash={xpTxHash}
+            claimXp={claimXp}
+            streak={streak}
+            totalXp={totalXp}
+            isConnected={isConnected}
           />
         )}
       </main>

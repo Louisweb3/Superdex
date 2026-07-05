@@ -1059,6 +1059,33 @@ export async function registerRoutes(
     }
   });
 
+  // ─── Daily reward claim (25 XP, +200 XP every 7-day streak) ────────────────────
+  app.post("/api/rewards/daily-claim", async (req, res) => {
+    try {
+      const { wallet, txHash } = req.body;
+      if (!wallet || typeof wallet !== "string" || wallet.length < 10)
+        return res.status(400).json({ error: "Invalid wallet" });
+      const result = await rewardsStorage.claimDailyReward(wallet, txHash ?? "");
+      return res.json(result);
+    } catch (err: any) {
+      console.error("daily-claim error:", err);
+      return res.status(500).json({ error: err.message ?? "Internal error" });
+    }
+  });
+
+  app.get("/api/rewards/daily-claim/status/:wallet", async (req, res) => {
+    try {
+      const { wallet } = req.params;
+      if (!wallet || wallet.length < 10)
+        return res.status(400).json({ error: "Invalid wallet" });
+      const result = await rewardsStorage.getDailyClaimStatus(wallet);
+      return res.json(result);
+    } catch (err: any) {
+      console.error("daily-claim status error:", err);
+      return res.status(500).json({ error: err.message ?? "Internal error" });
+    }
+  });
+
   // ─── XP On-chain Claim ────────────────────────────────────────────────────────
   app.post("/api/xp-claim", async (req, res) => {
     try {

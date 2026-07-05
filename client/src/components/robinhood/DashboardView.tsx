@@ -1,5 +1,5 @@
 import {
-  Plus, Rocket, ShieldCheck, BarChart3, KeyRound,
+  Plus, Rocket, ShieldCheck, BarChart3, Gift as GiftIcon,
   CheckCircle, ExternalLink, Loader2, Send, Info, Gift,
   Flame, TrendingUp,
 } from "lucide-react";
@@ -20,7 +20,7 @@ function NetworkWarning({ chainName, switchToRH, switchingNetwork }: { chainName
 interface DashboardViewProps {
   isConnected: boolean; isOnRH: boolean; balance: string | null;
   chainName: string; tokens: DeployedToken[]; totalContractsDeployed: number;
-  gmClaimed: boolean; gnClaimed: boolean; xpClaimed: boolean; xpStreak: number;
+  gmClaimed: boolean; gnClaimed: boolean; claimedToday: boolean; streak: number; totalXp: number;
   onNavigate: (tab: RhTab) => void;
   switchToRH: () => void; switchingNetwork: boolean; explorerUrl: string;
   sendingGm: boolean; gmTxHash: string; sendGm: () => void;
@@ -29,9 +29,13 @@ interface DashboardViewProps {
 }
 
 export function DashboardView(props: DashboardViewProps) {
-  const { tokens, totalContractsDeployed, isConnected, isOnRH, balance, chainName, gmClaimed, gnClaimed, xpClaimed, xpStreak, onNavigate, switchToRH, switchingNetwork, explorerUrl, sendingGm, gmTxHash, sendGm, sendingGn, gnTxHash, sendGn, claimingXp, xpTxHash, claimXp } = props;
+  const { tokens, totalContractsDeployed, isConnected, isOnRH, chainName, gmClaimed, gnClaimed, claimedToday, streak, totalXp, onNavigate, switchToRH, switchingNetwork, explorerUrl, sendingGm, gmTxHash, sendGm, sendingGn, gnTxHash, sendGn, claimingXp, xpTxHash, claimXp } = props;
   const verifiedCount = tokens.filter((t) => t.verifyStatus === "verified").length;
-  const latest = tokens[0];
+
+  // ─── Real stats computed from actual deploy data ───────────────────────────
+  const successfulDeployments = tokens.filter((t) => t.verifyStatus !== "failed").length;
+  const totalGasUsedEth = tokens.reduce((sum, t) => sum + (t.gasUsed ? Number(t.gasUsed) : 0), 0);
+  const totalTransactions = tokens.length + (gmClaimed ? 1 : 0) + (gnClaimed ? 1 : 0) + (claimedToday ? 1 : 0);
 
   return (
     <div className="flex flex-col gap-5 pt-2">
@@ -72,18 +76,18 @@ export function DashboardView(props: DashboardViewProps) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: "Total Contracts", value: totalContractsDeployed.toLocaleString(), change: "+12 this week", icon: FileText },
-            { label: "Total Deployments", value: tokens.length.toString(), change: "+16 this week", icon: Rocket },
-            { label: "Total Transactions", value: "1,248", change: "+24.6% this week", icon: BarChart3 },
-            { label: "Total Gas Used", value: isConnected && balance ? `${Number(balance).toFixed(2)}ETH` : "12.45ETH", change: "-8.3% this week", icon: Flame },
-          ].map(({ label, value, change, icon: Icon }) => (
-            <div key={label} className="bg-[#00090b] border border-[#081312] rounded-[8px] p-3">
+            { label: "Total Contracts (Platform)", value: totalContractsDeployed.toLocaleString(), sub: "Across all users", icon: FileText },
+            { label: "Successful Deployments", value: successfulDeployments.toString(), sub: `${verifiedCount} verified`, icon: Rocket },
+            { label: "Total Transactions", value: totalTransactions.toLocaleString(), sub: "Your on-chain actions", icon: BarChart3 },
+            { label: "Total Gas Used", value: `${totalGasUsedEth.toFixed(6)} ETH`, sub: "From your deploys", icon: Flame },
+          ].map(({ label, value, sub, icon: Icon }) => (
+            <div key={label} className="bg-[#00090b] border border-[#081312] rounded-[8px] p-3" data-testid={`stat-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
               <div className="flex items-center gap-1.5 mb-2">
                 <Icon size={14} className="text-[#0baa3b]" />
                 <span className="text-[10px] text-[#63666a]">{label}</span>
               </div>
               <div className="text-[18px] font-bold text-white">{value}</div>
-              <div className="text-[10px] text-[#0baa3b] mt-0.5">{change}</div>
+              <div className="text-[10px] text-[#63666a] mt-0.5">{sub}</div>
             </div>
           ))}
         </div>
@@ -98,7 +102,7 @@ export function DashboardView(props: DashboardViewProps) {
             { label: "Deploy Contract", sub: "Deploy to network", icon: Rocket, onClick: () => onNavigate("deployments") },
             { label: "Verify Contract", sub: "Verify your contract", icon: ShieldCheck, onClick: () => onNavigate("contracts") },
             { label: "View Analytics", sub: "Explore insights", icon: BarChart3, onClick: () => onNavigate("analytics") },
-            { label: "API Keys", sub: "Manage your keys", icon: KeyRound, onClick: () => onNavigate("settings") },
+            { label: "Rewards", sub: "Earn daily XP", icon: GiftIcon, onClick: () => onNavigate("rewards") },
           ].map(({ label, sub, icon: Icon, onClick }) => (
             <button key={label} onClick={onClick} className="flex flex-col items-center gap-1.5 bg-[#00090b] border border-[#081312] hover:border-[#0baa3b]/30 rounded-[8px] p-3 transition-colors">
               <div className="w-8 h-8 rounded-[8px] bg-[#0baa3b]/10 flex items-center justify-center">
@@ -130,19 +134,29 @@ export function DashboardView(props: DashboardViewProps) {
             <div className="flex flex-col">
               {tokens.slice(0, 5).map((token, i) => (
                 <div key={token.address} className={`flex items-center gap-3 px-4 py-3 ${i < tokens.slice(0,5).length - 1 ? "border-b border-[#081312]" : ""}`}>
-                  <div className="w-9 h-9 rounded-[8px] bg-[#0baa3b]/10 flex items-center justify-center text-[14px]">
-                    {token.symbol.slice(0, 2)}
+                  <div className="w-9 h-9 rounded-[8px] bg-[#0baa3b]/10 flex items-center justify-center text-[14px] overflow-hidden">
+                    {token.imageUrl ? (
+                      <img src={token.imageUrl} alt={token.symbol} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    ) : (
+                      token.symbol.slice(0, 2)
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] text-white font-medium truncate">{token.address.slice(0,6)}…{token.address.slice(-4)}</div>
                     <div className="text-[11px] text-[#63666a]">{token.name}</div>
                   </div>
-                  <div className="text-[11px] text-[#63666a]">{Math.max(0, 5-i)*2}m ago</div>
-                  <div className="flex items-center gap-1.5 bg-[#01160e] border border-[#02100c] rounded-[6px] px-2.5 py-1">
-                    <CheckCircle size={12} className="text-[#0baa3b]" />
-                    <span className="text-[10px] text-[#0baa3b] font-medium">Verified</span>
-                  </div>
-                  <ExternalLink size={12} className="text-[#63666a]" />
+                  <div className="text-[11px] text-[#63666a]">{new Date(token.deployedAt).toLocaleDateString()}</div>
+                  {token.verifyStatus === "verified" ? (
+                    <div className="flex items-center gap-1.5 bg-[#01160e] border border-[#02100c] rounded-[6px] px-2.5 py-1">
+                      <CheckCircle size={12} className="text-[#0baa3b]" />
+                      <span className="text-[10px] text-[#0baa3b] font-medium">Verified</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 bg-[#081312] rounded-[6px] px-2.5 py-1">
+                      <span className="text-[10px] text-[#63666a] font-medium">{token.verifyStatus ?? "pending"}</span>
+                    </div>
+                  )}
+                  <a href={`${explorerUrl}/address/${token.address}`} target="_blank" rel="noopener noreferrer"><ExternalLink size={12} className="text-[#63666a]" /></a>
                 </div>
               ))}
             </div>
@@ -164,7 +178,7 @@ export function DashboardView(props: DashboardViewProps) {
             </div>
             <h3 className="text-[16px] font-semibold text-white">Earn Rewards for Building</h3>
             <p className="text-[11px] text-[#63666a] mt-1">Deploy smart contracts and earn $RiN rewards on Robinhood Chain.</p>
-            <button className="mt-3 flex items-center gap-1.5 bg-[#020c0c] border border-[#024420] rounded-[6px] px-3 py-1.5 text-[11px] text-[#0a9637]">
+            <button onClick={() => onNavigate("rewards")} className="mt-3 flex items-center gap-1.5 bg-[#020c0c] border border-[#024420] rounded-[6px] px-3 py-1.5 text-[11px] text-[#0a9637]">
               Learn More <ExternalLink size={11} />
             </button>
           </div>
@@ -214,17 +228,17 @@ export function DashboardView(props: DashboardViewProps) {
       {/* XP Claim Card */}
       <div className="bg-[#00090b] border border-[#081312] rounded-[8px] p-4">
         <div className="text-center mb-3">
-          <div className="w-12 h-12 rounded-full bg-[#7A8CFF]/10 border border-[#7A8CFF]/25 flex items-center justify-center mx-auto mb-2">
-            <Gift size={20} className="text-[#7A8CFF]" />
+          <div className="w-12 h-12 rounded-full bg-[#0baa3b]/10 border border-[#0baa3b]/25 flex items-center justify-center mx-auto mb-2">
+            <Gift size={20} className="text-[#0baa3b]" />
           </div>
           <h3 className="text-[16px] font-semibold text-white">Claim 25 XP Daily</h3>
           <p className="text-[#63666a] text-[11px] mt-0.5">Claim your XP every 24 hours on {chainName}</p>
         </div>
         <div className="flex flex-col gap-2 mb-3">
           {[
-            { label: "Daily XP", value: "25 XP", icon: <Gift size={12} /> },
-            { label: "Daily Streak", value: `${xpStreak} day${xpStreak === 1 ? "" : "s"}`, icon: <Flame size={12} className="text-[#FFB547]" /> },
-            { label: "Weekly Bonus", value: xpStreak >= 7 ? "+50 XP unlocked!" : `${7 - (xpStreak % 7)} days to +50 XP`, icon: <TrendingUp size={12} className="text-[#0baa3b]" /> },
+            { label: "Total XP Earned", value: `${totalXp.toLocaleString()} XP`, icon: <Gift size={12} /> },
+            { label: "Daily Streak", value: `${streak} day${streak === 1 ? "" : "s"}`, icon: <Flame size={12} className="text-[#FFB547]" /> },
+            { label: "7-Day Bonus", value: streak > 0 && streak % 7 === 0 ? "+200 XP unlocked!" : `${7 - (streak % 7)} days to +200 XP`, icon: <TrendingUp size={12} className="text-[#0baa3b]" /> },
           ].map(({ label, value, icon }) => (
             <div key={label} className="flex justify-between items-center py-1.5 border-b border-[#081312] last:border-0">
               <span className="text-[#63666a] text-[12px] flex items-center gap-2">{icon} {label}</span>
@@ -232,10 +246,10 @@ export function DashboardView(props: DashboardViewProps) {
             </div>
           ))}
         </div>
-        <button onClick={claimXp} disabled={claimingXp || xpClaimed} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#7A8CFF] to-[#5AE4A8] hover:brightness-110 disabled:opacity-40 text-[#000305] font-semibold text-[13px] h-[44px] rounded-[8px] transition-all">
-          {claimingXp ? <Loader2 size={15} className="animate-spin" /> : <Gift size={15} />} {xpClaimed ? "XP Claimed ✓" : "Claim 25 XP"}
+        <button onClick={claimXp} disabled={claimingXp || claimedToday} className="w-full flex items-center justify-center gap-2 bg-[#0baa3b] hover:bg-[#46D67B] disabled:opacity-40 text-[#000305] font-semibold text-[13px] h-[44px] rounded-[8px] transition-all">
+          {claimingXp ? <Loader2 size={15} className="animate-spin" /> : <Gift size={15} />} {claimedToday ? "XP Claimed ✓" : "Claim 25 XP"}
         </button>
-        {xpTxHash && <a href={`${explorerUrl}/tx/${xpTxHash}`} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center justify-center gap-1 text-[10px] text-[#7A8CFF]"><CheckCircle size={10} /> View transaction</a>}
+        {xpTxHash && <a href={`${explorerUrl}/tx/${xpTxHash}`} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center justify-center gap-1 text-[10px] text-[#0baa3b]"><CheckCircle size={10} /> View transaction</a>}
       </div>
     </div>
   );

@@ -190,6 +190,50 @@ export async function recordSwapReward(
   return r.json();
 }
 
+// ─── Daily reward claim (25 XP, +200 XP every 7-day streak) ─────────────────────────────
+export interface DailyClaimStatus {
+  claimedToday: boolean;
+  streak: number;
+  xp: number;
+}
+
+export function useDailyClaimStatus(wallet: string | null) {
+  return useQuery<DailyClaimStatus>({
+    queryKey: ["/api/rewards/daily-claim/status", wallet],
+    queryFn: () => json(`/api/rewards/daily-claim/status/${wallet}`),
+    enabled: !!wallet,
+    refetchInterval: 15_000,
+    staleTime: 5_000,
+  });
+}
+
+export interface DailyClaimResult {
+  xpAwarded: number;
+  alreadyClaimedToday: boolean;
+  streak: number;
+  bonusAwarded: boolean;
+  totalXp: number;
+}
+
+export function useDailyClaim(wallet: string | null) {
+  const qc = useQueryClient();
+  return useMutation<DailyClaimResult, Error, string | undefined>({
+    mutationFn: async (txHash?: string) => {
+      const r = await fetch("/api/rewards/daily-claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet, txHash: txHash ?? "" }),
+      });
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/rewards/user", wallet] });
+      qc.invalidateQueries({ queryKey: ["/api/rewards/daily-claim/status", wallet] });
+    },
+  });
+}
+
 // ─── Tier helpers ───────────────────────────────────────────────────────────────────────
 export const TIER_THRESHOLDS = {
   Bronze:  { min: 0,    max: 499,  color: "#cd7f32", next: "Silver"  },

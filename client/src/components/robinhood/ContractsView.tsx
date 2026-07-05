@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, Copy, ExternalLink, RefreshCw, CheckCircle } from "lucide-react";
+import { Search, Copy, ExternalLink, RefreshCw, CheckCircle, Wallet, Droplets } from "lucide-react";
 import type { DeployedToken, RhTab } from "./types";
 
 interface ContractsViewProps {
@@ -8,11 +8,13 @@ interface ContractsViewProps {
   onCopy: (address: string) => void;
   onRetryVerify: (address: string) => void;
   onNavigate: (tab: RhTab) => void;
+  onAddToWallet: (token: DeployedToken) => void;
+  uniswapLpUrl: (address: string) => string;
 }
 
 type SortKey = "name" | "supply" | "deployedAt";
 
-export function ContractsView({ tokens, explorerUrl, onCopy, onRetryVerify, onNavigate }: ContractsViewProps) {
+export function ContractsView({ tokens, explorerUrl, onCopy, onRetryVerify, onNavigate, onAddToWallet, uniswapLpUrl }: ContractsViewProps) {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("deployedAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -79,7 +81,13 @@ export function ContractsView({ tokens, explorerUrl, onCopy, onRetryVerify, onNa
                   <tr key={i} className="border-b border-[#081312] last:border-0 hover:bg-[#081312]/50 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-[#0baa3b]/10 flex items-center justify-center text-[10px] font-semibold text-[#0baa3b]">{token.symbol.slice(0, 2)}</div>
+                        <div className="w-7 h-7 rounded-full bg-[#0baa3b]/10 flex items-center justify-center text-[10px] font-semibold text-[#0baa3b] overflow-hidden">
+                          {token.imageUrl ? (
+                            <img src={token.imageUrl} alt={token.symbol} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                          ) : (
+                            token.symbol.slice(0, 2)
+                          )}
+                        </div>
                         <div>
                           <div className="text-[12px] font-medium text-white">{token.name}</div>
                           <div className="text-[10px] text-[#63666a] font-mono">{token.symbol}</div>
@@ -100,9 +108,11 @@ export function ContractsView({ tokens, explorerUrl, onCopy, onRetryVerify, onNa
                     <td className="px-4 py-3 text-[11px] text-[#63666a]">{new Date(token.deployedAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => onCopy(token.address)} className="p-1 rounded-[6px] text-[#63666a] hover:text-white transition-colors"><Copy size={12} /></button>
-                        <a href={`${explorerUrl}/address/${token.address}`} target="_blank" rel="noopener noreferrer" className="p-1 rounded-[6px] text-[#63666a] hover:text-white transition-colors"><ExternalLink size={12} /></a>
-                        {token.verifyStatus === "failed" && <button onClick={() => onRetryVerify(token.address)} className="p-1 rounded-[6px] text-[#FF5A67] hover:bg-[#FF5A67]/10 transition-colors"><RefreshCw size={12} /></button>}
+                        <button onClick={() => onAddToWallet(token)} title="Add to wallet" data-testid={`button-add-wallet-${token.address}`} className="p-1 rounded-[6px] text-[#63666a] hover:text-white transition-colors"><Wallet size={12} /></button>
+                        <a href={uniswapLpUrl(token.address)} target="_blank" rel="noopener noreferrer" title="Add LP on Uniswap" data-testid={`link-lp-${token.address}`} className="p-1 rounded-[6px] text-[#63666a] hover:text-white transition-colors"><Droplets size={12} /></a>
+                        <button onClick={() => onCopy(token.address)} title="Copy address" className="p-1 rounded-[6px] text-[#63666a] hover:text-white transition-colors"><Copy size={12} /></button>
+                        <a href={`${explorerUrl}/address/${token.address}`} target="_blank" rel="noopener noreferrer" title="View on explorer" className="p-1 rounded-[6px] text-[#63666a] hover:text-white transition-colors"><ExternalLink size={12} /></a>
+                        {token.verifyStatus === "failed" && <button onClick={() => onRetryVerify(token.address)} title="Retry verify" className="p-1 rounded-[6px] text-[#FF5A67] hover:bg-[#FF5A67]/10 transition-colors"><RefreshCw size={12} /></button>}
                       </div>
                     </td>
                   </tr>

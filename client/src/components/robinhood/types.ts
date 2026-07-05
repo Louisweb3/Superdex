@@ -3,7 +3,7 @@ export type RhTab =
   | "contracts"
   | "deployments"
   | "analytics"
-  | "settings";
+  | "rewards";
 
 export type DeployedToken = {
   name: string;
@@ -14,4 +14,6 @@ export type DeployedToken = {
   deployedAt: number;
   network: string;
   verifyStatus?: "pending" | "verified" | "failed";
+  imageUrl?: string;
+  gasUsed?: string;
 };

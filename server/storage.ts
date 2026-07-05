@@ -234,6 +234,92 @@ export class RewardsStorage {
     return { xpAwarded: xp };
   }
 
+  /**
+   * Claims the daily reward (25 XP, +200 XP bonus every 7-day streak).
+   * Shared xp/streak with the rest of the app so progress stays in sync
+   * everywhere (GM/GN, swaps, XP claim, Robinhood Playground, etc).
+   */
+  async claimDailyReward(
+    wallet: string,
+    txHash: string
+  ): Promise<{ xpAwarded: number; alreadyClaimedToday: boolean; streak: number; bonusAwarded: boolean; totalXp: number }> {
+    const key = wallet.toLowerCase();
+    const today = todayUTC();
+
+    const [existing] = await db
+      .select()
+      .from(farmActions)
+      .where(
+        and(
+          eq(farmActions.wallet_address, key),
+          eq(farmActions.action_type, "daily_claim"),
+          eq(farmActions.date, today)
+        )
+      )
+      .limit(1);
+    if (existing) {
+      const [u] = await db.select().from(rewardUsers).where(eq(rewardUsers.wallet_address, key)).limit(1);
+      return { xpAwarded: 0, alreadyClaimedToday: true, streak: u?.streak ?? 0, bonusAwarded: false, totalXp: u?.xp ?? 0 };
+    }
+
+    const user = await this.ensureUser(key);
+
+    let newStreak = user.streak;
+    if (user.last_activity_date !== today) {
+      const yesterday = new Date();
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+      const yStr = yesterday.toISOString().slice(0, 10);
+      newStreak = user.last_activity_date === yStr ? newStreak + 1 : 1;
+    }
+
+    const bonusAwarded = newStreak > 0 && newStreak % 7 === 0;
+    const xpAwarded = 25 + (bonusAwarded ? 200 : 0);
+    const newXp = user.xp + xpAwarded;
+
+    await db
+      .update(rewardUsers)
+      .set({
+        xp: newXp,
+        weekly_xp: sql`${rewardUsers.weekly_xp} + ${xpAwarded}`,
+        streak: newStreak,
+        last_activity_date: today,
+        tier: tierFromXP(newXp),
+        level: levelFromXP(newXp),
+      })
+      .where(eq(rewardUsers.wallet_address, key));
+
+    await db.insert(farmActions).values({
+      id: randomUUID(),
+      wallet_address: key,
+      action_type: "daily_claim",
+      chain: "all",
+      tx_hash: txHash ?? "",
+      xp_awarded: xpAwarded,
+      date: today,
+    });
+
+    return { xpAwarded, alreadyClaimedToday: false, streak: newStreak, bonusAwarded, totalXp: newXp };
+  }
+
+  /** Status of today's daily claim + current streak/xp, used to render the Rewards tab. */
+  async getDailyClaimStatus(wallet: string): Promise<{ claimedToday: boolean; streak: number; xp: number }> {
+    const key = wallet.toLowerCase();
+    const today = todayUTC();
+    const user = await this.ensureUser(key);
+    const [existing] = await db
+      .select()
+      .from(farmActions)
+      .where(
+        and(
+          eq(farmActions.wallet_address, key),
+          eq(farmActions.action_type, "daily_claim"),
+          eq(farmActions.date, today)
+        )
+      )
+      .limit(1);
+    return { claimedToday: !!existing, streak: user.streak, xp: user.xp };
+  }
+
   private async ensureUser(wallet: string): Promise<RewardUser> {
     const key = wallet.toLowerCase();
     const [existing] = await db
